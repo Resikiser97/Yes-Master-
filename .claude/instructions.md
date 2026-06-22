@@ -10,7 +10,7 @@
 ## 0. 一句話總結
 
 這個專案用「文件即記憶」的方式協作。你每次開場必須依序讀
-`DOC_INTEGRITY → ARCH → QUICKREF → CHANGELOG → VERSION_RULES → MAIN`，
+`DOC_INTEGRITY → ARCH → QUICKREF → CHANGELOG → VERSION_RULES → Docs/source-map → MAIN`，
 工作完必須跑 `sync-docs`（更新版本號 + 同步所有頂部標版本的文件 + 寫 CHANGELOG + 報告）。
 版本號 `v0.x.y.z` 你**只能動 y 和 z**。遇到任何不明確的地方**先問，不要猜**。
 
@@ -24,8 +24,10 @@
 3. QUICKREF.md        ← 當前版本號、檔案地圖、持久化 key、技術陷阱表
 4. CHANGELOG.md       ← 最新版本與近期變更
 5. VERSION_RULES.md   ← 版本號規則
-6. MAIN.md            ← 只在需要查特定函式/模組時才細讀
-7. 確認 .claude/skills/ 下有哪些 Skill 可用
+6. Docs/source-map.md ← 專案知識 source map / 規劃文件入口
+7. Docs/planning-dashboard.md ← Planning 階段進度總表
+8. MAIN.md            ← 只在需要查特定函式/模組時才細讀
+9. 確認 .claude/skills/ 下有哪些 Skill 可用
 ```
 
 > 注意：`MAIN.md` 是「函式級參考」。專案知識 source map 在 `Docs/source-map.md`，
