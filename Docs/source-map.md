@@ -18,6 +18,7 @@
    - MVP validation criteria: `Docs/mvp-validation.md`
    - Simulation records: `Docs/simulation/`
    - Claude handoff context: `Docs/claude-code-handoff.md`
+   - **MVP 開工協作看板（Claude↔Codex 分工 / Codex 待填數值）：`Docs/claude-codex-worklist.md`**
 
 ---
 
