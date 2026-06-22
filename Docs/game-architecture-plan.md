@@ -189,29 +189,32 @@ Boss20：3 人血量 +30%、4 人血量 +50%、攻擊 6
 
 ### 儲存流程
 ```
-每晚結束 → 房主選擇儲存
-→ 完整 Save File 上傳 Supabase
-→ 綁定房主 auth.uid()
-→ RLS 保護
+多人進行中：每晚結束 → 房主寫入 active save（走 Edge Function 驗 current_host_uid）
+房主選擇「存檔退出」→ active save 轉成正式 save_files，綁定當下房主 auth.uid() + RLS 保護
+（寫入權限模型詳見下方「存檔寫入權限」章節）
 ```
 
-### 存檔寫入權限：私人房 vs 公開房（Host Migration 連帶問題）
+### 存檔寫入權限：active save vs 正式 save_files（不分私人房/公開房）
 ```
-私人房存檔：
-  - owner_id = auth.uid() 的 RLS 即可（房主固定）
+統一模型：所有「多人進行中」房間，不分私人房/公開房，都用同一套 active save 寫入。
+原因：私人房一樣會發生 Host Migration（新房主 uid ≠ 原 owner_id），
+      若只靠 owner_id = auth.uid() 會把合法的新房主擋在門外。
 
-公開房「進行中」存檔（active room / active save）：
-  - 不能只用 owner_id = auth.uid()
-    原因：Host Migration 後新房主 uid ≠ 原 owner_id，
-          簡單 owner 比對會把合法的新房主擋在門外
-  - 建議：公開房進行中存檔寫入一律走 Edge Function：
+(1) 多人進行中的 active save：
+  - 不可只用 owner_id = auth.uid()
+  - 一律走 Edge Function 寫入：
       1. 驗 requester 的 auth.uid（Supabase session）
       2. 驗 requester 是否為 room.current_host_uid
       3. 驗 room 狀態為 active
       4. 驗 data_revision（條件式回寫，見 Schema Versioning）
       5. 全部通過 → 由 service role 寫入
-  - 替代：RLS 改查 room_memberships / current_host_uid，不能只靠 owner_id=uid
-  - 房主「存檔退出」轉成私人存檔後 → 才回到 owner_id=uid 模型
+  - Host Migration 後，新的 current_host_uid 可繼續寫同一份 active save
+
+(2) 正式 save_files（房主選擇「存檔退出」時才產生）：
+  - active save → 轉成正式 save_files，owner_id 綁定當下房主 auth.uid()
+  - 此後回到 owner_id = auth.uid() 的 RLS 模型（房主固定，可直接讀寫）
+
+(3) 單機 localStorage MVP：無多人、無 active save，不受此模型影響
 ```
 
 ### 存檔上限
@@ -232,12 +235,12 @@ Boss20：3 人血量 +30%、4 人血量 +50%、攻擊 6
 
 ```
 1. 地圖層
-   - 已放置方塊位置與種類（第一層泥土地基、第二層阻隔方塊、梯子）
+   - 已放置方塊位置與種類（第一層泥土地基、第二層方塊 沙/石/鐵/金/琉璃/鑽、梯子）
    - 礦山 A／B 目前可見的 10x3＝30格內容（哪格是什麼方塊／已挖空，見下方礦山系統）
      → 後面尚未出現的補位 Queue 不存，重新生成即可
    - 核心目前血量：要存（避免重開存檔變成誤判滿血）
    - 核心總血量上限：不存，每次用公式即時算（基礎50 + 土塊數量×1）
-   - 核心位置固定在地圖正中央，不需要存
+   - 核心位置固定（水平置中、貼地坐落地面），大小固定 2x2x2（正面 2x2 面對玩家），不需要存
    - 地圖尺寸：1600×1000px（160×100 格），由難度決定，可能隨難度變動
 
 2. 進度層
@@ -246,7 +249,7 @@ Boss20：3 人血量 +30%、4 人血量 +50%、攻擊 6
    - 王關紀錄：第幾個10關、擊殺花了幾秒
 
 3. 玩家層（每個 Slot：P1~P4）
-   - 背包資源內容（暫存快照；玩家回到核心觸碰泥土/二層方塊時會自動存入塔內資源欄，
+   - 背包資源內容（暫存快照；玩家回到核心觸碰泥土/其上第二層方塊時會自動存入塔內資源欄，
      所以新玩家進場時通常看不到上一位玩家的殘留背包）
    - 目前佔用此 Slot 的玩家帳號 auth.uid()
    - 不存快捷鍵設定（MVP 固定預設順序）
@@ -285,6 +288,16 @@ P2P（PeerJS），採用 Star（房主中心）拓撲，非 Full Mesh
 玩家操作 → 送給房主 → 房主驗證/處理 → 房主廣播結果給其他玩家
 ```
 
+### slot_id 正式定義（canonical）
+```
+slot_id ∈ { P1, P2, P3, P4 }
+slot_id 是「房間內席位」，不等於 auth.uid，也不等於 PeerJS Peer ID（三者各自獨立）。
+所有用到席位的地方共用同一套值域：
+  - Save File 玩家層 / 房間層的 Slot
+  - room_join_token / session 綁定的 slot_id
+  - 反作弊 Strike key（auth.uid + room_id + slot_id）
+```
+
 **拓撲選擇理由**（Star vs Full Mesh，已與 Codex 確認）：
 1. 與「房主狀態為權威」模型一致：房主本來就需要收到全部事件才能做判定，由房主兼任轉發角色不需額外設計
 2. 反作弊驗證點可集中在「房主收到 Input Event 時」這一個環節
@@ -311,19 +324,22 @@ P2P（PeerJS），採用 Star（房主中心）拓撲，非 Full Mesh
 ↓
 剩餘玩家偵測到斷線
 ↓
-最早加入的玩家自動升為新房主
+最早加入的玩家自動升為新房主（candidate_host，見下方 token 流程）
 ↓
 強制所有人同步新房主手上的最後狀態
 （可能有小幅倒退，設計上接受此行為）
 ↓
-存檔歸屬自動轉移到新房主
+active save 寫入權限轉移到新房主（新 current_host_uid 可繼續寫 active save，見「存檔系統」章節）
 ```
 
 ### Host Migration 的身份與 token 流程（必做，否則新房主收不到合法連線）
 ```
-1. 新房主透過 Edge Function 用 CAS（Compare-And-Swap）搶下 current_host_uid
-   - CAS 確保同時偵測到斷線時，只有一人能成為新房主（防雙房主）
-2. Edge Function 同時更新 room record 的 current_host_peer_id
+新房主選擇 = 最早加入者為唯一合法候選人，CAS 只是防雙寫保護（不是誰先搶到誰當）：
+1. 系統依 room_memberships.join_order 選出「最早加入且仍在線/可接任」的玩家
+   作為 candidate_host
+2. 只有 candidate_host 可透過 Edge Function CAS 更新
+   current_host_uid / current_host_peer_id / host_epoch
+   - CAS 的用途是防止「同時偵測到斷線」造成的雙寫，不是開放搶占
 3. 所有存活玩家重新向 Edge Function 申請短效 room_join_token
    （原本手上的 token 60–120s 早已過期，必須重發）
 4. 玩家與新房主重新 handshake（走 verify_room_join_token）
@@ -351,7 +367,7 @@ MVP 維持「最早加入者升房主」，不改成 state_tick 最高者。
 |---|---|---|
 | 帳號密碼 | Supabase Auth 內建 bcrypt | ✅ 確認 |
 | 房間密碼 | Hash 儲存，可覆蓋不可解密 | ✅ 確認 |
-| 存檔讀寫權限 | 私人房：RLS owner_id = auth.uid()。公開房進行中：走 Edge Function 驗 current_host_uid（見「存檔系統」章節） | 🟡 私人房可行；公開房/Host Migration 待實作 |
+| 存檔讀寫權限 | 正式 save_files：RLS owner_id = auth.uid()。多人 active save（不分私人房/公開房）：走 Edge Function 驗 current_host_uid（見「存檔系統」章節） | 🟡 正式存檔可行；多人 active save 待實作 |
 | 身份驗證（連線） | 連線用後端核發短效 room_join_token，房主呼叫 Edge Function verify（nonce 一次性）；房主身份由 room record 的 current_host_uid/peer_id 反向驗證（見 P2P 章節） | 📝 規格已定，未實作 |
 | 公開房踢人機制 | 房主擁有踢人權限 | ✅ 確認 |
 | Event Log | 記錄所有 Event，每 30 秒批次上傳 Supabase，供事後查詢 | ✅ 確認 |
@@ -365,8 +381,8 @@ MVP 維持「最早加入者升房主」，不改成 state_tick 最高者。
 ## 待決定 / 待設計
 
 - [ ] 怪物入侵節奏設計細節（已知後置討論項目）
-- [ ] RLS Policy 實際 SQL 撰寫（私人房 owner_id=uid 可行；公開房/Host Migration 需 current_host_uid 或 Edge Function 寫入，尚未寫程式）
-- [ ] Edge Function：issue_room_join_token / verify_room_join_token / 公開房存檔寫入（含 CAS 搶 current_host_uid）
+- [ ] RLS Policy 實際 SQL 撰寫（正式 save_files owner_id=uid 可行；多人 active save 不分公私房需走 Edge Function 驗 current_host_uid，尚未寫程式）
+- [ ] Edge Function：issue_room_join_token / verify_room_join_token / active save 寫入 / Host Migration（candidate_host CAS 更新 current_host_uid，CAS 僅防雙寫）
 - [x] Save File／玩家帳號資料的版本相容性（Schema Versioning：已設計，見下方章節）
 - [x] 金流／儲值串接方案（已設計，見下方章節）
 - [x] 隱私權與法規合規（已設計，見下方章節）
@@ -549,7 +565,7 @@ issue_room_join_token / verify_room_join_token 兩個端點都要：
   - token 不得放 URL query string（會進 log / referrer）
     只能放 POST body 或 PeerJS data channel 第一包
 
-公開房存檔寫入 / 存檔退出 Edge Function（Q3）：
+active save 寫入 / 存檔退出 Edge Function（不分公私房，Q3）：
   - Rate Limit by auth.uid + room_id
   - 只允許 current_host_uid 呼叫
   - 檢查 room 狀態為 active
@@ -564,16 +580,52 @@ issue_room_join_token / verify_room_join_token 兩個端點都要：
 
 > 對應 game-design-plan.md「建塔規則」章節，補充實作時需要的判定邏輯。
 
-### 連通性定義
+### 三維度模型（實作前必讀：本遊戲不是平面 2D）
 ```
-核心地基 = 與核心格連續相鄰（4方向，不含斜角）的泥土格集合
-判定方式：BFS/DFS 從核心格出發，沿泥土格擴展，可達的泥土格 = 核心地基
-孤立泥土（未與核心連通）= 不生效，不提供攻擊覆蓋，不計入 Hitbox
+三個維度：
+  X（左右）：水平
+  Y（上下）：高度（「高度不限」指這軸）
+  Z（內外/深度）：建築由內（背景）往外（玩家面向）蓋
+
+兩個深度層（Z 軸）：
+  背景層（第一層）：只放泥土（土塊）= 地基。座標以 (x, y) 表示。
+  前景層（第二層）：放在某 (x, y) 背景泥土的「前方」，
+    = 沙 / 石 / 鐵 / 金 / 琉璃 / 鑽 + 梯子；前景方塊視覺上覆蓋背後的背景泥土。
+
+資料上每個格位 (x, y) 可同時有：背景方塊（泥土 or 空）+ 前景方塊（第二層 or 空）。
+
+核心本體：
+  - 核心是 2x2x2 的立方體（X 寬2 × Y 高2 × Z 深2），正面是 2x2 面對玩家。
+  - 核心「貼地」：Y 軸坐落在地面（不是浮空），水平置中。
+  - 核心自己佔據的格位不能放泥土，正前方的 Z（前景）也不能蓋第二層方塊。
+  - 第二層只能蓋在「核心周圍連出去的泥土」前方，不能蓋在核心本體前面。
+```
+
+### 用詞正式定義（第一層地基 vs 第二層方塊）
+```
+第一層（背景地基）= 泥土（土塊）ONLY。只有泥土能當核心地基。
+  → 「泥土格」= 背景層的土塊；地基 / Hitbox / 連通性一律以「泥土格集合」判定。
+第二層（前景，蓋在泥土前方）= 沙 / 石 / 鐵 / 金 / 琉璃 / 鑽（+ 梯子）。
+  → 沙、石不是地基，是第二層物質，不可放進背景層、不可當連通基底。
+方塊加成按種類各自計算（堆疊到核心，見 game-design-plan.md）：
+  土=血量、沙=攻擊範圍、石=防禦、鐵=攻擊、金=攻速、琉璃=魔法、鑽=連鎖。
+核心 Hitbox = 泥土格（背景）+ 覆蓋在其前方的第二層方塊（同 (x,y)）。
+```
+
+### 連通性定義（在背景泥土平面內判定）
+```
+核心地基 = 與核心 2x2 任一格在「背景平面」連續相鄰（X 左右 + Y 上下，4方向不含斜角）的泥土格集合
+判定方式：BFS/DFS 從核心 2x2 格出發，沿背景泥土格擴展，可達的泥土格 = 核心地基
+連通性只在背景平面內判定，不穿透深度（前景第二層方塊不參與連通性）
+放置原則（核心貼著蓋）：一格能放泥土 = 它相鄰的是核心，或相鄰泥土能一路追溯回核心（源頭是核心）。
+  不需要正下方有支撐：例如核心在 (x0~x1, y0~y1)，(x2,y1) 緊鄰核心可放泥土，
+  即使 (x2,y0) 是空的也合法。核心本身貼地（不浮空），延伸出去的泥土才靠連通成立。
+孤立泥土格（未與核心連通）= 不生效，不提供攻擊覆蓋，不計入 Hitbox
 ```
 
 ### 放置/拆除的連通性檢查
 ```
-放置泥土：
+放置泥土（第一層，只有土塊）：
   - 新格放置後，若與核心連通 → 允許
   - 放置後仍孤立（不與核心連通）→ 禁止放置
 
@@ -585,7 +637,9 @@ issue_room_join_token / verify_room_join_token 兩個端點都要：
 
 ### 攻擊覆蓋合併邏輯
 ```
-每個核心地基格各自以「沙塊數量×1 px」的半徑產生攻擊覆蓋圓（或覆蓋區）
+每個核心地基格各自以「核心攻擊範圍」為半徑產生攻擊覆蓋圓（或覆蓋區）
+  核心攻擊範圍 = 基礎50 + 沙塊數量×1（單位 px，公式來源見 game-design-plan.md「核心攻擊與防禦機制」）
+  注意：是全域單一的「核心攻擊範圍」值，不是每格各算一次；每格只是用同一個半徑各畫一個覆蓋圓
 所有泥土格的覆蓋區合併（聯集）= 核心當前可攻擊區
 怪物進入此合併區域 → 核心可攻擊怪物
 ```
@@ -594,7 +648,7 @@ issue_room_join_token / verify_room_join_token 兩個端點都要：
 ```
 怪物可攻擊高度 = 怪物身高（格）+ 怪物攻擊距離（格）
 判定：怪物位置 + 可攻擊高度 範圍內，若有任一核心 Hitbox 格 → 造成核心扣血
-（核心 Hitbox = 所有核心地基格，包含泥土格與其上的第二層方塊格）
+（核心 Hitbox = 所有核心地基格，包含背景泥土格與覆蓋在其前方的第二層方塊，同 (x,y)）
 ```
 
 ### 效能注意
@@ -647,8 +701,9 @@ Rate Limit（Sliding Window，看最近 1 秒內累積筆數）：
   - 玩家背包有這個方塊（對照房主維護的背包狀態）
   - 玩家與目標格距離 ≤ 2格（以玩家當前位置計算，站在梯子/平台上同樣適用）
   - 結構合法性：
-    → 第一層（泥土）：必須與現有連續泥土相鄰
-    → 第二層（鐵/金/琉璃/鑽）：正下方必須有第一層泥土
+    → 第一層（背景泥土，只有土塊）：必須與現有連續泥土在背景平面相鄰（X/Y 四方向）
+    → 第二層（前景 沙/石/鐵/金/琉璃/鑽 + 梯子）：同 (x,y) 的背景必須已是連通泥土
+       （第二層蓋在泥土前方，會覆蓋背景泥土；不是「正下方」要有泥土）
   - 目標格目前為空、在地圖範圍內（x: 0~1600, y: 0~1000）
   - 若目標是核心地基 / 連通泥土，必須在最大建造範圍內：
     - 從核心中心往左最多 35 格、往右最多 35 格

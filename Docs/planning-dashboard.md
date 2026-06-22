@@ -1,5 +1,5 @@
 # Planning 進度 Dashboard
-> 最後更新：2026-06-22（MVP 開工前文件一致性審計：MS4/MS5/MS6/MS7 主檔收斂，MS2/MS3 保持半成品）
+> 最後更新：2026-06-22（補建築三維度/深度模型：第一層=背景泥土地基、第二層=前景方塊蓋在泥土前方並覆蓋、連通性在背景平面判定；核心固定 2x2x2、貼地水平置中、核心貼著蓋原則(泥土能追溯回核心即可放、正下方可空)、核心正前方Z不可蓋；修正放置規則「正下方→同格背景」與 Hitbox 深度語意）
 > 用途：追蹤所有討論過的問題狀態，避免長對話導致脈絡遺失
 > 對應文件：`game-architecture-plan.md`（技術架構）、`game-design-plan.md`（玩法設計）
 
@@ -25,15 +25,15 @@
 | 存檔轉移功能 | ✅ | 雙方同時在線+確認，未來功能 |
 | Multiplayer 架構 | ✅ | P2P（PeerJS）+ Event-driven State Sync，採用 Star／房主中心拓撲（非Full Mesh），已與Codex確認 |
 | 邏輯權威分工 | ✅ | 怪物AI/傷害計算在房主端；房員送 Input Event 給房主，房主驗證後廣播權威結果 |
-| Host Migration 流程 | ✅ | 最早加入者升新房主，小幅倒退可接受 |
+| Host Migration 流程 | ✅ | 最早加入者(candidate_host)為唯一合法候選，CAS 僅防雙寫；小幅倒退可接受 |
 | 公開房 Lobby 邏輯 | ✅ | War3式，第一人進房自動房主，可轉讓 |
 | 公開房中途加入機制 | ✅ | 每晝夜循環結束時房主決定+30秒準備 |
-| 公開房存檔歸屬 | ✅ | 跟著當下房主，最後一人離開房間即消失 |
+| 公開房存檔歸屬 | ✅ | active save 跟著當下 current_host_uid（走 Edge Function）；最後一人離開房間即消失；存檔退出才轉正式 save_files |
 | 房主身份驗證機制 | 📝 規格已定，未實作 | 連線用後端短效 room_join_token（不傳Supabase JWT）+ Edge Function verify（nonce一次性）；房主身份由 room record current_host_uid/peer_id 反向驗證；已寫入 game-architecture-plan.md |
 | Event Log 記錄範圍 | ✅ | 全部記錄，30秒批次上傳 Supabase，房主統一上傳；player_uid 由房主從 session 補上標記操作者（非 client 自報，見 game-architecture-plan.md Event 完整性） |
 | 玩家帳號資料結構 | ✅ | 六大屬性/裝備庫存/技能點/抽獎盤狀態/雙倍獎勵充能，跨房間通用，獨立於Save File |
 | Save File 資料結構 | ✅ | 5層定案：地圖/進度/玩家(背包)/共享資源/房間，含Slot鎖定規則 |
-| RLS 權限設計 | 🟡 | 私人存檔 owner_id=uid 可行；公開房/Host Migration 需 room_memberships/current_host_uid 或 Edge Function 寫入，不能只靠 owner_id=uid。**P0 開工第一件事**（沒有 RLS = 任何登入玩家可讀所有人存檔） |
+| RLS 權限設計 | 🟡 | 正式 save_files owner_id=uid 可行；多人 active save（不分私人房/公開房）需走 Edge Function 驗 current_host_uid + room active + data_revision，不能只靠 owner_id=uid。**P0 開工第一件事**（沒有 RLS = 任何登入玩家可讀所有人存檔） |
 | P2P（PeerJS）安全限制 | 📝 規格已定，未實作 | room_join_token handshake（後端 verify、nonce 一次性、不傳JWT）/ 房主反向身份驗證 / Host Migration token 重發+CAS / connection_epoch+sequence_id 防重放 / host_received_at queue timeout / slot 由房主分配 / Edge Function rate limit / IP暴露揭露 / 封包大小限制 / signaling≠TURN，已寫入 game-architecture-plan.md，待開工實作 |
 | JWT Token 過期與 refresh | 📝 規格已定，未實作 | onAuthStateChange 靜默刷新；過期不等於作弊，已寫入文件，待實作 |
 | XSS 防護規範 | 📝 規格已定，未實作 | 玩家輸入只用 textContent，禁用 innerHTML，已寫入文件，待開工落實 |
@@ -70,7 +70,7 @@
 | 首頁 UI 佈局 | ✅ | 完整列出（來自原始草稿） |
 | 王關編號與晝夜計數對齊 | ✅ | 個位數=關卡數，逢10=王關 |
 | 霸體觸發條件 | ✅ | 常駐被動，玩家永不被攻擊，只有核心會被攻擊 |
-| 建築策略（Must Solve 3） | 🟡 | 核心規則已確認（地基連通性/Hitbox/第二層非防禦牆/怪物攻擊高度/修復觸發/3種策略方向），待格子化模擬驗證生存率差異，已同步進 game-design-plan.md + game-architecture-plan.md + mustsolve.md |
+| 建築策略（Must Solve 3） | 🟡 | 核心規則已確認（三維度深度模型：第一層背景泥土=地基、第二層前景=沙石鐵金琉璃鑽蓋在泥土前方/連通性在背景平面判定/Hitbox/第二層非防禦牆/怪物攻擊高度/修復觸發/3種策略方向），待格子化模擬驗證生存率差異，已同步進 game-design-plan.md + game-architecture-plan.md + mustsolve.md |
 | 新方塊擴充設計原則 | 🔲 | 尚未討論 |
 | 抽獎系統機制 | ✅ | 8x8盤/64格，固定組成比例，4大獎合計7格清空換盤，1票券1抽 |
 | 資源經濟設計錨點（票券發放率） | ✅ | Top-down反推：1張票券/關，極限玩家2個月可全裝滿10級 |
@@ -98,7 +98,7 @@
 ### 玩法數值／模擬（Codex 負責，見 mustsolve.md + simulation/）
 1. 🟡 Must Solve 2：怪物職能與敵人設計（半成品；MVP 可先實作目前敵人表，後續依實玩補職能）
 2. 🟡 Must Solve 3：建築策略與方塊取捨（核心規則已確認，待格子化模擬與實玩驗證）
-3. 🔲 MVP 實作前整理：把 `MAIN.md`、`Docs/waveplan.md`、`Docs/bosscard.md`、`Docs/mvp-validation.md` 轉成開工 checklist
+3. 🔲 MVP 實作前整理：把 `Docs/source-map.md`、`Docs/waveplan.md`、`Docs/bosscard.md`、`Docs/mvp-validation.md` 轉成開工 checklist
 4. 🔲 每日商店規則細節（廣告刷新3次/6樣商品/銀幣金幣購買邏輯）— 已有初步描述，需要收尾
 5. 🔲 「少中多」實際數值 + 銀幣合成消耗數值 — 連帶要驗證銀幣技能點經濟夠不夠用
 6. 🔲 商店 / 成就 / 好友系統 — 非核心玩法

@@ -2,7 +2,7 @@
 
 Before making changes in this project, read:
 
-1. `MAIN.md`
+1. `Docs/source-map.md`（專案知識 source map；原 `MAIN.md`）
 2. `Docs/planning-dashboard.md`
 3. The task-specific design, simulation, or architecture file
 
@@ -22,4 +22,4 @@ For architecture-sensitive work, also read:
 - `Docs/game-architecture-plan.md`
 - `Docs/claude-code-handoff.md`
 
-Do not rely only on chat history. Use `MAIN.md` as the source map for where project knowledge lives.
+Do not rely only on chat history. Use `Docs/source-map.md` as the source map for where project knowledge lives.
