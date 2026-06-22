@@ -23,6 +23,19 @@ export const GAME_CONFIG = {
     widthTiles: 160,
     heightTiles: 100,
     viewportPx: { width: 800, height: 600 }, // 視窗 < 地圖 → 需鏡頭捲動
+    groundY: 92,        // 地面表層列（row >= groundY 為地底實土）；核心貼此地面而坐
+  },
+
+  // 渲染（純呈現；設定頁未來可調 UI/地圖縮放）
+  render: {
+    tilePx: 16,         // 螢幕每格像素（含縮放）
+    showGrid: true,
+  },
+
+  // 遊戲時間步進：遊戲進程固定更新，避免螢幕 Hz 越高進程越快
+  time: {
+    fixedStepSeconds: 1 / 60,
+    maxFrameDeltaSeconds: 0.25, // 分頁卡住/切回時最多補 0.25 秒，避免一次追太多步
   },
 
   // 晝夜節奏（秒）。MVP：白天無真實倒數，手動按鈕觸發進攻
@@ -61,7 +74,8 @@ export const GAME_CONFIG = {
     spiritSinglePlayerBonusPct: 15,
     carry: 50,         // 背負（承重）
     repair: 50,        // 修復（每秒回血 = 值/60，無條件捨去到小數 2 位；每秒耗 1 疲勞）
-    moveSpeed: 50,     // 移動（50ms 一格 → 5 格/秒）
+    moveSpeed: 50,     // 移動能力值；基準 50 = 5 格/秒
+    moveSpeedPerTilePerSecond: 10, // 格/秒 = moveSpeed / 10
     // 挖礦輸入次數上限（與挖掘數值無關）
     mineClicksPerSec: { click: 10, hold: 5 },
   },

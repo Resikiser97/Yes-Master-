@@ -13,6 +13,10 @@
   - `config/`：gameConfig（含版本欄位，第 5 個版本同步點）、blocks、mines、enemies、waves、cards。
   - `src/logic/`（純函式，無 DOM）：rng（seeded）、damageDefense、coreStats、connectivity、combat、waveGen、cardOffer、migration。
   - `src/render`/`input`/`storage` 分層佔位 + `src/main.js` + `index.html`（ES Module 入口）。
+- 接上 Step 2 畫面骨架：`src/game/world.js` 建立 world/camera/核心/兩層方塊狀態，`src/render/renderer.js` 可畫地面、網格、礦山、背景泥土、前景方塊、核心與玩家。
+- 新增 `src/game/gameLoop.js` fixed timestep loop：update 固定 60Hz，render 與螢幕刷新率分離，避免高 Hz 讓遊戲進程變快。
+- 新增 `src/logic/playerMovement.js` 與 WASD/方向鍵調試版移動；移動能力值 50 換算為 5 格/秒。
+- 新增 `.claude/launch.json` 本地啟動設定。
 - 新增開發鐵則 9「純邏輯與渲染分離（可測試性）」，並在 `game-architecture-plan.md` 補「程式碼分層原則」。
 - 建立 `Docs/claude-codex-worklist.md`：Claude↔Codex 交接看板（config 即交接介面）。
 - 純邏輯層 22 項 Node smoke test 全過；Codex 填表後 waveGen 跑 10/20/21/30 關無 NaN。
@@ -22,7 +26,8 @@
 - Codex 填入敵人基礎數值/移速（工兵 attackRange=3）、5 張資源卡 grant、21-30 阻擋區 seed=20260622。
 
 ### 修復
-- （無）
+- 修正 ES Module late-load 時可能錯過 `DOMContentLoaded`，導致 boot 沒有執行的問題。
+- 修正 canvas 沒焦點時鍵盤輸入無效的問題；目前 canvas 會自動 focus，點畫面也會重新 focus。
 
 ## v0.0.1.0 - 2026-06-22
 

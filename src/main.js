@@ -1,33 +1,66 @@
 /**
  * @file        main.js
  * @module      bootstrap
- * @summary     MVP 進入點：載入 config、初始化各層、掛上單人/多人模式角標
+ * @summary     MVP 進入點：載入 config、建世界、初始化渲染/輸入、跑固定 timestep loop、掛模式角標
  * @exports     boot
- * @depends     config/*、src/render/renderer.js、src/input/controls.js
+ * @depends     config/gameConfig.js、src/game/world.js、src/game/gameLoop.js、src/render/renderer.js、src/input/controls.js
  * @sourceOfTruth Docs/game-architecture-plan.md「MVP 開發範圍」
  * @version     v0.0.2.0
  */
 
 import { GAME_CONFIG } from '../config/gameConfig.js';
+import { createWorld } from './game/world.js';
+import { startGameLoop } from './game/gameLoop.js';
 import { Renderer } from './render/renderer.js';
 import { Controls } from './input/controls.js';
+import { movePlayer } from './logic/playerMovement.js';
 
 export function boot() {
   const badge = document.getElementById('mode-badge');
   if (badge) badge.textContent = GAME_CONFIG.mode === 'single' ? '單人模式' : '多人模式';
-
   const versionEl = document.getElementById('version');
   if (versionEl) versionEl.textContent = GAME_CONFIG.version;
 
   const canvas = document.getElementById('game');
-  const renderer = new Renderer(canvas);
+  const world = createWorld(GAME_CONFIG);
+  const renderer = new Renderer(canvas, GAME_CONFIG);
   const controls = new Controls(canvas);
+  controls.attach();
 
-  // TODO：步驟 2~9 依 Docs/claude-codex-worklist.md 接上 game loop。
-  // 目前骨架：純邏輯層已可單獨被測試（src/logic/*），渲染/輸入/存檔層待接。
-  return { renderer, controls, config: GAME_CONFIG };
+  const loop = startGameLoop({
+    update: (dt) => {
+      world.clock.elapsedSeconds += dt;
+      world.clock.updateTick += 1;
+      world.player = movePlayer(world.player, controls.getMoveVector(), dt, {
+        minX: 0,
+        maxX: world.cols - 1,
+        minY: 0,
+        maxY: world.groundY - 1,
+      }, GAME_CONFIG);
+      // TODO(步驟3+)：挖礦/怪物/晝夜都吃 dt，不吃 frame count。
+    },
+    render: () => renderer.render(world),
+  });
+
+  const app = {
+    world,
+    renderer,
+    controls,
+    loop,
+    config: GAME_CONFIG,
+    stop: () => {
+      controls.detach();
+      loop.stop();
+    },
+  };
+  if (typeof window !== 'undefined') window.__YES_MASTER__ = app;
+  return app;
 }
 
 if (typeof document !== 'undefined') {
-  document.addEventListener('DOMContentLoaded', boot);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot, { once: true });
+  } else {
+    boot();
+  }
 }

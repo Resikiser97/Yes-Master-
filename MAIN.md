@@ -2,7 +2,7 @@
 
 > 版本：v0.0.2.0
 > 類型：**代碼優先**（文件描述錯了，以代碼為準去改本檔）。
-> ⚠️ MVP 單機骨架已開工；純邏輯層完成，渲染/輸入層多為 TODO。
+> ⚠️ MVP 單機骨架已開工；純邏輯層完成，畫面骨架 + fixed timestep + WASD/方向鍵移動已接。
 > 規則：新增 / 刪除函式必須同步本檔（見 `.claude/instructions.md` 開發鐵則）。
 >
 > 註：原本的「planning 進入點 / source map」已移至 `Docs/source-map.md`。
@@ -14,10 +14,13 @@
 
 ```
 index.html (type=module)
-  └─ src/main.js  boot()  ← DOMContentLoaded 觸發
+  └─ src/main.js  boot()  ← DOMContentLoaded 或 module late-load 後立即觸發
        ├─ config/gameConfig.js（角標/版本）
+       ├─ src/game/world.js      createWorld()
+       ├─ src/game/gameLoop.js   startGameLoop()
        ├─ src/render/renderer.js  new Renderer(canvas)
-       └─ src/input/controls.js   new Controls(canvas)
+       ├─ src/input/controls.js   new Controls(canvas)
+       └─ src/logic/playerMovement.js（固定 timestep 移動）
 純邏輯層（src/logic/*）為無副作用模組，由各層按需 import，無全域初始化順序需求。
 config/* 為靜態資料，被 logic 層 import。
 ```
@@ -88,6 +91,30 @@ config/* 為靜態資料，被 logic 層 import。
 | `needsMigration(data)` | 是否需升版 |
 | `migrate(data)` | idempotent migration chain；新版存檔拒讀 |
 
+### `src/logic/playerMovement.js`
+
+| 函式 | 職責 |
+|---|---|
+| `moveSpeedToTilesPerSecond(moveSpeed, cfg?)` | 移動能力值換算；基準 50 = 5 格/秒 |
+| `normalizeMoveInput(input)` | WASD/方向鍵向量正規化，避免斜走比直走快 |
+| `movePlayer(player, input, dt, bounds, cfg?)` | 固定 timestep 位移並夾在地圖邊界內 |
+
+### `src/game/world.js`
+
+| 函式 | 職責 |
+|---|---|
+| `coreCells(cfg?)` | 回傳核心 2x2 佔用格 |
+| `coreCenterTile(cfg?)` | 回傳核心中心 tile 座標 |
+| `createWorld(cfg?)` | 建立 MVP world 狀態（核心、地面、礦山、demo 兩層方塊、玩家、鏡頭、clock） |
+| `focusCamera(world, focusTile)` | 鏡頭聚焦指定 tile 並夾在世界邊界內 |
+
+### `src/game/gameLoop.js`
+
+| 函式 | 職責 |
+|---|---|
+| `createGameLoop(options)` | 建立 fixed timestep loop；update 固定步進，render 跟螢幕 Hz 分離 |
+| `startGameLoop(options)` | 建立並啟動 loop，回傳可 stop 的 loop 物件 |
+
 ### `src/storage/saveLocal.js`（IO 層）
 
 | 函式 | 職責 |
@@ -98,6 +125,7 @@ config/* 為靜態資料，被 logic 層 import。
 
 | 函式 | 職責 |
 |---|---|
-| `Renderer.render(state)` | TODO：步驟 2 鏡頭/三維度繪製 |
-| `Controls.attach/detach` | TODO：步驟 3 WASD/挖礦輸入轉資料事件 |
-| `boot()` | 入口：掛角標/版本、初始化各層 |
+| `Renderer.render(world)` | 畫地面、網格、礦山、背景泥土、前景方塊、核心、玩家；同步 canvas debug dataset |
+| `Controls.attach/detach` | 綁/解 WASD 與方向鍵；canvas 自動 focus |
+| `Controls.getMoveVector()` | 回傳目前移動向量 |
+| `boot()` | 入口：掛角標/版本、建 world、初始化 render/input、啟動 fixed timestep loop |

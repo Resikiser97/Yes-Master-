@@ -2,7 +2,7 @@
 
 > 版本：v0.0.2.0
 > 類型：**代碼優先**（文件描述錯了，以代碼為準去改本檔）。
-> ⚠️ MVP 單機骨架已開工；純邏輯層可單測，渲染/輸入/存檔層待接 game loop。
+> ⚠️ MVP 單機骨架已開工；純邏輯層可單測，畫面骨架與 WASD/方向鍵移動已接，挖礦/背包/建造/戰鬥待接。
 
 ---
 
@@ -10,7 +10,7 @@
 
 - 1–4 人合作塔防；HTML+JS / PeerJS（P2P）/ Supabase / Vercel
 - Multiplayer：Star（房主中心）拓撲，房主端權威
-- TODO：補一段「目前程式碼長怎樣」的摘要（開工後）
+- 目前單機骨架：`main.js` 建立 world、renderer、controls，並用 fixed timestep loop 更新遊戲進程；render 可畫核心/地面/兩層方塊/玩家，input 已接 WASD/方向鍵。
 
 ---
 
@@ -27,8 +27,9 @@
 | `config/waves.js` | 1-30 波次/成長/Boss/加時/21-30 阻擋區 |
 | `config/cards.js` | 18 張卡池 + 出卡規則 |
 | `config/mines.js` | 礦山機率表 + 初始資源包 |
-| `src/logic/*`（純函式） | rng / damageDefense / coreStats / connectivity / combat / waveGen / cardOffer / migration |
-| `src/render` `src/input` `src/storage` | 渲染/輸入/存檔層（只呼叫純邏輯） |
+| `src/logic/*`（純函式） | rng / damageDefense / coreStats / connectivity / combat / waveGen / cardOffer / migration / playerMovement |
+| `src/game/*` | world 狀態建立與 fixed timestep game loop |
+| `src/render` `src/input` `src/storage` | 渲染/輸入/存檔層（渲染只讀 world；輸入轉資料/狀態） |
 | `Docs/claude-codex-worklist.md` | Claude↔Codex 交接看板 |
 
 > 函式級細節見 `MAIN.md`。
@@ -60,6 +61,9 @@
 | 純邏輯裡寫 `Math.random()`/`Date.now()` 會變不可重現、不可測 | 隨機/時間一律注入（rng.js / 傳 tick），鐵則 9 |
 | 把加成倍率寫死在邏輯層 | 倍率全放 `config/`（BLOCKS.bonus 等），coreStats 只讀 config |
 | 把 11-20 成長/21-30 增壓乘進 enemies.js base | enemies.js 只放「1-10 不成長 base」，成長由 waveGen 套 |
+| 用 frame count 推進遊戲會讓 144Hz/240Hz 玩家變快 | 遊戲進程一律走 `src/game/gameLoop.js` fixed timestep；`requestAnimationFrame` 只排 render |
+| `DOMContentLoaded` 可能在 ES module late-load 前已觸發 | `main.js` 必須檢查 `document.readyState`；loading 時監聽，否則立即 boot |
+| Canvas 沒焦點會吃不到鍵盤 | `Controls.attach()` 設 `tabindex=0` 並 focus canvas；點畫面也會重新 focus |
 
 > 已知的設計面注意點（可在開工時轉成具體陷阱）：
 > - 建築是三維度（背景泥土 = 地基；前景第二層蓋在泥土前方），連通性在背景平面判定。
