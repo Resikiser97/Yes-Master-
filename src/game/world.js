@@ -81,15 +81,52 @@ export function createWorld(cfg = GAME_CONFIG) {
   return world;
 }
 
-// 每幀（render 前）依插值後的玩家位置更新鏡頭：smooth 跟隨 + 邊界夾取
-// alpha ∈ [0,1] 來自 gameLoop（固定步進累積比例），用於補間上一步與這一步之間
-export function updateCameraFollow(world, alpha = 1) {
+// 每幀（render 前）更新鏡頭：插值玩家位置 → deadzone → 指數平滑 → 邊界夾取
+// alpha ∈ [0,1]（固定步進累積比例，補間上一步與這一步）；dt = 真實 frame 秒數（平滑用）
+// 純呈現：只改 world.camera / player.renderX/Y，不碰任何 gameplay 位置（p.x/p.y 不變）
+export function updateCameraFollow(world, alpha = 1, dt = 0) {
+  const cfg = world.cfg;
+  const t = cfg.render.tilePx;
+  const cc = cfg.camera;
+  const cam = world.camera;
   const p = world.player;
+
+  // 插值後的玩家繪製位置（render 讀）
   const px = p.prevX ?? p.x;
   const py = p.prevY ?? p.y;
   p.renderX = px + (p.x - px) * alpha;
   p.renderY = py + (p.y - py) * alpha;
-  focusCamera(world, { x: p.renderX, y: p.renderY });
+
+  // deadzone：玩家在畫面中央 deadzone 框內移動時鏡頭不追，超出才推 target
+  const playerPxX = p.renderX * t + t / 2;
+  const playerPxY = p.renderY * t + t / 2;
+  const targetX = deadzoneTarget(cam.x, playerPxX, cfg.map.viewportPx.width, cc.deadzonePx.x);
+  const targetY = deadzoneTarget(cam.y, playerPxY, cfg.map.viewportPx.height, cc.deadzonePx.y);
+
+  // 指數平滑（frame-rate independent）；dt=0（初始/直接呼叫）→ 直接貼上 target
+  const k = dt > 0 ? 1 - Math.exp(-cc.followSharpness * dt) : 1;
+  cam.x += (targetX - cam.x) * k;
+  cam.y += (targetY - cam.y) * k;
+
+  clampCamera(world);
+}
+
+// 玩家螢幕位置超出中央 deadzone 才回傳新的鏡頭 target，否則維持原位（鏡頭不動）
+function deadzoneTarget(camPos, playerPx, viewSize, halfDead) {
+  const screen = playerPx - camPos; // 玩家在畫面上的座標
+  const center = viewSize / 2;
+  if (screen < center - halfDead) return playerPx - (center - halfDead);
+  if (screen > center + halfDead) return playerPx - (center + halfDead);
+  return camPos;
+}
+
+// 鏡頭夾在世界邊界內（到邊緣就停，不露出地圖外）
+function clampCamera(world) {
+  const t = world.cfg.render.tilePx;
+  const maxX = Math.max(0, world.cols * t - world.cfg.map.viewportPx.width);
+  const maxY = Math.max(0, world.rows * t - world.cfg.map.viewportPx.height);
+  world.camera.x = Math.max(0, Math.min(world.camera.x, maxX));
+  world.camera.y = Math.max(0, Math.min(world.camera.y, maxY));
 }
 
 // 暫時 demo：在核心周圍放一小段連通泥土 + 幾個前景方塊，讓兩層渲染可被肉眼驗證

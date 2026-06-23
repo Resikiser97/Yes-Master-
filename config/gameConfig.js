@@ -32,6 +32,13 @@ export const GAME_CONFIG = {
     showGrid: true,
   },
 
+  // 鏡頭跟隨（純呈現；只影響 world.camera，不影響 gameplay 位置）
+  camera: {
+    deadzonePx: { x: 80, y: 60 }, // 玩家在畫面中央此半寬/半高內移動，鏡頭不追
+    followSharpness: 10,          // 平滑銳度：每幀 1-exp(-sharpness*dt)，越大越快貼上
+    snapToPixel: true,            // render 時整數像素對齊（可切換測試 pixel art 抖動取捨）
+  },
+
   // 遊戲時間步進：遊戲進程固定更新，避免螢幕 Hz 越高進程越快
   time: {
     fixedStepSeconds: 1 / 60,

@@ -28,6 +28,7 @@ export function boot() {
   const controls = new Controls(canvas);
   controls.attach();
 
+  let lastRenderMs = 0; // 上一次 render 時間戳（算 frame dt 給鏡頭平滑用）
   const loop = startGameLoop({
     update: (dt) => {
       world.clock.elapsedSeconds += dt;
@@ -46,7 +47,10 @@ export function boot() {
       // TODO(步驟4+)：建造/怪物/晝夜都吃 dt，不吃 frame count。
     },
     render: (alpha) => {
-      updateCameraFollow(world, alpha); // 插值 + 跟隨 + 邊界夾取（smooth、不 flicker）
+      const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+      const renderDt = lastRenderMs ? (now - lastRenderMs) / 1000 : 0;
+      lastRenderMs = now;
+      updateCameraFollow(world, alpha, renderDt); // 插值 + deadzone + 平滑 + 邊界夾取
       renderer.render(world);
     },
   });

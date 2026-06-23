@@ -63,9 +63,10 @@ export class Renderer {
     this.canvas.dataset.updateTick = String(world.clock.updateTick);
     const t = this.t;
     const { width: vw, height: vh } = this.viewport;
-    // 整數像素平移：整個畫面一起對齊，pixelated 邊緣不抖（#2）
-    const camX = Math.round(world.camera.x);
-    const camY = Math.round(world.camera.y);
+    // 平移：snapToPixel 時整數對齊（pixelated 邊緣不抖），否則用平滑浮點值
+    const snap = this.cfg.camera?.snapToPixel ?? true;
+    const camX = snap ? Math.round(world.camera.x) : world.camera.x;
+    const camY = snap ? Math.round(world.camera.y) : world.camera.y;
 
     ctx.clearRect(0, 0, vw, vh);
     ctx.fillStyle = PALETTE.sky;
