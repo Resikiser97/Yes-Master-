@@ -1,8 +1,8 @@
 # QUICKREF.md — 每次啟動速查表
 
-> 版本：v0.0.2.0
+> 版本：v0.0.3.0
 > 類型：**代碼優先**（文件描述錯了，以代碼為準去改本檔）。
-> ⚠️ MVP 單機骨架已開工；純邏輯層可單測，畫面骨架與 WASD/方向鍵移動已接，挖礦/背包/建造/戰鬥待接。
+> ⚠️ MVP 單機可動：移動/挖礦/背包/塔內資源/跟隨鏡頭已成循環；建造/波次/戰鬥/晝夜待接。
 
 ---
 
@@ -27,9 +27,9 @@
 | `config/waves.js` | 1-30 波次/成長/Boss/加時/21-30 阻擋區 |
 | `config/cards.js` | 18 張卡池 + 出卡規則 |
 | `config/mines.js` | 礦山機率表 + 初始資源包 |
-| `src/logic/*`（純函式） | rng / damageDefense / coreStats / connectivity / combat / waveGen / cardOffer / migration / playerMovement |
-| `src/game/*` | world 狀態建立與 fixed timestep game loop |
-| `src/render` `src/input` `src/storage` | 渲染/輸入/存檔層（渲染只讀 world；輸入轉資料/狀態） |
+| `src/logic/*`（純函式） | rng / damageDefense / coreStats / connectivity / combat / waveGen / cardOffer / migration / playerMovement / mineGen / inventory / mining |
+| `src/game/*` | world（狀態 + 鏡頭跟隨 updateCameraFollow）/ gameLoop（fixed timestep）/ actions（挖礦/卸貨 orchestration） |
+| `src/render` `src/input` `src/storage` | 渲染（只讀 world、插值 + 整數平移 + HUD）/ 輸入（WASD + 滑鼠長按挖礦）/ 存檔層 |
 | `Docs/claude-codex-worklist.md` | Claude↔Codex 交接看板 |
 
 > 函式級細節見 `MAIN.md`。
@@ -64,6 +64,9 @@
 | 用 frame count 推進遊戲會讓 144Hz/240Hz 玩家變快 | 遊戲進程一律走 `src/game/gameLoop.js` fixed timestep；`requestAnimationFrame` 只排 render |
 | `DOMContentLoaded` 可能在 ES module late-load 前已觸發 | `main.js` 必須檢查 `document.readyState`；loading 時監聽，否則立即 boot |
 | Canvas 沒焦點會吃不到鍵盤 | `Controls.attach()` 設 `tabindex=0` 並 focus canvas；點畫面也會重新 focus |
+| 固定步進不插值 → 移動 judder/暈 | render 吃 gameLoop 的 alpha，移動體用 `prev+(cur-prev)*alpha` 畫；鏡頭整數像素平移防 pixelated 邊緣抖 |
+| 無頭預覽 rAF 被節流，沒法 live 驅動 loop | 動態行為靠 Node 整合測試確定性驗證；瀏覽器只驗渲染/無 error |
+| 背包 carry 50 時承重先綁死（裝不到 6 種） | 格數規則要 carry 被加成後才生效；別誤以為 6 格能裝滿 |
 
 > 已知的設計面注意點（可在開工時轉成具體陷阱）：
 > - 建築是三維度（背景泥土 = 地基；前景第二層蓋在泥土前方），連通性在背景平面判定。

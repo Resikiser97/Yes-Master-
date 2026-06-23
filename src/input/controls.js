@@ -17,18 +17,24 @@ export class Controls {
     this.handlers = {};
     this.keys = new Set();
     this.bound = false;
+    this.mining = false; // 滑鼠長按 = 挖礦中（自動挖最近方塊）
     this._onKeyDown = (event) => this._handleKey(event, true);
     this._onKeyUp = (event) => this._handleKey(event, false);
-    this._onPointerDown = () => this.target?.focus?.({ preventScroll: true });
+    this._onPointerDown = () => { this.target?.focus?.({ preventScroll: true }); this.mining = true; };
+    this._onPointerUp = () => { this.mining = false; };
   }
 
   on(event, fn) { this.handlers[event] = fn; }
+
+  // 挖礦輸入狀態（長按）；點擊/長按的次數上限差異留待後續細分
+  isMining() { return this.mining; }
 
   attach() {
     if (this.bound || typeof window === 'undefined') return;
     this.target?.setAttribute?.('tabindex', '0');
     this.target?.focus?.({ preventScroll: true });
     this.target?.addEventListener?.('pointerdown', this._onPointerDown);
+    window.addEventListener('pointerup', this._onPointerUp);
     window.addEventListener('keydown', this._onKeyDown);
     window.addEventListener('keyup', this._onKeyUp);
     this.bound = true;
@@ -38,8 +44,10 @@ export class Controls {
     if (!this.bound || typeof window === 'undefined') return;
     window.removeEventListener('keydown', this._onKeyDown);
     window.removeEventListener('keyup', this._onKeyUp);
+    window.removeEventListener('pointerup', this._onPointerUp);
     this.target?.removeEventListener?.('pointerdown', this._onPointerDown);
     this.keys.clear();
+    this.mining = false;
     this.bound = false;
   }
 

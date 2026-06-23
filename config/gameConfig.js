@@ -10,7 +10,7 @@
 
 export const GAME_CONFIG = {
   // 版本同步點之一（見 .claude/instructions.md 版本號同步鐵則）
-  version: 'v0.0.2.0',
+  version: 'v0.0.3.0',
 
   // MVP 模式角標（單人 / 多人），方便錄影分辨測試版本
   mode: 'single', // 'single' | 'multi'
@@ -72,7 +72,8 @@ export const GAME_CONFIG = {
     fatigueMax: 120,
     spirit: 50,        // 靈動（每 100 點核心攻擊/攻速 +10%；單人額外固定 +15%）
     spiritSinglePlayerBonusPct: 15,
-    carry: 50,         // 背負（承重）
+    carry: 50,         // 背負（承重上限）
+    backpackSlots: 6,  // 背包格數（2x3，依方塊種類堆疊）
     repair: 50,        // 修復（每秒回血 = 值/60，無條件捨去到小數 2 位；每秒耗 1 疲勞）
     moveSpeed: 50,     // 移動能力值；基準 50 = 5 格/秒
     moveSpeedPerTilePerSecond: 10, // 格/秒 = moveSpeed / 10

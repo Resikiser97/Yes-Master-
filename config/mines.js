@@ -2,11 +2,14 @@
  * @file        mines.js
  * @module      config
  * @summary     左右礦山補位機率表（每 30 塊）與第 0 關初始資源包
- * @exports     MINES, INITIAL_RESOURCE_PACK
+ * @exports     MINES, INITIAL_RESOURCE_PACK, MINE_SEED
  * @depends     （無）
  * @sourceOfTruth Docs/game-design-plan.md「礦山系統」「第 0 關初始資源包」
  * @version     v0.0.2.0
  */
+
+// 礦山補位隨機序列固定 seed（每場可重現；Loading 時預生成 Queue 的概念）
+export const MINE_SEED = 20260623;
 
 // 每座礦山可見 10 格 x 3 層 = 30 格；挖空後上方掉落補位，新方塊依下表機率（分母 30）生成
 export const MINES = {

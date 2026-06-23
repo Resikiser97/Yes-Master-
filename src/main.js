@@ -9,11 +9,12 @@
  */
 
 import { GAME_CONFIG } from '../config/gameConfig.js';
-import { createWorld } from './game/world.js';
+import { createWorld, updateCameraFollow } from './game/world.js';
 import { startGameLoop } from './game/gameLoop.js';
 import { Renderer } from './render/renderer.js';
 import { Controls } from './input/controls.js';
 import { movePlayer } from './logic/playerMovement.js';
+import { updateMining, tryDeposit } from './game/actions.js';
 
 export function boot() {
   const badge = document.getElementById('mode-badge');
@@ -31,15 +32,23 @@ export function boot() {
     update: (dt) => {
       world.clock.elapsedSeconds += dt;
       world.clock.updateTick += 1;
+      const prevX = world.player.x, prevY = world.player.y; // 渲染插值用：本步起點
       world.player = movePlayer(world.player, controls.getMoveVector(), dt, {
         minX: 0,
         maxX: world.cols - 1,
         minY: 0,
         maxY: world.groundY - 1,
       }, GAME_CONFIG);
-      // TODO(步驟3+)：挖礦/怪物/晝夜都吃 dt，不吃 frame count。
+      world.player.prevX = prevX;
+      world.player.prevY = prevY;
+      updateMining(world, controls.isMining(), dt, GAME_CONFIG); // 長按挖最近礦格 → 進背包
+      tryDeposit(world);                                         // 站在連通泥土上 → 倒入塔內資源欄
+      // TODO(步驟4+)：建造/怪物/晝夜都吃 dt，不吃 frame count。
     },
-    render: () => renderer.render(world),
+    render: (alpha) => {
+      updateCameraFollow(world, alpha); // 插值 + 跟隨 + 邊界夾取（smooth、不 flicker）
+      renderer.render(world);
+    },
   });
 
   const app = {

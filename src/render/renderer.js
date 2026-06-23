@@ -11,6 +11,15 @@
  */
 
 import { GAME_CONFIG } from '../../config/gameConfig.js';
+import { BLOCKS } from '../../config/blocks.js';
+import { inventoryWeight } from '../logic/inventory.js';
+
+const fmtItems = (obj) => {
+  const parts = Object.entries(obj)
+    .filter(([, q]) => q > 0)
+    .map(([k, q]) => `${BLOCKS[k]?.zh ?? k}x${q}`);
+  return parts.length ? parts.join(' ') : '（空）';
+};
 
 const PALETTE = {
   sky: '#10151f',
@@ -54,18 +63,20 @@ export class Renderer {
     this.canvas.dataset.updateTick = String(world.clock.updateTick);
     const t = this.t;
     const { width: vw, height: vh } = this.viewport;
-    const cam = world.camera;
+    // 整數像素平移：整個畫面一起對齊，pixelated 邊緣不抖（#2）
+    const camX = Math.round(world.camera.x);
+    const camY = Math.round(world.camera.y);
 
     ctx.clearRect(0, 0, vw, vh);
     ctx.fillStyle = PALETTE.sky;
-    ctx.fillRect(0, 0, vw, vh);
+    ctx.fillRect(0, 0, vw, vh); // 天空畫在螢幕座標 → 背景固定，不跟著捲
 
     ctx.save();
-    ctx.translate(-cam.x, -cam.y);
+    ctx.translate(-camX, -camY);
 
     // 可見格範圍（culling）
-    const x0 = Math.floor(cam.x / t), x1 = Math.ceil((cam.x + vw) / t);
-    const y0 = Math.floor(cam.y / t), y1 = Math.ceil((cam.y + vh) / t);
+    const x0 = Math.floor(camX / t), x1 = Math.ceil((camX + vw) / t);
+    const y0 = Math.floor(camY / t), y1 = Math.ceil((camY + vh) / t);
 
     this._drawGround(world, x0, x1, y0, y1);
     if (this.cfg.render.showGrid) this._drawGrid(x0, x1, y0, y1);
@@ -75,6 +86,29 @@ export class Renderer {
     this._drawCore(world);
     this._drawPlayer(world);
 
+    ctx.restore();
+
+    this._drawHud(world); // 螢幕座標 HUD（不受鏡頭位移）
+  }
+
+  _drawHud(world) {
+    const ctx = this.ctx;
+    const { width: vw, height: vh } = this.viewport;
+    const inv = world.player.inventory;
+    const lines = [
+      `背包 ${inventoryWeight(inv)}/${world.player.capacity}　${fmtItems(inv)}`,
+      `塔內 ${fmtItems(world.storage)}`,
+    ];
+    if (world.mining?.full) lines.push('⚠ 背包已滿，靠近核心可自動卸貨');
+
+    const panelH = 8 + lines.length * 16;
+    ctx.save();
+    ctx.font = '12px sans-serif';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(8, vh - panelH - 8, vw - 16, panelH);
+    ctx.fillStyle = '#eee';
+    lines.forEach((ln, i) => ctx.fillText(ln, 14, vh - panelH - 2 + i * 16));
     ctx.restore();
   }
 
@@ -106,10 +140,18 @@ export class Renderer {
   _drawMines(world) {
     for (const m of Object.values(world.mines)) {
       const t = this.t;
+      const [c0] = m.cols, [r0] = m.rows;
       const x = m.cols[0] * t, y = m.rows[0] * t;
       const w = (m.cols[1] - m.cols[0] + 1) * t, h = (m.rows[1] - m.rows[0] + 1) * t;
-      this.ctx.fillStyle = PALETTE.mine;
-      this.ctx.fillRect(x, y, w, h);
+      // 礦山可見方塊
+      const cols = m.mine.columns;
+      for (let ci = 0; ci < cols.length; ci++) {
+        for (let ri = 0; ri < cols[ci].length; ri++) {
+          const bk = cols[ci][ri];
+          if (bk) this._cell(c0 + ci, r0 + ri, PALETTE.block[bk] ?? '#999');
+        }
+      }
+      // 礦山範圍邊框（辨識用）
       this.ctx.strokeStyle = PALETTE.mineEdge;
       this.ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
     }
@@ -147,7 +189,9 @@ export class Renderer {
 
   _drawPlayer(world) {
     const t = this.t;
-    const { x, y } = world.player;
+    // 插值後的繪製位置（#1）：移動 smooth，不 judder
+    const x = world.player.renderX ?? world.player.x;
+    const y = world.player.renderY ?? world.player.y;
     this.ctx.fillStyle = PALETTE.player;
     this.ctx.beginPath();
     this.ctx.arc(x * t + t / 2, y * t + t / 2, t * 0.4, 0, Math.PI * 2);

@@ -12,7 +12,10 @@
  */
 
 import { GAME_CONFIG } from '../../config/gameConfig.js';
+import { MINES, MINE_SEED, INITIAL_RESOURCE_PACK } from '../../config/mines.js';
 import { key } from '../logic/connectivity.js';
+import { createRng } from '../logic/rng.js';
+import { createMine } from '../logic/mineGen.js';
 
 // 核心 2x2 佔的格：水平置中、底部貼地面（groundY 的上方兩列）
 export function coreCells(cfg = GAME_CONFIG) {
@@ -34,30 +37,59 @@ export function coreCenterTile(cfg = GAME_CONFIG) {
 export function createWorld(cfg = GAME_CONFIG) {
   const core = coreCells(cfg);
   const center = coreCenterTile(cfg);
+  const mineRng = createRng(MINE_SEED);
+  const gy = cfg.map.groundY;
 
   const world = {
     cfg,
     cols: cfg.map.widthTiles,
     rows: cfg.map.heightTiles,
-    groundY: cfg.map.groundY,
+    groundY: gy,
     core,
     coreCenter: center,
     dirt: new Set(),        // 背景泥土地基
     fore: new Map(),        // 前景第二層方塊：key -> blockKey
     mines: {
-      A: { cols: [15, 24], rows: [cfg.map.groundY - 3, cfg.map.groundY - 1] },
-      B: { cols: [135, 144], rows: [cfg.map.groundY - 3, cfg.map.groundY - 1] },
+      // cols/rows = 可見格在世界中的範圍；mine.columns = 實際方塊（mineGen 生成）
+      A: { cols: [15, 24], rows: [gy - 3, gy - 1], mine: createMine(MINES.A, mineRng) },
+      B: { cols: [135, 144], rows: [gy - 3, gy - 1], mine: createMine(MINES.B, mineRng) },
     },
-    player: { x: center.x + 2, y: cfg.map.groundY - 1, moveSpeed: cfg.player.moveSpeed }, // 出生在核心旁地面
+    player: {
+      x: center.x + 2, y: gy - 1, moveSpeed: cfg.player.moveSpeed,
+      prevX: center.x + 2, prevY: gy - 1,  // 上一固定步位置（渲染插值用）
+      renderX: center.x + 2, renderY: gy - 1, // 插值後的繪製位置（render 讀）
+      inventory: {},                       // 背包：{ blockKey: qty }
+      capacity: cfg.player.carry,          // 承重上限
+      slots: cfg.player.backpackSlots,     // 格數上限
+    },
+    storage: {},             // 塔內共享資源欄：{ blockKey: qty }
+    mining: { targetKey: null, damage: 0, full: false }, // 當前挖礦目標、累積傷害、背包滿旗標
+    mineRng,                 // 續用同一隨機流做補位（可重現）
     camera: { x: 0, y: 0 },
     clock: { elapsedSeconds: 0, fixedStepSeconds: cfg.time.fixedStepSeconds, updateTick: 0 },
     phase: 'prep', // prep | day | night | overtime | gameover
     stage: 0,
   };
 
-  seedDemoStructure(world); // TODO(步驟3)：建造輸入接上後移除這段 demo
-  focusCamera(world, center);
+  // 第 0 關初始資源包：直接入塔內共享資源欄（shared、不依人數放大、只給一次）
+  for (const [k, qty] of Object.entries(INITIAL_RESOURCE_PACK.items)) {
+    world.storage[k] = (world.storage[k] ?? 0) + qty;
+  }
+
+  seedDemoStructure(world); // TODO(步驟4)：建造輸入接上後移除這段 demo 泥土
+  focusCamera(world, world.player); // 開場鏡頭對準玩家
   return world;
+}
+
+// 每幀（render 前）依插值後的玩家位置更新鏡頭：smooth 跟隨 + 邊界夾取
+// alpha ∈ [0,1] 來自 gameLoop（固定步進累積比例），用於補間上一步與這一步之間
+export function updateCameraFollow(world, alpha = 1) {
+  const p = world.player;
+  const px = p.prevX ?? p.x;
+  const py = p.prevY ?? p.y;
+  p.renderX = px + (p.x - px) * alpha;
+  p.renderY = py + (p.y - py) * alpha;
+  focusCamera(world, { x: p.renderX, y: p.renderY });
 }
 
 // 暫時 demo：在核心周圍放一小段連通泥土 + 幾個前景方塊，讓兩層渲染可被肉眼驗證

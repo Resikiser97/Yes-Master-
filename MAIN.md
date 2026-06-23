@@ -1,8 +1,8 @@
 # MAIN.md — 函式級參考
 
-> 版本：v0.0.2.0
+> 版本：v0.0.3.0
 > 類型：**代碼優先**（文件描述錯了，以代碼為準去改本檔）。
-> ⚠️ MVP 單機骨架已開工；純邏輯層完成，畫面骨架 + fixed timestep + WASD/方向鍵移動已接。
+> ⚠️ MVP 單機可動：移動/挖礦/背包/塔內資源/跟隨鏡頭已成循環；建造/波次/戰鬥待接。
 > 規則：新增 / 刪除函式必須同步本檔（見 `.claude/instructions.md` 開發鐵則）。
 >
 > 註：原本的「planning 進入點 / source map」已移至 `Docs/source-map.md`。
@@ -99,14 +99,48 @@ config/* 為靜態資料，被 logic 層 import。
 | `normalizeMoveInput(input)` | WASD/方向鍵向量正規化，避免斜走比直走快 |
 | `movePlayer(player, input, dt, bounds, cfg?)` | 固定 timestep 位移並夾在地圖邊界內 |
 
+### `src/logic/mineGen.js`
+
+| 函式 | 職責 |
+|---|---|
+| `weightedSample(weights, rng)` | 依權重表抽一個 block key |
+| `createMine(mineCfg, rng)` | 生成礦山可見 colCount x rowCount 方塊 |
+| `digMineCell(mine, col, row, rng)` | 挖出該格、上方下掉、最上層補新塊 |
+
+### `src/logic/inventory.js`
+
+| 函式 | 職責 |
+|---|---|
+| `blockWeight/inventoryWeight/distinctCount` | 重量與種類數計算 |
+| `canAdd(inv, key, qty, {capacity,slots})` | 承重 + 格數雙重檢查 |
+| `addItem/removeItem(inv, key, qty)` | 背包加/扣（回傳新物件） |
+| `depositAll(inv, storage)` | 背包全倒入塔內資源欄 |
+
+### `src/logic/mining.js`
+
+| 函式 | 職責 |
+|---|---|
+| `hitsToBreak(blockKey, miningPower, defs?)` | 破塊敲擊數（梯子=Infinity 不可挖） |
+| `durabilityToBreak(blockKey, defs?)` | 破塊所需總傷害 |
+| `miningDamagePerSecond(miningPower, hitsPerSec)` | 每秒挖掘傷害 |
+| `selectNearestMineCell(player, mines, reach)` | 選 reach 內離玩家最近的礦格 |
+
 ### `src/game/world.js`
 
 | 函式 | 職責 |
 |---|---|
 | `coreCells(cfg?)` | 回傳核心 2x2 佔用格 |
 | `coreCenterTile(cfg?)` | 回傳核心中心 tile 座標 |
-| `createWorld(cfg?)` | 建立 MVP world 狀態（核心、地面、礦山、demo 兩層方塊、玩家、鏡頭、clock） |
+| `createWorld(cfg?)` | 建立 MVP world 狀態（核心、地面、礦山方塊、背包、塔內資源、初始包、玩家、鏡頭、clock） |
 | `focusCamera(world, focusTile)` | 鏡頭聚焦指定 tile 並夾在世界邊界內 |
+| `updateCameraFollow(world, alpha?)` | 依插值後玩家位置居中跟隨（render 前每幀呼叫） |
+
+### `src/game/actions.js`
+
+| 函式 | 職責 |
+|---|---|
+| `updateMining(world, isMining, dt, cfg?)` | 長按鎖最近礦格、累積傷害破塊進背包（滿則設 full 旗標） |
+| `tryDeposit(world)` | 站在連通泥土上 → 背包自動倒入塔內資源欄 |
 
 ### `src/game/gameLoop.js`
 
@@ -125,7 +159,7 @@ config/* 為靜態資料，被 logic 層 import。
 
 | 函式 | 職責 |
 |---|---|
-| `Renderer.render(world)` | 畫地面、網格、礦山、背景泥土、前景方塊、核心、玩家；同步 canvas debug dataset |
-| `Controls.attach/detach` | 綁/解 WASD 與方向鍵；canvas 自動 focus |
-| `Controls.getMoveVector()` | 回傳目前移動向量 |
-| `boot()` | 入口：掛角標/版本、建 world、初始化 render/input、啟動 fixed timestep loop |
+| `Renderer.render(world)` | 畫地面/網格/礦山方塊/兩層方塊/核心/玩家(插值位置)/HUD；整數像素平移；同步 debug dataset |
+| `Controls.attach/detach` | 綁/解 WASD/方向鍵 + 滑鼠長按挖礦；canvas 自動 focus |
+| `Controls.getMoveVector()` / `Controls.isMining()` | 回傳移動向量 / 是否長按挖礦中 |
+| `boot()` | 入口：掛角標/版本、建 world、初始化 render/input、啟動 fixed timestep loop；render 前跑 updateCameraFollow |

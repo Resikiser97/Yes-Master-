@@ -1,10 +1,28 @@
 # CHANGELOG.md — 版本歷史
 
-> 版本：v0.0.2.0
+> 版本：v0.0.3.0
 > 類型：**只增不改**（歷史紀錄，永遠往上加，最新在最上方，不回頭改舊條目）。
 > 條目格式：`## vX.Y.Z.W - YYYY-MM-DD`，下分「新增 / 修復 / 調整」。
 
 ---
+
+## v0.0.3.0 - 2026-06-23
+
+### 新增
+- **Step 3 挖礦 / 背包 / 塔內資源**：
+  - 純邏輯（無 DOM）：`src/logic/mineGen.js`（礦山 10x3 生成 + 重力補位，seeded）、`src/logic/inventory.js`（背包承重/格數雙限、存入塔內）、`src/logic/mining.js`（破塊敲擊數、選最近礦格）。
+  - orchestration：`src/game/actions.js`（挖礦累積/破塊、站連通泥土自動卸貨）。
+  - `config/mines.js` 加 `MINE_SEED`、`config/gameConfig.js` 加 `player.backpackSlots`。
+  - 完整循環：移動 → 長按挖最近礦格 → 進背包（滿了提示）→ 回核心站連通泥土自動入塔內資源欄；第 0 關初始資源包開局入塔內。
+  - `Renderer` 畫礦山實際方塊 + HUD（背包承重/內容、塔內資源、背包滿提示）。
+- **跟隨鏡頭（smooth、防 flicker/judder）**：`world.updateCameraFollow` 依插值後玩家位置居中跟隨 + 邊界夾取；`renderer` 整數像素平移（防 pixelated 邊緣抖）；`main.js` 存上一步位置、render 吃 gameLoop 的 alpha 做插值。背景（天空）畫在螢幕座標保持固定。
+- 純邏輯/整合測試：mineGen/inventory/mining 17 項、整合（挖礦→背包→卸貨→塔內、背包滿旗標）6 項、鏡頭插值/夾取 5 項，全過。
+
+### 調整
+- 設計決定（尚未實作，記錄待辦）：背包滿可繼續挖、溢出塊掉地上（Minecraft 式掉落物）；挖礦一律就近、不做滑鼠瞄準。
+
+### 修復
+- （無）
 
 ## v0.0.2.0 - 2026-06-23
 
