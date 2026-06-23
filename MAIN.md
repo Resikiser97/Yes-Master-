@@ -166,13 +166,22 @@ config/* 為靜態資料，被 logic 層 import。
 | `computeBuildPreview(world, blockKey, x, y, cfg?)` | 回傳 render 用建造預覽資料與合法性 |
 | `damageCore(world, amount)` / `healCore(world, amount)` | 扣除 / 回復核心目前 HP（debug 與後續戰鬥共用） |
 | `updateRepair(world, isRepairing, dt, cfg?)` | R 長按修復：站在核心或連通泥土地基上，消耗疲勞回復核心 |
-| `applyDebugAction(world, action, cfg?)` | 開發 debug hotkeys：扣血、回血、補建材 |
+| `applyDebugAction(world, action, cfg?)` | 開發 debug hotkeys：扣血、回血、補建材、生成敵人 |
 
 ### `src/game/coreSnapshot.js`
 
 | 函式 | 職責 |
 |---|---|
 | `refreshCoreSnapshot(world)` | 從 world.dirt/world.fore 統計方塊並刷新 world.blockCounts / world.coreStats |
+
+### `src/game/combatRuntime.js`
+
+| 函式 | 職責 |
+|---|---|
+| `spawnDebugEnemies(world, count, enemyKey, cfg?)` | Debug 生成敵人到玩家附近，供核心戰鬥測試 |
+| `updateEnemies(world, dt)` | Debug 敵人直線追逐玩家（暫不攻擊） |
+| `coreAttackAnchors(world)` | 核心本體 + connected dirt 轉成核心攻擊覆蓋 anchor |
+| `updateCoreCombat(world, dt, cfg?)` | 核心按 attackSpeed 普攻/連鎖命中範圍內敵人，死亡移除 |
 
 ### `src/game/gameLoop.js`
 
@@ -191,7 +200,7 @@ config/* 為靜態資料，被 logic 層 import。
 
 | 函式 | 職責 |
 |---|---|
-| `Renderer.render(world)` | 畫地面/網格/礦山方塊/兩層方塊/核心/玩家(插值位置)/建造預覽/核心 HP/疲勞/核心數值 HUD；整數像素平移；同步 debug dataset |
+| `Renderer.render(world)` | 畫地面/網格/礦山方塊/兩層方塊/核心/玩家(插值位置)/敵人小血條/建造預覽/核心 HP/疲勞/核心數值 HUD；整數像素平移；同步 debug dataset |
 | `Controls.attach/detach` | 綁/解 WASD/方向鍵、滑鼠長按挖礦、快捷列選材、左鍵放置、右鍵拆除、R 修復、debug hotkeys；canvas 自動 focus |
 | `Controls.getMoveVector()` / `Controls.isMining()` / `Controls.getSelectedSlot()` / `Controls.isRepairing()` | 回傳移動向量 / 是否長按挖礦中 / 目前快捷列 / 是否長按修復 |
-| `boot()` | 入口：掛角標/版本、建 world、初始化 render/input、啟動 fixed timestep loop；update 接移動/建造/debug/挖礦/修復/卸貨，render 前跑 updateCameraFollow |
+| `boot()` | 入口：掛角標/版本、建 world、初始化 render/input、啟動 fixed timestep loop；update 接移動/建造/debug/挖礦/修復/敵人追逐/核心戰鬥/卸貨，render 前跑 updateCameraFollow |

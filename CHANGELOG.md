@@ -9,6 +9,11 @@
 ## v0.0.3.0 - 2026-06-23
 
 ### 新增
+- **Step 6B debug 核心戰鬥接入**：
+  - 新增 `src/game/combatRuntime.js`：debug 敵人生成、敵人追逐玩家、核心攻擊覆蓋 anchor、核心普攻/連鎖 tick。
+  - Debug hotkeys 新增 `L` 生成 1 隻敵人、`P` 生成 5 隻敵人；敵人暫時追玩家但不攻擊。
+  - 核心攻擊使用現有 `src/logic/combat.js`：普攻鎖最近核心目標、連鎖選目標、傷害套防禦/魔法。
+  - `Renderer` 繪製敵人與小血條，HUD 顯示敵人數與最近命中傷害。
 - **Step 6A 核心 HP / 修復 / Debug 測試鍵**：
   - 新增 `src/logic/coreHealth.js`：核心目前 HP 夾取、扣血、hpMax 變化同步 current HP、修復量換算與疲勞消耗。
   - world 新增 `coreHp`、玩家目前 `fatigue`、`repair` 狀態；HUD 顯示 `HP current/max`、疲勞與修復狀態。

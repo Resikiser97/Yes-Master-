@@ -23,6 +23,7 @@ export const GAME_CONFIG = {
     damageAmount: 10,
     healAmount: 10,
     resourceGrant: { dirt: 10, sand: 10, stone: 10 },
+    enemySpawnDistanceTiles: 8,
   },
 
   // 地圖（1600x1000px，10px/格 → 160x100 格）

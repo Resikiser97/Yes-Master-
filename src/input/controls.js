@@ -135,6 +135,8 @@ function keyToDebugAction(event) {
     case 'KeyH': return 'damageCore';
     case 'KeyJ': return 'healCore';
     case 'KeyK': return 'grantResources';
+    case 'KeyL': return 'spawnEnemy';
+    case 'KeyP': return 'spawnEnemyPack';
     default: return null;
   }
 }

@@ -29,6 +29,10 @@ const PALETTE = {
   core: '#c0392b',
   coreEdge: '#7d241a',
   player: '#3fae5a',
+  enemy: '#d13f3f',
+  enemyEdge: '#6d1f1f',
+  enemyHp: '#f05a5a',
+  enemyHpBack: 'rgba(0,0,0,0.65)',
   mine: 'rgba(90,120,150,0.35)',
   mineEdge: '#5a7896',
   block: {
@@ -87,6 +91,7 @@ export class Renderer {
     this._drawDirt(world);
     this._drawFore(world);
     this._drawCore(world);
+    this._drawEnemies(world);
     this._drawPlayer(world);
     this._drawBuildPreview(world); // 放置預覽（世界座標）
 
@@ -119,6 +124,8 @@ export class Renderer {
       : '';
     const fatigueLine = `疲勞 ${fmt1(world.player.fatigue ?? 0)}/${fmt1(this.cfg.player.fatigueMax)}　修復 ${fmt2(this.cfg.player.repair / 60)}/s`;
     const blockLine = `已放置 ${fmtItems(world.blockCounts ?? {})}`;
+    const hitTotal = world.combat?.lastHits?.reduce((sum, hit) => sum + hit.damage, 0) ?? 0;
+    const enemyLine = `敵人 ${world.enemies?.length ?? 0}　最近命中 ${fmt2(hitTotal)}`;
     const mode = world.selectedBlock
       ? `建造：${BLOCKS[world.selectedBlock]?.zh ?? world.selectedBlock}（剩 ${world.storage[world.selectedBlock] ?? 0}）　左鍵放置 / 右鍵拆除 / 再按取消`
       : '挖礦模式（左鍵長按挖最近）　按 1~7 選材料建造';
@@ -128,6 +135,7 @@ export class Renderer {
       coreLine2,
       fatigueLine,
       blockLine,
+      enemyLine,
       `背包 ${inventoryWeight(inv)}/${world.player.capacity}　${fmtItems(inv)}`,
       `塔內 ${fmtItems(world.storage)}`,
     ].filter(Boolean);
@@ -135,7 +143,7 @@ export class Renderer {
     if (world.repair?.active) lines.push('修復中');
     else if (world.repair?.reason === 'not_on_foundation') lines.push('修復需要站在核心或連通泥土地基上');
     else if (world.repair?.reason === 'no_fatigue') lines.push('疲勞不足，無法修復');
-    if (this.cfg.debug?.enabled && this.cfg.debug?.hotkeys) lines.push('DEBUG H扣血 J回血 K補建材');
+    if (this.cfg.debug?.enabled && this.cfg.debug?.hotkeys) lines.push('DEBUG H扣血 J回血 K補建材 L敵人 P敵群');
 
     const lineH = 16;
     const padY = 6;
@@ -235,5 +243,28 @@ export class Renderer {
     this.ctx.beginPath();
     this.ctx.arc(x * t + t / 2, y * t + t / 2, t * 0.4, 0, Math.PI * 2);
     this.ctx.fill();
+  }
+
+  _drawEnemies(world) {
+    const t = this.t;
+    for (const enemy of world.enemies ?? []) {
+      const x = enemy.x * t + t / 2;
+      const y = enemy.y * t + t / 2;
+      this.ctx.fillStyle = PALETTE.enemy;
+      this.ctx.beginPath();
+      this.ctx.arc(x, y, t * 0.38, 0, Math.PI * 2);
+      this.ctx.fill();
+      this.ctx.strokeStyle = PALETTE.enemyEdge;
+      this.ctx.lineWidth = 1;
+      this.ctx.stroke();
+
+      const barW = t * 1.1;
+      const barH = 3;
+      const pct = Math.max(0, Math.min(1, enemy.hp / enemy.hpMax));
+      this.ctx.fillStyle = PALETTE.enemyHpBack;
+      this.ctx.fillRect(x - barW / 2, y - t * 0.75, barW, barH);
+      this.ctx.fillStyle = PALETTE.enemyHp;
+      this.ctx.fillRect(x - barW / 2, y - t * 0.75, barW * pct, barH);
+    }
   }
 }

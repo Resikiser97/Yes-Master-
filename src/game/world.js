@@ -68,6 +68,8 @@ export function createWorld(cfg = GAME_CONFIG) {
     blockCounts: {},         // 已放置方塊數量快照：{ dirt, sand, ... }
     coreStats: null,         // 核心當前數值快照（由 coreStats.js 計算）
     coreHp: null,            // 核心目前血量；hpMax 由 coreStats.hpMax 給
+    enemies: [],             // debug / 後續波次敵人
+    combat: { attackCooldown: 0, lastHits: [], lastHitTimer: 0, nextEnemyId: 0, rng: createRng(MINE_SEED + 600) },
     mining: { targetKey: null, damage: 0, full: false }, // 當前挖礦目標、累積傷害、背包滿旗標
     repair: { active: false, canRepair: false, reason: null, healed: 0 },
     mineRng,                 // 續用同一隨機流做補位（可重現）
