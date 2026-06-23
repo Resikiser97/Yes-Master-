@@ -9,6 +9,11 @@
 ## v0.0.3.0 - 2026-06-23
 
 ### 新增
+- **Step 5 核心數值顯示 / 方塊加成回饋**：
+  - `src/logic/coreStats.js` 新增 `countPlacedBlocks`，把背景泥土與前景方塊統一轉成核心加成計數；泥土每格仍提供 hpMax +1。
+  - 新增 `src/game/coreSnapshot.js`，集中刷新 `world.blockCounts` / `world.coreStats`。
+  - `createWorld` 初始化核心數值快照；`tryPlace` / `tryRemove` 成功後即時刷新。
+  - `Renderer` HUD 顯示核心 HP 上限、攻擊、防禦、攻速、範圍、魔法、連鎖與已放置方塊數。
 - **Step 4 初版建造 / 拆除**：
   - 新增 `src/logic/building.js`：放置/拆除合法性判定（建造 reach、分段水平範圍、高度、核心佔用、地底、連通泥土、前景背板）。
   - `src/game/actions.js` 接 `tryPlace` / `tryRemove` / `computeBuildPreview`；放置消耗塔內資源，拆除退回塔內資源欄。

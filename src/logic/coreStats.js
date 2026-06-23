@@ -2,7 +2,7 @@
  * @file        coreStats.js
  * @module      logic（pure）
  * @summary     由「已放置方塊計數」即時換算核心六大數值（純函式，config 驅動）
- * @exports     computeCoreStats
+ * @exports     countPlacedBlocks, computeCoreStats
  * @depends     config/gameConfig.js、config/blocks.js
  * @sourceOfTruth Docs/game-design-plan.md「核心攻擊與防禦機制」
  * @version     v0.0.3.0
@@ -18,6 +18,21 @@ const BONUS_TO_STAT = {
   hp: 'hpMax', range: 'range', defense: 'defense',
   attack: 'attack', attackSpeed: 'attackSpeed', magicPct: 'magicPct', chain: 'chain',
 };
+
+/**
+ * 把 world 的兩層建築資料轉成核心加成用的方塊數量。
+ * 泥土在背景層仍提供 hp 加成；前景第二層照種類加成。
+ */
+export function countPlacedBlocks(dirtCells = new Set(), foreBlocks = new Map()) {
+  const counts = {};
+  const dirtCount = dirtCells?.size ?? 0;
+  if (dirtCount > 0) counts.dirt = dirtCount;
+
+  for (const blockKey of foreBlocks?.values?.() ?? []) {
+    counts[blockKey] = (counts[blockKey] ?? 0) + 1;
+  }
+  return counts;
+}
 
 /**
  * @param {Object} blockCounts 例：{ dirt: 30, iron: 10, gold: 5, ... }

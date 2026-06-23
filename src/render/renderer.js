@@ -1,7 +1,7 @@
 /**
  * @file        renderer.js
  * @module      render（渲染層，非純邏輯）
- * @summary     將世界狀態畫到 canvas：鏡頭捲動 + 地底/網格/礦山/背景泥土/前景方塊/核心/玩家
+ * @summary     將世界狀態畫到 canvas：鏡頭捲動 + 地底/網格/礦山/背景泥土/前景方塊/核心/玩家/HUD
  * @exports     Renderer
  * @depends     config/gameConfig.js
  * @sourceOfTruth Docs/game-design-plan.md「建築維度」「遊戲內 UI 設計」
@@ -38,6 +38,8 @@ const PALETTE = {
 };
 
 const parseKey = (k) => k.split(',').map(Number);
+const fmt1 = (n) => Number(n ?? 0).toFixed(1).replace(/\.0$/, '');
+const fmt2 = (n) => Number(n ?? 0).toFixed(2).replace(/0$/, '').replace(/\.0$/, '');
 
 export class Renderer {
   constructor(canvas, cfg = GAME_CONFIG) {
@@ -108,24 +110,38 @@ export class Renderer {
     const ctx = this.ctx;
     const { width: vw, height: vh } = this.viewport;
     const inv = world.player.inventory;
+    const cs = world.coreStats;
+    const coreLine = cs
+      ? `核心 HP上限 ${fmt1(cs.hpMax)}　ATK ${fmt2(cs.attack)}　攻速 ${fmt2(cs.attackSpeed)}/s　DEF ${fmt2(cs.defense)}`
+      : '核心數值計算中';
+    const coreLine2 = cs
+      ? `範圍 ${fmt1(cs.range)}　魔法 ${fmt2(cs.magicPct)}%　連鎖 ${fmt2(cs.chain)}`
+      : '';
+    const blockLine = `已放置 ${fmtItems(world.blockCounts ?? {})}`;
     const mode = world.selectedBlock
       ? `建造：${BLOCKS[world.selectedBlock]?.zh ?? world.selectedBlock}（剩 ${world.storage[world.selectedBlock] ?? 0}）　左鍵放置 / 右鍵拆除 / 再按取消`
       : '挖礦模式（左鍵長按挖最近）　按 1~7 選材料建造';
     const lines = [
       mode,
+      coreLine,
+      coreLine2,
+      blockLine,
       `背包 ${inventoryWeight(inv)}/${world.player.capacity}　${fmtItems(inv)}`,
       `塔內 ${fmtItems(world.storage)}`,
-    ];
+    ].filter(Boolean);
     if (world.mining?.full) lines.push('⚠ 背包已滿，靠近核心可自動卸貨');
 
-    const panelH = 8 + lines.length * 16;
+    const lineH = 16;
+    const padY = 6;
+    const panelH = padY * 2 + lines.length * lineH;
+    const panelTop = vh - panelH - 8;
     ctx.save();
     ctx.font = '12px sans-serif';
     ctx.textBaseline = 'top';
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
-    ctx.fillRect(8, vh - panelH - 8, vw - 16, panelH);
+    ctx.fillRect(8, panelTop, vw - 16, panelH);
     ctx.fillStyle = '#eee';
-    lines.forEach((ln, i) => ctx.fillText(ln, 14, vh - panelH - 2 + i * 16));
+    lines.forEach((ln, i) => ctx.fillText(ln, 14, panelTop + padY + i * lineH));
     ctx.restore();
   }
 

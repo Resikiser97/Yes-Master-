@@ -48,6 +48,7 @@ config/* 為靜態資料，被 logic 層 import。
 
 | 函式 | 職責 |
 |---|---|
+| `countPlacedBlocks(dirtCells, foreBlocks)` | 從背景泥土與前景方塊統計核心加成用方塊數（泥土也算 hp 加成） |
 | `computeCoreStats(blockCounts, opts?)` | 方塊計數 → 核心六大數值（倍率讀 BLOCKS.bonus） |
 
 ### `src/logic/connectivity.js`
@@ -140,7 +141,7 @@ config/* 為靜態資料，被 logic 層 import。
 |---|---|
 | `coreCells(cfg?)` | 回傳核心 2x2 佔用格 |
 | `coreCenterTile(cfg?)` | 回傳核心中心 tile 座標 |
-| `createWorld(cfg?)` | 建立 MVP world 狀態（核心、地面、礦山方塊、背包、塔內資源、初始包、玩家、鏡頭、clock；demo 結構僅 debug gate 開啟時 seeded） |
+| `createWorld(cfg?)` | 建立 MVP world 狀態（核心、地面、礦山方塊、背包、塔內資源、初始包、玩家、核心數值快照、鏡頭、clock；demo 結構僅 debug gate 開啟時 seeded） |
 | `focusCamera(world, focusTile)` | 鏡頭聚焦指定 tile 並夾在世界邊界內 |
 | `updateCameraFollow(world, alpha?)` | 依插值後玩家位置居中跟隨（render 前每幀呼叫） |
 
@@ -153,6 +154,12 @@ config/* 為靜態資料，被 logic 層 import。
 | `tryPlace(world, blockKey, x, y, cfg?)` | 消耗塔內資源，放置背景泥土或前景方塊 |
 | `tryRemove(world, x, y, cfg?)` | 拆除目標格，前景優先，材料退回塔內資源欄 |
 | `computeBuildPreview(world, blockKey, x, y, cfg?)` | 回傳 render 用建造預覽資料與合法性 |
+
+### `src/game/coreSnapshot.js`
+
+| 函式 | 職責 |
+|---|---|
+| `refreshCoreSnapshot(world)` | 從 world.dirt/world.fore 統計方塊並刷新 world.blockCounts / world.coreStats |
 
 ### `src/game/gameLoop.js`
 
@@ -171,7 +178,7 @@ config/* 為靜態資料，被 logic 層 import。
 
 | 函式 | 職責 |
 |---|---|
-| `Renderer.render(world)` | 畫地面/網格/礦山方塊/兩層方塊/核心/玩家(插值位置)/建造預覽/HUD；整數像素平移；同步 debug dataset |
+| `Renderer.render(world)` | 畫地面/網格/礦山方塊/兩層方塊/核心/玩家(插值位置)/建造預覽/核心數值 HUD；整數像素平移；同步 debug dataset |
 | `Controls.attach/detach` | 綁/解 WASD/方向鍵、滑鼠長按挖礦、快捷列選材、左鍵放置、右鍵拆除；canvas 自動 focus |
 | `Controls.getMoveVector()` / `Controls.isMining()` / `Controls.getSelectedSlot()` | 回傳移動向量 / 是否長按挖礦中 / 目前快捷列 |
 | `boot()` | 入口：掛角標/版本、建 world、初始化 render/input、啟動 fixed timestep loop；update 接移動/建造/挖礦/卸貨，render 前跑 updateCameraFollow |

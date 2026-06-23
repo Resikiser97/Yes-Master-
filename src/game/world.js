@@ -1,9 +1,9 @@
 /**
  * @file        world.js
  * @module      game（狀態/orchestration 層，非純邏輯、非渲染）
- * @summary     建立並持有 MVP 世界狀態（地圖/核心/兩深度層/鏡頭/玩家），供渲染層讀取
+ * @summary     建立並持有 MVP 世界狀態（地圖/核心/兩深度層/核心數值/鏡頭/玩家），供渲染層讀取
  * @exports     createWorld, coreCenterTile, focusCamera
- * @depends     config/gameConfig.js、src/logic/connectivity.js
+ * @depends     config/gameConfig.js、config/mines.js、src/game/coreSnapshot.js、src/logic/connectivity.js、src/logic/rng.js、src/logic/mineGen.js
  * @sourceOfTruth Docs/game-architecture-plan.md「核心地基系統」、game-design-plan.md「建築維度」
  * @version     v0.0.3.0
  *
@@ -16,6 +16,7 @@ import { MINES, MINE_SEED, INITIAL_RESOURCE_PACK } from '../../config/mines.js';
 import { key } from '../logic/connectivity.js';
 import { createRng } from '../logic/rng.js';
 import { createMine } from '../logic/mineGen.js';
+import { refreshCoreSnapshot } from './coreSnapshot.js';
 
 // 核心 2x2 佔的格：水平置中、底部貼地面（groundY 的上方兩列）
 export function coreCells(cfg = GAME_CONFIG) {
@@ -63,6 +64,8 @@ export function createWorld(cfg = GAME_CONFIG) {
       slots: cfg.player.backpackSlots,     // 格數上限
     },
     storage: {},             // 塔內共享資源欄：{ blockKey: qty }
+    blockCounts: {},         // 已放置方塊數量快照：{ dirt, sand, ... }
+    coreStats: null,         // 核心當前數值快照（由 coreStats.js 計算）
     mining: { targetKey: null, damage: 0, full: false }, // 當前挖礦目標、累積傷害、背包滿旗標
     mineRng,                 // 續用同一隨機流做補位（可重現）
     camera: { x: 0, y: 0 },
@@ -77,6 +80,7 @@ export function createWorld(cfg = GAME_CONFIG) {
   }
 
   if (cfg.debug?.seedDemoStructure) seedDemoStructure(world); // 預設關；建造已接，避免右鍵拆 demo 退免費材料
+  refreshCoreSnapshot(world);
   focusCamera(world, world.player); // 開場鏡頭對準玩家
   return world;
 }

@@ -3,7 +3,7 @@
  * @module      game（狀態/orchestration 層，非純邏輯、非渲染）
  * @summary     挖礦/卸貨/建造放置/拆除；呼叫純邏輯、改 world 狀態
  * @exports     updateMining, tryDeposit, tryPlace, tryRemove, computeBuildPreview
- * @depends     config/gameConfig.js、src/logic/mining.js、src/logic/mineGen.js、src/logic/inventory.js、src/logic/connectivity.js、src/logic/building.js
+ * @depends     config/gameConfig.js、src/game/coreSnapshot.js、src/logic/mining.js、src/logic/mineGen.js、src/logic/inventory.js、src/logic/connectivity.js、src/logic/building.js
  * @sourceOfTruth Docs/game-design-plan.md「操作輸入方式」「方塊系統」「遊戲內 UI 設計」
  * @version     v0.0.3.0
  */
@@ -14,6 +14,7 @@ import { digMineCell } from '../logic/mineGen.js';
 import { canAdd, addItem, removeItem, depositAll } from '../logic/inventory.js';
 import { computeConnected, key } from '../logic/connectivity.js';
 import { validatePlacement, validateRemoval } from '../logic/building.js';
+import { refreshCoreSnapshot } from './coreSnapshot.js';
 
 // 挖礦：長按時鎖定最近礦格，依「挖掘能力 × 每秒敲擊數 × dt」累積傷害，達耐久即出塊進背包
 export function updateMining(world, isMining, dt, cfg = GAME_CONFIG) {
@@ -80,6 +81,7 @@ export function tryPlace(world, blockKey, x, y, cfg = GAME_CONFIG) {
   if (res.layer === 'background') world.dirt.add(k);
   else world.fore.set(k, blockKey);
   world.storage = removeItem(world.storage, blockKey, 1);
+  refreshCoreSnapshot(world);
   return { ok: true, layer: res.layer };
 }
 
@@ -93,6 +95,7 @@ export function tryRemove(world, x, y, cfg = GAME_CONFIG) {
   if (res.layer === 'foreground') world.fore.delete(k);
   else world.dirt.delete(k);
   world.storage = addItem(world.storage, res.blockKey, 1);
+  refreshCoreSnapshot(world);
   return { ok: true, blockKey: res.blockKey };
 }
 
