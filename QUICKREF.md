@@ -65,6 +65,7 @@
 | `DOMContentLoaded` 可能在 ES module late-load 前已觸發 | `main.js` 必須檢查 `document.readyState`；loading 時監聽，否則立即 boot |
 | Canvas 沒焦點會吃不到鍵盤 | `Controls.attach()` 設 `tabindex=0` 並 focus canvas；點畫面也會重新 focus |
 | 固定步進不插值 → 移動 judder/暈 | render 吃 gameLoop 的 alpha，移動體用 `prev+(cur-prev)*alpha` 畫；鏡頭整數像素平移防 pixelated 邊緣抖 |
+| pixel art camera 如果每幀 `Math.round(camera)`，在 5格/秒 × 16px/格 = 80px/s 時會出現 1px/2px 不均勻跳動 | 鏡頭跟隨應使用 deadzone + follow smoothing；是否保留整數像素對齊需依實測取捨 |
 | 無頭預覽 rAF 被節流，沒法 live 驅動 loop | 動態行為靠 Node 整合測試確定性驗證；瀏覽器只驗渲染/無 error |
 | 背包 carry 50 時承重先綁死（裝不到 6 種） | 格數規則要 carry 被加成後才生效；別誤以為 6 格能裝滿 |
 

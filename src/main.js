@@ -5,7 +5,7 @@
  * @exports     boot
  * @depends     config/gameConfig.js、src/game/world.js、src/game/gameLoop.js、src/render/renderer.js、src/input/controls.js
  * @sourceOfTruth Docs/game-architecture-plan.md「MVP 開發範圍」
- * @version     v0.0.2.0
+ * @version     v0.0.3.0
  */
 
 import { GAME_CONFIG } from '../config/gameConfig.js';

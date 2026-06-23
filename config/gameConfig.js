@@ -5,7 +5,7 @@
  * @exports     GAME_CONFIG
  * @depends     （無）
  * @sourceOfTruth Docs/game-design-plan.md、Docs/game-architecture-plan.md、Docs/waveplan.md
- * @version     v0.0.2.0
+ * @version     v0.0.3.0
  */
 
 export const GAME_CONFIG = {

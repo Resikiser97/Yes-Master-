@@ -5,7 +5,7 @@
  * @exports     updateMining, tryDeposit
  * @depends     config/gameConfig.js、src/logic/mining.js、src/logic/mineGen.js、src/logic/inventory.js、src/logic/connectivity.js
  * @sourceOfTruth Docs/game-design-plan.md「操作輸入方式」「方塊系統」「遊戲內 UI 設計」
- * @version     v0.0.2.0
+ * @version     v0.0.3.0
  */
 
 import { GAME_CONFIG } from '../../config/gameConfig.js';
