@@ -15,9 +15,14 @@ export const GAME_CONFIG = {
   // MVP 模式角標（單人 / 多人），方便錄影分辨測試版本
   mode: 'single', // 'single' | 'multi'
 
-  // 除錯開關（正式遊戲一律關閉）
+  // 除錯開關（開發階段可開；正式遊戲一律關閉）
   debug: {
     seedDemoStructure: false, // 開局塞 demo 泥土/方塊（已接建造後關閉，避免右鍵拆 demo 退免費材料）
+    enabled: true,
+    hotkeys: true,            // H 扣血、J 回血、K 補塔內測試資源
+    damageAmount: 10,
+    healAmount: 10,
+    resourceGrant: { dirt: 10, sand: 10, stone: 10 },
   },
 
   // 地圖（1600x1000px，10px/格 → 160x100 格）

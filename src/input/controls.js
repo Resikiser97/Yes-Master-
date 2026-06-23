@@ -1,7 +1,7 @@
 /**
  * @file        controls.js
  * @module      input（輸入層，非純邏輯）
- * @summary     把玩家操作（WASD 移動、滑鼠長按挖礦、數字選材料、左鍵放置、右鍵拆除）轉成資料
+ * @summary     把玩家操作（WASD 移動、滑鼠長按挖礦、數字選材料、左鍵放置、右鍵拆除、修復/debug）轉成資料
  * @exports     Controls
  * @depends     （無；僅綁瀏覽器事件，不 import 其他模組）
  * @sourceOfTruth Docs/game-design-plan.md「操作輸入方式」
@@ -24,6 +24,8 @@ export class Controls {
     this.mouse = { x: 0, y: 0 };   // 滑鼠在 canvas 上的座標（px）
     this.pendingPlace = false;     // 本幀待處理的放置（左鍵點擊，一次性）
     this.pendingRemove = false;    // 本幀待處理的拆除（右鍵點擊，一次性）
+    this.repairing = false;        // R 長按修復
+    this.pendingDebug = [];        // 本幀待處理 debug action
     this._onKeyDown = (e) => this._handleKey(e, true);
     this._onKeyUp = (e) => this._handleKey(e, false);
     this._onPointerDown = (e) => this._handlePointerDown(e);
@@ -40,6 +42,8 @@ export class Controls {
   setSelectedSlot(i) { this.selectedSlot = i; if (i != null) this.mining = false; }
   consumePlace() { const v = this.pendingPlace; this.pendingPlace = false; return v; }
   consumeRemove() { const v = this.pendingRemove; this.pendingRemove = false; return v; }
+  isRepairing() { return this.repairing; }
+  consumeDebugActions() { const v = this.pendingDebug; this.pendingDebug = []; return v; }
 
   attach() {
     if (this.bound || typeof window === 'undefined') return;
@@ -64,6 +68,7 @@ export class Controls {
     this.target?.removeEventListener?.('contextmenu', this._onContextMenu);
     this.keys.clear();
     this.mining = false;
+    this.repairing = false;
     this.bound = false;
   }
 
@@ -96,6 +101,12 @@ export class Controls {
     // 建造快捷鍵 / 退出（只在 keydown 處理）
     if (isDown) {
       if (event.code === 'Escape') { this.setSelectedSlot(null); event.preventDefault(); return; }
+      const debugAction = keyToDebugAction(event);
+      if (debugAction) {
+        if (!event.repeat) this.pendingDebug.push(debugAction);
+        event.preventDefault();
+        return;
+      }
       const slot = keyToSlot(event);
       if (slot != null && slot < this.hotbarSlots) {
         if (event.repeat) { event.preventDefault(); return; }
@@ -104,6 +115,11 @@ export class Controls {
         return;
       }
     }
+    if (event.code === 'KeyR') {
+      this.repairing = isDown;
+      event.preventDefault();
+      return;
+    }
     // 移動
     const dir = keyToDirection(event);
     if (!dir) return;
@@ -111,6 +127,15 @@ export class Controls {
     if (isDown) this.keys.add(dir);
     else this.keys.delete(dir);
     this.handlers.move?.(this.getMoveVector());
+  }
+}
+
+function keyToDebugAction(event) {
+  switch (event.code) {
+    case 'KeyH': return 'damageCore';
+    case 'KeyJ': return 'healCore';
+    case 'KeyK': return 'grantResources';
+    default: return null;
   }
 }
 

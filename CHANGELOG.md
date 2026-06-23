@@ -9,6 +9,12 @@
 ## v0.0.3.0 - 2026-06-23
 
 ### 新增
+- **Step 6A 核心 HP / 修復 / Debug 測試鍵**：
+  - 新增 `src/logic/coreHealth.js`：核心目前 HP 夾取、扣血、hpMax 變化同步 current HP、修復量換算與疲勞消耗。
+  - world 新增 `coreHp`、玩家目前 `fatigue`、`repair` 狀態；HUD 顯示 `HP current/max`、疲勞與修復狀態。
+  - 建土時 current/max HP 一起增加；拆土時 current/max HP 一起扣，若會讓核心歸零則回傳 `would_destroy_core` 並禁止拆除。
+  - R 長按修復：需站在核心或 connected dirt 上，每秒消耗 1 疲勞，回復 `repair/60`（向下取小數 2 位）。
+  - `config.gameConfig.debug` 新增 H/J/K hotkeys：扣核心血、回核心血、補塔內測試資源。
 - **Step 5 核心數值顯示 / 方塊加成回饋**：
   - `src/logic/coreStats.js` 新增 `countPlacedBlocks`，把背景泥土與前景方塊統一轉成核心加成計數；泥土每格仍提供 hpMax +1。
   - 新增 `src/game/coreSnapshot.js`，集中刷新 `world.blockCounts` / `world.coreStats`。

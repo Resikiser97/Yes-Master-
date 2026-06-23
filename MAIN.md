@@ -2,7 +2,7 @@
 
 > 版本：v0.0.3.0
 > 類型：**代碼優先**（文件描述錯了，以代碼為準去改本檔）。
-> ⚠️ MVP 單機可動：移動/挖礦/背包/塔內資源/跟隨鏡頭/初版建造已成循環；波次/戰鬥待接。
+> ⚠️ MVP 單機可動：移動/挖礦/背包/塔內資源/跟隨鏡頭/初版建造/核心數值回饋/核心 HP 與修復已成循環；核心戰鬥/波次/晝夜待接。
 > 規則：新增 / 刪除函式必須同步本檔（見 `.claude/instructions.md` 開發鐵則）。
 >
 > 註：原本的「planning 進入點 / source map」已移至 `Docs/source-map.md`。
@@ -50,6 +50,16 @@ config/* 為靜態資料，被 logic 層 import。
 |---|---|
 | `countPlacedBlocks(dirtCells, foreBlocks)` | 從背景泥土與前景方塊統計核心加成用方塊數（泥土也算 hp 加成） |
 | `computeCoreStats(blockCounts, opts?)` | 方塊計數 → 核心六大數值（倍率讀 BLOCKS.bonus） |
+
+### `src/logic/coreHealth.js`
+
+| 函式 | 職責 |
+|---|---|
+| `clampCoreHp(current, hpMax)` | 將核心目前血量夾在 0..hpMax |
+| `applyHpMaxDelta(current, delta, nextMax)` | hpMax 因建造/拆除變化時，同步調整目前 HP |
+| `damageCoreHp(current, amount)` | 扣核心血量，不低於 0 |
+| `repairPerSecond(repairPower)` | 修復能力換算每秒回血，無條件捨去到小數 2 位 |
+| `repairCoreHp(current, hpMax, fatigue, dt, repairPower)` | 消耗疲勞修復核心，目前血量不超過 hpMax |
 
 ### `src/logic/connectivity.js`
 
@@ -141,7 +151,7 @@ config/* 為靜態資料，被 logic 層 import。
 |---|---|
 | `coreCells(cfg?)` | 回傳核心 2x2 佔用格 |
 | `coreCenterTile(cfg?)` | 回傳核心中心 tile 座標 |
-| `createWorld(cfg?)` | 建立 MVP world 狀態（核心、地面、礦山方塊、背包、塔內資源、初始包、玩家、核心數值快照、鏡頭、clock；demo 結構僅 debug gate 開啟時 seeded） |
+| `createWorld(cfg?)` | 建立 MVP world 狀態（核心、目前 HP、地面、礦山方塊、背包、疲勞、塔內資源、初始包、玩家、核心數值快照、鏡頭、clock；demo 結構僅 debug gate 開啟時 seeded） |
 | `focusCamera(world, focusTile)` | 鏡頭聚焦指定 tile 並夾在世界邊界內 |
 | `updateCameraFollow(world, alpha?)` | 依插值後玩家位置居中跟隨（render 前每幀呼叫） |
 
@@ -152,8 +162,11 @@ config/* 為靜態資料，被 logic 層 import。
 | `updateMining(world, isMining, dt, cfg?)` | 長按鎖最近礦格、累積傷害破塊進背包（滿則設 full 旗標） |
 | `tryDeposit(world)` | 站在連通泥土上 → 背包自動倒入塔內資源欄 |
 | `tryPlace(world, blockKey, x, y, cfg?)` | 消耗塔內資源，放置背景泥土或前景方塊 |
-| `tryRemove(world, x, y, cfg?)` | 拆除目標格，前景優先，材料退回塔內資源欄 |
+| `tryRemove(world, x, y, cfg?)` | 拆除目標格，前景優先，材料退回塔內資源欄；拆土若會讓核心 HP 歸零則禁止 |
 | `computeBuildPreview(world, blockKey, x, y, cfg?)` | 回傳 render 用建造預覽資料與合法性 |
+| `damageCore(world, amount)` / `healCore(world, amount)` | 扣除 / 回復核心目前 HP（debug 與後續戰鬥共用） |
+| `updateRepair(world, isRepairing, dt, cfg?)` | R 長按修復：站在核心或連通泥土地基上，消耗疲勞回復核心 |
+| `applyDebugAction(world, action, cfg?)` | 開發 debug hotkeys：扣血、回血、補建材 |
 
 ### `src/game/coreSnapshot.js`
 
@@ -178,7 +191,7 @@ config/* 為靜態資料，被 logic 層 import。
 
 | 函式 | 職責 |
 |---|---|
-| `Renderer.render(world)` | 畫地面/網格/礦山方塊/兩層方塊/核心/玩家(插值位置)/建造預覽/核心數值 HUD；整數像素平移；同步 debug dataset |
-| `Controls.attach/detach` | 綁/解 WASD/方向鍵、滑鼠長按挖礦、快捷列選材、左鍵放置、右鍵拆除；canvas 自動 focus |
-| `Controls.getMoveVector()` / `Controls.isMining()` / `Controls.getSelectedSlot()` | 回傳移動向量 / 是否長按挖礦中 / 目前快捷列 |
-| `boot()` | 入口：掛角標/版本、建 world、初始化 render/input、啟動 fixed timestep loop；update 接移動/建造/挖礦/卸貨，render 前跑 updateCameraFollow |
+| `Renderer.render(world)` | 畫地面/網格/礦山方塊/兩層方塊/核心/玩家(插值位置)/建造預覽/核心 HP/疲勞/核心數值 HUD；整數像素平移；同步 debug dataset |
+| `Controls.attach/detach` | 綁/解 WASD/方向鍵、滑鼠長按挖礦、快捷列選材、左鍵放置、右鍵拆除、R 修復、debug hotkeys；canvas 自動 focus |
+| `Controls.getMoveVector()` / `Controls.isMining()` / `Controls.getSelectedSlot()` / `Controls.isRepairing()` | 回傳移動向量 / 是否長按挖礦中 / 目前快捷列 / 是否長按修復 |
+| `boot()` | 入口：掛角標/版本、建 world、初始化 render/input、啟動 fixed timestep loop；update 接移動/建造/debug/挖礦/修復/卸貨，render 前跑 updateCameraFollow |

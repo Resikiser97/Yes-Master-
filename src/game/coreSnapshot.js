@@ -9,9 +9,17 @@
  */
 
 import { countPlacedBlocks, computeCoreStats } from '../logic/coreStats.js';
+import { applyHpMaxDelta, clampCoreHp } from '../logic/coreHealth.js';
 
-export function refreshCoreSnapshot(world) {
+export function refreshCoreSnapshot(world, opts = {}) {
+  const prevHpMax = world.coreStats?.hpMax;
   world.blockCounts = countPlacedBlocks(world.dirt, world.fore);
   world.coreStats = computeCoreStats(world.blockCounts, { base: world.cfg?.core?.base });
+  if (world.coreHp == null) world.coreHp = world.coreStats.hpMax;
+  else if (opts.applyHpMaxDelta && prevHpMax != null) {
+    world.coreHp = applyHpMaxDelta(world.coreHp, world.coreStats.hpMax - prevHpMax, world.coreStats.hpMax);
+  } else {
+    world.coreHp = clampCoreHp(world.coreHp, world.coreStats.hpMax);
+  }
   return world.coreStats;
 }

@@ -62,11 +62,14 @@ export function createWorld(cfg = GAME_CONFIG) {
       inventory: {},                       // 背包：{ blockKey: qty }
       capacity: cfg.player.carry,          // 承重上限
       slots: cfg.player.backpackSlots,     // 格數上限
+      fatigue: cfg.player.fatigue,         // 目前疲勞值；上限固定 fatigueMax
     },
     storage: {},             // 塔內共享資源欄：{ blockKey: qty }
     blockCounts: {},         // 已放置方塊數量快照：{ dirt, sand, ... }
     coreStats: null,         // 核心當前數值快照（由 coreStats.js 計算）
+    coreHp: null,            // 核心目前血量；hpMax 由 coreStats.hpMax 給
     mining: { targetKey: null, damage: 0, full: false }, // 當前挖礦目標、累積傷害、背包滿旗標
+    repair: { active: false, canRepair: false, reason: null, healed: 0 },
     mineRng,                 // 續用同一隨機流做補位（可重現）
     camera: { x: 0, y: 0 },
     clock: { elapsedSeconds: 0, fixedStepSeconds: cfg.time.fixedStepSeconds, updateTick: 0 },

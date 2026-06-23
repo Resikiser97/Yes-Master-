@@ -112,11 +112,12 @@ export class Renderer {
     const inv = world.player.inventory;
     const cs = world.coreStats;
     const coreLine = cs
-      ? `核心 HP上限 ${fmt1(cs.hpMax)}　ATK ${fmt2(cs.attack)}　攻速 ${fmt2(cs.attackSpeed)}/s　DEF ${fmt2(cs.defense)}`
+      ? `核心 HP ${fmt1(world.coreHp ?? cs.hpMax)}/${fmt1(cs.hpMax)}　ATK ${fmt2(cs.attack)}　攻速 ${fmt2(cs.attackSpeed)}/s　DEF ${fmt2(cs.defense)}`
       : '核心數值計算中';
     const coreLine2 = cs
       ? `範圍 ${fmt1(cs.range)}　魔法 ${fmt2(cs.magicPct)}%　連鎖 ${fmt2(cs.chain)}`
       : '';
+    const fatigueLine = `疲勞 ${fmt1(world.player.fatigue ?? 0)}/${fmt1(this.cfg.player.fatigueMax)}　修復 ${fmt2(this.cfg.player.repair / 60)}/s`;
     const blockLine = `已放置 ${fmtItems(world.blockCounts ?? {})}`;
     const mode = world.selectedBlock
       ? `建造：${BLOCKS[world.selectedBlock]?.zh ?? world.selectedBlock}（剩 ${world.storage[world.selectedBlock] ?? 0}）　左鍵放置 / 右鍵拆除 / 再按取消`
@@ -125,11 +126,16 @@ export class Renderer {
       mode,
       coreLine,
       coreLine2,
+      fatigueLine,
       blockLine,
       `背包 ${inventoryWeight(inv)}/${world.player.capacity}　${fmtItems(inv)}`,
       `塔內 ${fmtItems(world.storage)}`,
     ].filter(Boolean);
     if (world.mining?.full) lines.push('⚠ 背包已滿，靠近核心可自動卸貨');
+    if (world.repair?.active) lines.push('修復中');
+    else if (world.repair?.reason === 'not_on_foundation') lines.push('修復需要站在核心或連通泥土地基上');
+    else if (world.repair?.reason === 'no_fatigue') lines.push('疲勞不足，無法修復');
+    if (this.cfg.debug?.enabled && this.cfg.debug?.hotkeys) lines.push('DEBUG H扣血 J回血 K補建材');
 
     const lineH = 16;
     const padY = 6;
