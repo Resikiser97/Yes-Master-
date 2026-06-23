@@ -9,6 +9,12 @@
 ## v0.0.3.0 - 2026-06-23
 
 ### 新增
+- **Step 4 初版建造 / 拆除**：
+  - 新增 `src/logic/building.js`：放置/拆除合法性判定（建造 reach、分段水平範圍、高度、核心佔用、地底、連通泥土、前景背板）。
+  - `src/game/actions.js` 接 `tryPlace` / `tryRemove` / `computeBuildPreview`；放置消耗塔內資源，拆除退回塔內資源欄。
+  - `src/input/controls.js` 接快捷列選材、左鍵放置、右鍵拆除；空快捷格不會進入建造模式，pointerdown 會同步滑鼠座標。
+  - `src/render/renderer.js` 顯示建造預覽與建造/挖礦模式 HUD。
+  - `config/gameConfig.js` 新增 hotbar、建造 reach 3 格與 debug demo gate；demo 結構預設關閉，避免拆除免費退料。
 - **Step 3 挖礦 / 背包 / 塔內資源**：
   - 純邏輯（無 DOM）：`src/logic/mineGen.js`（礦山 10x3 生成 + 重力補位，seeded）、`src/logic/inventory.js`（背包承重/格數雙限、存入塔內）、`src/logic/mining.js`（破塊敲擊數、選最近礦格）。
   - orchestration：`src/game/actions.js`（挖礦累積/破塊、站連通泥土自動卸貨）。

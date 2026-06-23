@@ -15,6 +15,11 @@ export const GAME_CONFIG = {
   // MVP 模式角標（單人 / 多人），方便錄影分辨測試版本
   mode: 'single', // 'single' | 'multi'
 
+  // 除錯開關（正式遊戲一律關閉）
+  debug: {
+    seedDemoStructure: false, // 開局塞 demo 泥土/方塊（已接建造後關閉，避免右鍵拆 demo 退免費材料）
+  },
+
   // 地圖（1600x1000px，10px/格 → 160x100 格）
   map: {
     pxPerTile: 10,
@@ -38,6 +43,9 @@ export const GAME_CONFIG = {
     followSharpness: 10,          // 平滑銳度：每幀 1-exp(-sharpness*dt)，越大越快貼上
     snapToPixel: true,            // render 時整數像素對齊（可切換測試 pixel art 抖動取捨）
   },
+
+  // 塔內資源欄快捷列：快捷鍵 1~7 對應的方塊種類（見 game-design-plan「塔內資源欄」）
+  hotbar: ['sand', 'dirt', 'stone', 'iron', 'gold', 'glass', 'diamond'],
 
   // 遊戲時間步進：遊戲進程固定更新，避免螢幕 Hz 越高進程越快
   time: {
@@ -101,7 +109,8 @@ export const GAME_CONFIG = {
       { maxStage: 30, halfWidthTiles: 27 },
       { maxStage: Infinity, halfWidthTiles: 35 },
     ],
-    placeReachTiles: 2, // 玩家與目標格互動距離上限
+    placeReachTiles: 2, // 挖礦：玩家與目標格互動距離上限
+    buildReachTiles: 3, // 建造/拆除：玩家與目標格互動距離上限
   },
 
   // 多人波次倍率（MVP）

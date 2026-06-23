@@ -2,7 +2,7 @@
 
 > 版本：v0.0.3.0
 > 類型：**代碼優先**（文件描述錯了，以代碼為準去改本檔）。
-> ⚠️ MVP 單機可動：移動/挖礦/背包/塔內資源/跟隨鏡頭已成循環；建造/波次/戰鬥待接。
+> ⚠️ MVP 單機可動：移動/挖礦/背包/塔內資源/跟隨鏡頭/初版建造已成循環；波次/戰鬥待接。
 > 規則：新增 / 刪除函式必須同步本檔（見 `.claude/instructions.md` 開發鐵則）。
 >
 > 註：原本的「planning 進入點 / source map」已移至 `Docs/source-map.md`。
@@ -58,6 +58,15 @@ config/* 為靜態資料，被 logic 層 import。
 | `computeConnected(dirtCells, coreCells)` | BFS 找與核心連通的泥土格集合 |
 | `canPlaceDirt(dirtCells, coreCells, x, y)` | 放置後須與核心連通 |
 | `canRemoveDirt(dirtCells, coreCells, x, y)` | 拆除不得使原連通格孤立 |
+
+### `src/logic/building.js`
+
+| 函式 | 職責 |
+|---|---|
+| `blockLayer(blockKey, defs?)` | 查方塊位於背景泥土層或前景第二層 |
+| `buildHalfWidth(stage, limits)` | 依關卡段落取得可建造水平半徑 |
+| `validatePlacement(ctx, blockKey, x, y)` | 判定放置是否合法（reach/核心/地底/範圍/高度/連通/背板） |
+| `validateRemoval(ctx, x, y)` | 判定拆除是否合法（前景優先；泥土不得斷開原連通地基） |
 
 ### `src/logic/combat.js`
 
@@ -131,7 +140,7 @@ config/* 為靜態資料，被 logic 層 import。
 |---|---|
 | `coreCells(cfg?)` | 回傳核心 2x2 佔用格 |
 | `coreCenterTile(cfg?)` | 回傳核心中心 tile 座標 |
-| `createWorld(cfg?)` | 建立 MVP world 狀態（核心、地面、礦山方塊、背包、塔內資源、初始包、玩家、鏡頭、clock） |
+| `createWorld(cfg?)` | 建立 MVP world 狀態（核心、地面、礦山方塊、背包、塔內資源、初始包、玩家、鏡頭、clock；demo 結構僅 debug gate 開啟時 seeded） |
 | `focusCamera(world, focusTile)` | 鏡頭聚焦指定 tile 並夾在世界邊界內 |
 | `updateCameraFollow(world, alpha?)` | 依插值後玩家位置居中跟隨（render 前每幀呼叫） |
 
@@ -141,6 +150,9 @@ config/* 為靜態資料，被 logic 層 import。
 |---|---|
 | `updateMining(world, isMining, dt, cfg?)` | 長按鎖最近礦格、累積傷害破塊進背包（滿則設 full 旗標） |
 | `tryDeposit(world)` | 站在連通泥土上 → 背包自動倒入塔內資源欄 |
+| `tryPlace(world, blockKey, x, y, cfg?)` | 消耗塔內資源，放置背景泥土或前景方塊 |
+| `tryRemove(world, x, y, cfg?)` | 拆除目標格，前景優先，材料退回塔內資源欄 |
+| `computeBuildPreview(world, blockKey, x, y, cfg?)` | 回傳 render 用建造預覽資料與合法性 |
 
 ### `src/game/gameLoop.js`
 
@@ -159,7 +171,7 @@ config/* 為靜態資料，被 logic 層 import。
 
 | 函式 | 職責 |
 |---|---|
-| `Renderer.render(world)` | 畫地面/網格/礦山方塊/兩層方塊/核心/玩家(插值位置)/HUD；整數像素平移；同步 debug dataset |
-| `Controls.attach/detach` | 綁/解 WASD/方向鍵 + 滑鼠長按挖礦；canvas 自動 focus |
-| `Controls.getMoveVector()` / `Controls.isMining()` | 回傳移動向量 / 是否長按挖礦中 |
-| `boot()` | 入口：掛角標/版本、建 world、初始化 render/input、啟動 fixed timestep loop；render 前跑 updateCameraFollow |
+| `Renderer.render(world)` | 畫地面/網格/礦山方塊/兩層方塊/核心/玩家(插值位置)/建造預覽/HUD；整數像素平移；同步 debug dataset |
+| `Controls.attach/detach` | 綁/解 WASD/方向鍵、滑鼠長按挖礦、快捷列選材、左鍵放置、右鍵拆除；canvas 自動 focus |
+| `Controls.getMoveVector()` / `Controls.isMining()` / `Controls.getSelectedSlot()` | 回傳移動向量 / 是否長按挖礦中 / 目前快捷列 |
+| `boot()` | 入口：掛角標/版本、建 world、初始化 render/input、啟動 fixed timestep loop；update 接移動/建造/挖礦/卸貨，render 前跑 updateCameraFollow |

@@ -76,7 +76,7 @@ export function createWorld(cfg = GAME_CONFIG) {
     world.storage[k] = (world.storage[k] ?? 0) + qty;
   }
 
-  seedDemoStructure(world); // TODO(步驟4)：建造輸入接上後移除這段 demo 泥土
+  if (cfg.debug?.seedDemoStructure) seedDemoStructure(world); // 預設關；建造已接，避免右鍵拆 demo 退免費材料
   focusCamera(world, world.player); // 開場鏡頭對準玩家
   return world;
 }

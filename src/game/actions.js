@@ -1,9 +1,9 @@
 /**
  * @file        actions.js
  * @module      game（狀態/orchestration 層，非純邏輯、非渲染）
- * @summary     挖礦累積與破塊、回核心自動存入塔內資源欄；呼叫純邏輯、改 world 狀態
- * @exports     updateMining, tryDeposit
- * @depends     config/gameConfig.js、src/logic/mining.js、src/logic/mineGen.js、src/logic/inventory.js、src/logic/connectivity.js
+ * @summary     挖礦/卸貨/建造放置/拆除；呼叫純邏輯、改 world 狀態
+ * @exports     updateMining, tryDeposit, tryPlace, tryRemove, computeBuildPreview
+ * @depends     config/gameConfig.js、src/logic/mining.js、src/logic/mineGen.js、src/logic/inventory.js、src/logic/connectivity.js、src/logic/building.js
  * @sourceOfTruth Docs/game-design-plan.md「操作輸入方式」「方塊系統」「遊戲內 UI 設計」
  * @version     v0.0.3.0
  */
@@ -11,8 +11,9 @@
 import { GAME_CONFIG } from '../../config/gameConfig.js';
 import { selectNearestMineCell, miningDamagePerSecond, durabilityToBreak } from '../logic/mining.js';
 import { digMineCell } from '../logic/mineGen.js';
-import { canAdd, addItem, depositAll } from '../logic/inventory.js';
+import { canAdd, addItem, removeItem, depositAll } from '../logic/inventory.js';
 import { computeConnected, key } from '../logic/connectivity.js';
+import { validatePlacement, validateRemoval } from '../logic/building.js';
 
 // 挖礦：長按時鎖定最近礦格，依「挖掘能力 × 每秒敲擊數 × dt」累積傷害，達耐久即出塊進背包
 export function updateMining(world, isMining, dt, cfg = GAME_CONFIG) {
@@ -57,4 +58,48 @@ export function tryDeposit(world) {
   const out = depositAll(world.player.inventory, world.storage);
   world.player.inventory = out.inventory;
   world.storage = out.storage;
+}
+
+// 建造 ctx（給 building.js 純函式）
+function placeCtx(world, cfg) {
+  return {
+    dirt: world.dirt, fore: world.fore, core: world.core,
+    coreCenter: world.coreCenter, groundY: world.groundY,
+    stage: world.stage, limits: cfg.buildLimits,
+    player: world.player, reach: cfg.buildLimits.buildReachTiles ?? cfg.buildLimits.placeReachTiles,
+  };
+}
+
+// 放置：消耗塔內資源欄一個 blockKey，蓋到 (x,y)
+export function tryPlace(world, blockKey, x, y, cfg = GAME_CONFIG) {
+  if (!blockKey) return { ok: false, reason: 'no_block' };
+  if (!(world.storage[blockKey] > 0)) return { ok: false, reason: 'no_material' };
+  const res = validatePlacement(placeCtx(world, cfg), blockKey, x, y);
+  if (!res.ok) return res;
+  const k = key(x, y);
+  if (res.layer === 'background') world.dirt.add(k);
+  else world.fore.set(k, blockKey);
+  world.storage = removeItem(world.storage, blockKey, 1);
+  return { ok: true, layer: res.layer };
+}
+
+// 拆除：右鍵 (x,y)，材料退回塔內資源欄（前景優先，泥土需通過連通性）
+export function tryRemove(world, x, y, cfg = GAME_CONFIG) {
+  const ctx = { dirt: world.dirt, fore: world.fore, core: world.core,
+    player: world.player, reach: cfg.buildLimits.buildReachTiles ?? cfg.buildLimits.placeReachTiles };
+  const res = validateRemoval(ctx, x, y);
+  if (!res.ok) return res;
+  const k = key(x, y);
+  if (res.layer === 'foreground') world.fore.delete(k);
+  else world.dirt.delete(k);
+  world.storage = addItem(world.storage, res.blockKey, 1);
+  return { ok: true, blockKey: res.blockKey };
+}
+
+// 放置預覽（render 用）：回 { x, y, valid, blockKey } 或 null（未選方塊）
+export function computeBuildPreview(world, blockKey, x, y, cfg = GAME_CONFIG) {
+  if (!blockKey) return null;
+  const hasMat = world.storage[blockKey] > 0;
+  const res = validatePlacement(placeCtx(world, cfg), blockKey, x, y);
+  return { x, y, valid: res.ok && hasMat, blockKey };
 }

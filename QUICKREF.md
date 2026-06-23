@@ -2,7 +2,7 @@
 
 > 版本：v0.0.3.0
 > 類型：**代碼優先**（文件描述錯了，以代碼為準去改本檔）。
-> ⚠️ MVP 單機可動：移動/挖礦/背包/塔內資源/跟隨鏡頭已成循環；建造/波次/戰鬥/晝夜待接。
+> ⚠️ MVP 單機可動：移動/挖礦/背包/塔內資源/跟隨鏡頭/初版建造已成循環；波次/戰鬥/晝夜待接。
 
 ---
 
@@ -10,7 +10,7 @@
 
 - 1–4 人合作塔防；HTML+JS / PeerJS（P2P）/ Supabase / Vercel
 - Multiplayer：Star（房主中心）拓撲，房主端權威
-- 目前單機骨架：`main.js` 建立 world、renderer、controls，並用 fixed timestep loop 更新遊戲進程；render 可畫核心/地面/兩層方塊/玩家，input 已接 WASD/方向鍵。
+- 目前單機骨架：`main.js` 建立 world、renderer、controls，並用 fixed timestep loop 更新遊戲進程；render 可畫核心/地面/兩層方塊/玩家/建造預覽，input 已接 WASD/方向鍵、長按挖礦、快捷列建造與右鍵拆除。
 
 ---
 
@@ -27,9 +27,9 @@
 | `config/waves.js` | 1-30 波次/成長/Boss/加時/21-30 阻擋區 |
 | `config/cards.js` | 18 張卡池 + 出卡規則 |
 | `config/mines.js` | 礦山機率表 + 初始資源包 |
-| `src/logic/*`（純函式） | rng / damageDefense / coreStats / connectivity / combat / waveGen / cardOffer / migration / playerMovement / mineGen / inventory / mining |
-| `src/game/*` | world（狀態 + 鏡頭跟隨 updateCameraFollow）/ gameLoop（fixed timestep）/ actions（挖礦/卸貨 orchestration） |
-| `src/render` `src/input` `src/storage` | 渲染（只讀 world、插值 + 整數平移 + HUD）/ 輸入（WASD + 滑鼠長按挖礦）/ 存檔層 |
+| `src/logic/*`（純函式） | rng / damageDefense / coreStats / connectivity / building / combat / waveGen / cardOffer / migration / playerMovement / mineGen / inventory / mining |
+| `src/game/*` | world（狀態 + 鏡頭跟隨 updateCameraFollow）/ gameLoop（fixed timestep）/ actions（挖礦/卸貨/建造 orchestration） |
+| `src/render` `src/input` `src/storage` | 渲染（只讀 world、插值 + 整數平移 + 建造預覽 + HUD）/ 輸入（WASD + 滑鼠長按挖礦 + 快捷列建造/拆除）/ 存檔層 |
 | `Docs/claude-codex-worklist.md` | Claude↔Codex 交接看板 |
 
 > 函式級細節見 `MAIN.md`。
@@ -68,6 +68,8 @@
 | pixel art camera 如果每幀 `Math.round(camera)`，在 5格/秒 × 16px/格 = 80px/s 時會出現 1px/2px 不均勻跳動 | 鏡頭跟隨應使用 deadzone + follow smoothing；是否保留整數像素對齊需依實測取捨 |
 | 無頭預覽 rAF 被節流，沒法 live 驅動 loop | 動態行為靠 Node 整合測試確定性驗證；瀏覽器只驗渲染/無 error |
 | 背包 carry 50 時承重先綁死（裝不到 6 種） | 格數規則要 carry 被加成後才生效；別誤以為 6 格能裝滿 |
+| 建造快捷列有空格時，按到空格會卡住不能挖也不能蓋 | 輸入層必須用 hotbar 長度限制可選數字；主迴圈也要遇到無效 slot 時自動退出 |
+| 滑鼠座標只在 pointermove 更新，第一次點擊會用舊座標 | pointerdown 必須同步 offsetX/offsetY，再產生放置/拆除事件 |
 
 > 已知的設計面注意點（可在開工時轉成具體陷阱）：
 > - 建築是三維度（背景泥土 = 地基；前景第二層蓋在泥土前方），連通性在背景平面判定。

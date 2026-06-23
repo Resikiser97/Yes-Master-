@@ -86,17 +86,33 @@ export class Renderer {
     this._drawFore(world);
     this._drawCore(world);
     this._drawPlayer(world);
+    this._drawBuildPreview(world); // 放置預覽（世界座標）
 
     ctx.restore();
 
     this._drawHud(world); // 螢幕座標 HUD（不受鏡頭位移）
   }
 
+  _drawBuildPreview(world) {
+    const pv = world.buildPreview;
+    if (!pv) return;
+    const t = this.t;
+    this.ctx.fillStyle = pv.valid ? 'rgba(63,174,90,0.35)' : 'rgba(192,57,43,0.35)';
+    this.ctx.fillRect(pv.x * t, pv.y * t, t, t);
+    this.ctx.strokeStyle = pv.valid ? '#3fae5a' : '#c0392b';
+    this.ctx.lineWidth = 2;
+    this.ctx.strokeRect(pv.x * t + 1, pv.y * t + 1, t - 2, t - 2);
+  }
+
   _drawHud(world) {
     const ctx = this.ctx;
     const { width: vw, height: vh } = this.viewport;
     const inv = world.player.inventory;
+    const mode = world.selectedBlock
+      ? `建造：${BLOCKS[world.selectedBlock]?.zh ?? world.selectedBlock}（剩 ${world.storage[world.selectedBlock] ?? 0}）　左鍵放置 / 右鍵拆除 / 再按取消`
+      : '挖礦模式（左鍵長按挖最近）　按 1~7 選材料建造';
     const lines = [
+      mode,
       `背包 ${inventoryWeight(inv)}/${world.player.capacity}　${fmtItems(inv)}`,
       `塔內 ${fmtItems(world.storage)}`,
     ];

@@ -14,7 +14,7 @@ import { startGameLoop } from './game/gameLoop.js';
 import { Renderer } from './render/renderer.js';
 import { Controls } from './input/controls.js';
 import { movePlayer } from './logic/playerMovement.js';
-import { updateMining, tryDeposit } from './game/actions.js';
+import { updateMining, tryDeposit, tryPlace, tryRemove, computeBuildPreview } from './game/actions.js';
 
 export function boot() {
   const badge = document.getElementById('mode-badge');
@@ -25,7 +25,7 @@ export function boot() {
   const canvas = document.getElementById('game');
   const world = createWorld(GAME_CONFIG);
   const renderer = new Renderer(canvas, GAME_CONFIG);
-  const controls = new Controls(canvas);
+  const controls = new Controls(canvas, { hotbarSlots: GAME_CONFIG.hotbar.length });
   controls.attach();
 
   let lastRenderMs = 0; // 上一次 render 時間戳（算 frame dt 給鏡頭平滑用）
@@ -42,9 +42,25 @@ export function boot() {
       }, GAME_CONFIG);
       world.player.prevX = prevX;
       world.player.prevY = prevY;
-      updateMining(world, controls.isMining(), dt, GAME_CONFIG); // 長按挖最近礦格 → 進背包
+
+      // 建造：滑鼠 canvas 座標 + 鏡頭 → 目標格
+      const t = GAME_CONFIG.render.tilePx;
+      const tileX = Math.floor((controls.mouse.x + world.camera.x) / t);
+      const tileY = Math.floor((controls.mouse.y + world.camera.y) / t);
+      const slot = controls.getSelectedSlot();
+      const selectedBlock = slot != null ? GAME_CONFIG.hotbar[slot] : null;
+      if (slot != null && !selectedBlock) controls.setSelectedSlot(null);
+      world.selectedBlock = selectedBlock ?? null;
+      world.buildPreview = computeBuildPreview(world, selectedBlock, tileX, tileY, GAME_CONFIG);
+
+      if (controls.consumePlace() && selectedBlock) tryPlace(world, selectedBlock, tileX, tileY, GAME_CONFIG);
+      if (controls.consumeRemove()) tryRemove(world, tileX, tileY, GAME_CONFIG);
+      // 材料用完 → 自動退出該方塊的建造模式
+      if (selectedBlock && !(world.storage[selectedBlock] > 0)) controls.setSelectedSlot(null);
+
+      updateMining(world, controls.isMining(), dt, GAME_CONFIG); // 長按挖最近礦格 → 進背包（僅挖礦模式）
       tryDeposit(world);                                         // 站在連通泥土上 → 倒入塔內資源欄
-      // TODO(步驟4+)：建造/怪物/晝夜都吃 dt，不吃 frame count。
+      // TODO(步驟7+)：怪物/晝夜/戰鬥都吃 dt，不吃 frame count。
     },
     render: (alpha) => {
       const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
