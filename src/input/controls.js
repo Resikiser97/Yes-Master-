@@ -3,12 +3,12 @@
  * @module      input（輸入層，非純邏輯）
  * @summary     把玩家操作（WASD 移動、滑鼠點擊/長按挖礦、放置）轉成資料事件
  * @exports     Controls
- * @depends     config/gameConfig.js
+ * @depends     （無；僅綁瀏覽器事件，不 import 其他模組）
  * @sourceOfTruth Docs/game-design-plan.md「操作輸入方式」
  * @version     v0.0.3.0
  *
  * 輸入層只把操作「轉成資料」丟給純邏輯，不在此做規則判定（鐵則 9）。
- * TODO：步驟 3 實作 WASD + 滑鼠點擊(10/s)/長按(5/s) 挖最近方塊。
+ * 步驟 3 現況：已接 WASD/方向鍵移動與 pointer 長按挖礦；點擊 10/s、放置輸入待後續細分。
  */
 
 export class Controls {

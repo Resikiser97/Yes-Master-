@@ -37,35 +37,65 @@
 
 ## 2. 收尾同步儀式（sync-docs）— 整套架構的心臟
 
-當「任務完成」或開發者輸入 `sync-docs` 時，**固定執行以下 Step 1~7**：
+當「任務完成」或開發者輸入 `sync-docs` 時，**固定執行以下 Step 1~8**：
 
 ```
 Step 1   讀本次變更範圍（看 CHANGELOG 最新條目 / git diff）
-Step 1.5 若有原始碼檔（如 .js）新增或刪除 → 強制檢查所有 file header
-         （規範見 .claude/skills/file-header.md），輸出報告等開發者確認
+Step 1.5 File header 檢查（每次 sync-docs 都做，不限新增/刪除檔案）：
+         - 若本次改動涉及任何 .js → 掃描所有 src/**/*.js 與 config/**/*.js 的 header
+         - 逐檔檢查四項：
+           1. 是否有 header
+           2. @version 是否與 config/gameConfig.js 的 GAME_CONFIG.version 一致
+           3. @summary / @exports / @depends 是否明顯與目前檔案職責不符
+           4. 是否殘留「已完成步驟」的過期 TODO 描述
+         - 不符就修；輸出檢查結果等開發者確認（規範見 .claude/skills/file-header.md）
 Step 2   更新 CHANGELOG.md：頂部版本號 + 新增本版條目（新增/修復/調整）
 Step 3   更新 QUICKREF.md：版本號必做；檔案地圖 / key / 陷阱有變才動
 Step 4   更新 MAIN.md：版本號必做；函式 / 模組有變才動
 Step 5   更新 project_summary.md：版本號 + 「最近完成的工作」必做
 Step 6   判斷是否需要對玩家公告（Patchnote）→ 需要則等開發者確認後才寫
-Step 7   輸出 sync 報告 → commit → push
+Step 7   驗收 grep（必跑，命令見下方「sync-docs 驗收 grep」）：
+         A. 版本同步 grep：src/config header 沒有舊 @version（人工比對 GAME_CONFIG.version）
+         B. 舊狀態描述 grep：docs/header 沒有過期進度描述
+         C. TODO grep：TODO 仍符合目前 worklist 狀態
+         D. 若 grep 有結果 → 逐項判斷：修正 / 保留並說明原因
+Step 8   輸出 sync 報告 → commit → push
 ```
 
 ### 版本號同步鐵則
 
-> 完成 commit 時，**所有「頂部標版本號的文件」必須全部同步成同一個版本號**，
-> 缺一即視為同步未完成。
+> 完成 commit 時，**所有版本同步點必須同步成同一個版本號**，缺一即視為同步未完成。
 
-本專案頂部標版本號的文件清單：
+`config/gameConfig.js` 已存在，其 `GAME_CONFIG.version` 是**程式版本的 canonical source**。
+本專案版本同步點分兩類，**A + B 全部一致才算完成**：
 
+**A. 頂部標版本號的文件（4 份）**
 - `CHANGELOG.md`
 - `QUICKREF.md`
 - `project_summary.md`
 - `MAIN.md`
-- `config/gameConfig.*` 的 version 欄位 ← **開工建立程式碼後納入**（目前尚無此檔）
 
-> 開工前：以上 4 份 .md 必須同版本。
-> 開工後：加入 gameConfig version 欄位，變成 5 個同步點。
+**B. 程式版本**
+- `config/gameConfig.js` 的 `GAME_CONFIG.version`（canonical）
+- 所有 `src/**/*.js`、`config/**/*.js` 的 file header `@version`，必須同步到同一版本
+
+> sync-docs 報告需**分開列**「文件頂部版本同步」與「source/config header @version 同步」。
+
+### sync-docs 驗收 grep（建議命令）
+
+> 用 ripgrep（rg）。第 A 條只「列出」所有 header version，AI **必須人工**跟
+> `GAME_CONFIG.version` 比對，不能看到有結果就當錯。
+
+```
+# A. 版本：列出 src/config 所有 header @version（人工比對 gameConfig.version）
+rg -n "@version\s+v0\.0\.[0-9]+\.[0-9]+" src config
+
+# B. 舊狀態描述 / 過期步驟 TODO（應為空）
+rg -n "尚無可玩畫面|render loop 待接|input 待接|渲染/輸入層多為 TODO|TODO：步驟 2|TODO：步驟 3" src config project_summary.md MAIN.md QUICKREF.md CHANGELOG.md Docs/claude-codex-worklist.md
+
+# C. 過期「尚無此檔 / 待開工」描述（應為空或合理保留；排除本規則檔避免自我命中）
+rg -n "目前尚無此檔|待開工填|開工後納入" DOC_INTEGRITY.md ARCH.md QUICKREF.md MAIN.md project_summary.md .claude/CLAUDE.md .claude/skills
+```
 
 ---
 
@@ -79,7 +109,14 @@ CHANGELOG.md   ：[已更新 | 無需變動] → 一句話說明
 QUICKREF.md    ：[已更新 | 無需變動] → 一句話說明
 MAIN.md        ：[已更新 | 無需變動] → 一句話說明
 project_summary：[已更新 | 無需變動] → 一句話說明
-版本號同步      ：✅ N 個檔案頂部一致
+版本號同步：
+- 文件頂部版本（4 份 .md）：✅ / ❌
+- config/gameConfig.js：✅ / ❌
+- src/config file header @version：✅ / ❌
+驗收 grep：
+- 舊版本號：✅ 無殘留 / ❌ 列出檔案
+- 舊狀態描述：✅ 無殘留 / ❌ 列出檔案
+- 過期 TODO：✅ 無殘留 / ❌ 列出檔案與處理理由
 ────────────────────
 ```
 
