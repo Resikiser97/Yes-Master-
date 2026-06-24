@@ -20,27 +20,26 @@ function ensureBase(cfg) {
 }
 
 /**
- * 計算最佳 tilePx，讓遊戲地圖填滿可用空間。
- * reserveBottomPx：底部留給虛擬按鍵的高度（電腦=0，手機=140）。
+ * 計算最佳 tilePx，優先填滿寬度。
+ * 手機橫向不以高度列數限制 tilePx（高度由 applyTilePx 截斷）。
  */
-export function computeTilePx(cfg, reserveBottomPx = 0) {
+export function computeTilePx(cfg) {
   ensureBase(cfg);
-  const vw = window.innerWidth;
-  const vh = window.innerHeight - reserveBottomPx;
-  const tByW = Math.floor(vw / _baseViewCols);
-  const tByH = Math.floor(vh / _baseViewRows);
-  return Math.max(4, Math.min(tByW, tByH));
+  return Math.max(4, Math.floor(window.innerWidth / _baseViewCols));
 }
 
 /**
  * 把新的 tilePx 寫回 cfg（by reference），並同步更新 viewportPx。
+ * reserveBottomPx：底部按鍵佔用高度（觸控約 160px；桌面為 0）。
+ * canvas 高度截斷至 (window.innerHeight - reserveBottomPx)，不超過原始列數 × tilePx。
  */
-export function applyTilePx(cfg, tilePx) {
+export function applyTilePx(cfg, tilePx, reserveBottomPx = 0) {
   ensureBase(cfg);
   cfg.render.tilePx = tilePx;
+  const maxH = window.innerHeight - reserveBottomPx;
   cfg.map.viewportPx = {
     width:  _baseViewCols * tilePx,
-    height: _baseViewRows * tilePx,
+    height: Math.min(_baseViewRows * tilePx, Math.max(maxH, tilePx * 6)),
   };
 }
 

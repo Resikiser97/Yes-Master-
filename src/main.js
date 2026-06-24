@@ -41,11 +41,14 @@ export function boot() {
     // 1. 確定 cfg
     const cfg = diffMode === 'test' ? buildTestConfig(GAME_CONFIG) : GAME_CONFIG;
 
-    // 2. 動態 tilePx（手機留底部 140px 給觸控）
-    const reserveBottom = inputMode === 'touch' ? 140 : 0;
-    applyTilePx(cfg, computeTilePx(cfg, reserveBottom));
+    // 2. 觸控模式：填滿寬度，高度截斷至扣除按鍵後的可用空間
+    //    桌面模式：保留 cfg 原始值（tilePx=16, viewportPx=800×600）
+    const TOUCH_RESERVE = 160; // D-pad 高度 ≈158px
+    if (inputMode === 'touch') {
+      applyTilePx(cfg, computeTilePx(cfg), TOUCH_RESERVE);
+    }
 
-    // 3. Renderer（此時 cfg.render.tilePx 與 cfg.map.viewportPx 已更新）
+    // 3. Renderer（觸控已更新 cfg；桌面用原始 tilePx=16）
     const renderer = new Renderer(canvas, cfg);
 
     // 4. 輸入器
@@ -53,17 +56,17 @@ export function boot() {
       ? new TouchControls(canvas, cfg)
       : new Controls(canvas, { hotbarSlots: cfg.hotbar.length });
 
-    // 5. 手機：直向警告
-    if (inputMode === 'touch') setupOrientationGuard();
-
-    // 6. resize 監聽（地址欄收起/展開、視窗縮放）
-    const onResize = () => {
-      applyTilePx(cfg, computeTilePx(cfg, reserveBottom));
-      renderer.resize(cfg);
-    };
-    window.visualViewport?.addEventListener('resize', onResize);
-    window.addEventListener('resize', onResize);
-    window.scrollTo(0, 1);
+    // 5. 手機：直向警告 + resize 監聽（地址欄收起/展開也會觸發）
+    if (inputMode === 'touch') {
+      setupOrientationGuard();
+      const onResize = () => {
+        applyTilePx(cfg, computeTilePx(cfg), TOUCH_RESERVE);
+        renderer.resize(cfg);
+      };
+      window.visualViewport?.addEventListener('resize', onResize);
+      window.addEventListener('resize', onResize);
+      window.scrollTo(0, 1);
+    }
 
     // 7. badge
     const badge = document.getElementById('mode-badge');
