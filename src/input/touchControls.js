@@ -12,6 +12,8 @@
 
 import { applyDebugAction } from '../game/actions.js';
 import { clearSave } from '../storage/saveLocal.js';
+import { BLOCKS } from '../../config/blocks.js';
+import { inventoryWeight } from '../logic/inventory.js';
 
 const BTN_BASE = [
   'background:rgba(0,0,0,0.6)',
@@ -20,8 +22,41 @@ const BTN_BASE = [
   'cursor:pointer',
   'touch-action:none',
   'user-select:none',
+  '-webkit-user-select:none',
+  '-webkit-touch-callout:none',
+  '-webkit-tap-highlight-color:transparent',
   'font-family:sans-serif',
 ].join(';');
+
+const SIDE_PANEL_BASE = [
+  'position:fixed',
+  'top:0',
+  'height:100vh',
+  'background:#30343a',
+  'border-color:rgba(255,255,255,0.08)',
+  'box-sizing:border-box',
+  'pointer-events:none',
+  'z-index:190',
+].join(';');
+
+const HOTBAR_DISPLAY_SLOTS = 10;
+
+function fmt1(n) {
+  return Number.isFinite(n) ? Number(n).toFixed(1) : '0.0';
+}
+
+function fmt2(n) {
+  return Number.isFinite(n) ? Number(n).toFixed(2) : '0.00';
+}
+
+function fmtItemsShort(obj, limit = 4) {
+  const entries = Object.entries(obj ?? {})
+    .filter(([, v]) => v)
+    .map(([k, v]) => `${BLOCKS[k]?.zh ?? k}${v}`);
+  if (!entries.length) return '-';
+  const shown = entries.slice(0, limit).join(' ');
+  return entries.length > limit ? `${shown} +${entries.length - limit}` : shown;
+}
 
 export class TouchControls {
   constructor(canvas, cfg) {
@@ -49,6 +84,10 @@ export class TouchControls {
 
     // DOM 參考
     this._overlay = null;
+    this._leftPanel = null;
+    this._rightPanel = null;
+    this._centerPanel = null;
+    this._statusPanel = null;
     this._hotbarEls = [];
     this._debugPanel = null;
 
@@ -85,8 +124,23 @@ export class TouchControls {
 
     this._overlay = document.createElement('div');
     this._overlay.id = 'touch-overlay';
-    this._overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:200;';
+    this._overlay.style.cssText = [
+      'position:fixed',
+      'top:0',
+      'left:0',
+      'width:100%',
+      'height:100%',
+      'pointer-events:none',
+      'z-index:200',
+      'touch-action:none',
+      'user-select:none',
+      '-webkit-user-select:none',
+      '-webkit-touch-callout:none',
+      '-webkit-tap-highlight-color:transparent',
+    ].join(';') + ';';
 
+    this._buildPanels();
+    this._buildStatusPanel();
     this._buildDpad();
     this._buildActions();
     this._buildHotbar();
@@ -101,6 +155,10 @@ export class TouchControls {
   detach() {
     this._overlay?.remove();
     this._overlay = null;
+    this._leftPanel = null;
+    this._rightPanel = null;
+    this._centerPanel = null;
+    this._statusPanel = null;
     this._hotbarEls = [];
     if (this._debugPanel) {
       this._debugPanel.remove();
@@ -112,6 +170,145 @@ export class TouchControls {
     this._dpad = { up: false, down: false, left: false, right: false };
   }
 
+  updateLayout(layout) {
+    if (!layout) return;
+    this._layout = layout;
+    if (this._leftPanel) {
+      this._leftPanel.style.width = `${layout.sideWidth}px`;
+    }
+    if (this._rightPanel) {
+      this._rightPanel.style.width = `${layout.sideWidth}px`;
+    }
+    if (this._centerPanel) {
+      this._centerPanel.style.left = `${layout.sideWidth}px`;
+      this._centerPanel.style.width = `${layout.centerWidth}px`;
+    }
+  }
+
+  mountDebugButton(btn) {
+    if (!btn) return;
+    btn.style.position = 'relative';
+    btn.style.top = 'auto';
+    btn.style.right = 'auto';
+    btn.style.width = '44px';
+    btn.style.height = '44px';
+    btn.style.margin = '8px 8px 6px auto';
+    btn.style.pointerEvents = 'all';
+    btn.style.touchAction = 'none';
+    btn.style.userSelect = 'none';
+    btn.style.webkitUserSelect = 'none';
+    btn.style.webkitTouchCallout = 'none';
+    btn.style.webkitTapHighlightColor = 'transparent';
+    this._rightPanel?.appendChild(btn);
+  }
+
+  updateStatus(world) {
+    if (!this._statusPanel || !world) return;
+    this._statusPanel.textContent = this._mobileHudText(world);
+  }
+
+  _mobileHudText(world) {
+    const cs = world.coreStats;
+    const inv = world.player.inventory ?? {};
+    const hp = fmt1(world.coreHp ?? cs?.hpMax ?? 0);
+    const maxHp = fmt1(cs?.hpMax ?? 0);
+    const wave = (world.stage ?? 0) + 1;
+    const block = world.selectedBlock;
+    const blockZh = block ? (BLOCKS[block]?.zh ?? block) : null;
+    const mode = blockZh
+      ? `建造 ${blockZh} x${world.storage?.[block] ?? 0}`
+      : '挖礦模式';
+
+    const lines = [
+      `核心 ${hp}/${maxHp}  第${wave}關`,
+      this._phaseText(world),
+      `ATK ${fmt2(cs?.attack ?? 0)}  SPD ${fmt2(cs?.attackSpeed ?? 0)}  DEF ${fmt2(cs?.defense ?? 0)}`,
+      `範圍 ${fmt1(cs?.range ?? 0)}  魔法 ${fmt2(cs?.magicPct ?? 0)}  連鎖 ${fmt2(cs?.chain ?? 0)}`,
+      `疲勞 ${fmt1(world.player.fatigue ?? 0)}/${fmt1(this.cfg.player.fatigueMax)}  修 ${fmt2(this.cfg.player.repair / 60)}/s`,
+      `敵人 ${world.enemies?.length ?? 0}  ${mode}`,
+      `背包 ${inventoryWeight(inv)}/${world.player.capacity}`,
+      fmtItemsShort(inv, 3),
+      `塔內 ${fmtItemsShort(world.storage, 3)}`,
+      `已放 ${fmtItemsShort(world.blockCounts, 3)}`,
+    ];
+
+    if (world.mining?.full) lines.push('! 背包已滿');
+    else if (world.repair?.active) lines.push('修復中');
+    else if (world.repair?.reason === 'not_on_foundation') lines.push('需站核心/地基');
+    else if (world.repair?.reason === 'no_fatigue') lines.push('疲勞不足');
+    return lines.filter(Boolean).join('\n');
+  }
+
+  _phaseText(world) {
+    const wave = (world.stage ?? 0) + 1;
+    if (world.phase === 'prep') return `準備 ${fmt1(world.phaseTimer ?? 0)}s`;
+    if (world.phase === 'night') return `夜晚 ${fmt1(world.nightElapsed ?? 0)}s`;
+    if (world.phase === 'overtime') {
+      const elapsed = this.cfg.phases.overtimeSeconds - (world.phaseTimer ?? 0);
+      return `加時 ${fmt1(elapsed)}s x${fmt1(world.combat?.overtimeMultiplier ?? 1)}`;
+    }
+    if (world.phase === 'gameover') return `GAME OVER 第${wave}關`;
+    if (world.phase === 'cardOffer') return `第${wave}關 選卡`;
+    return `${world.phase ?? '未知階段'}`;
+  }
+
+  _buildPanels() {
+    this._leftPanel = document.createElement('div');
+    this._leftPanel.id = 'touch-left-panel';
+    this._leftPanel.style.cssText = `${SIDE_PANEL_BASE};left:0;border-right:1px solid rgba(255,255,255,0.08);`;
+
+    this._centerPanel = document.createElement('div');
+    this._centerPanel.id = 'touch-center-panel';
+    this._centerPanel.style.cssText = [
+      'position:fixed',
+      'top:0',
+      'height:100vh',
+      'pointer-events:none',
+      'z-index:210',
+      'touch-action:none',
+      'user-select:none',
+      '-webkit-user-select:none',
+      '-webkit-touch-callout:none',
+      '-webkit-tap-highlight-color:transparent',
+    ].join(';') + ';';
+
+    this._rightPanel = document.createElement('div');
+    this._rightPanel.id = 'touch-right-panel';
+    this._rightPanel.style.cssText = `${SIDE_PANEL_BASE};right:0;border-left:1px solid rgba(255,255,255,0.08);`;
+
+    this._overlay.appendChild(this._leftPanel);
+    this._overlay.appendChild(this._centerPanel);
+    this._overlay.appendChild(this._rightPanel);
+  }
+
+  _buildStatusPanel() {
+    const panel = document.createElement('div');
+    panel.id = 'touch-status-panel';
+    panel.style.cssText = [
+      'position:absolute',
+      'top:8px',
+      'left:8px',
+      'right:8px',
+      'bottom:166px',
+      'padding:8px',
+      'box-sizing:border-box',
+      'background:rgba(10,16,24,0.72)',
+      'border:1px solid rgba(255,180,0,0.25)',
+      'color:#f0b020',
+      'font-size:12px',
+      'line-height:1.35',
+      'font-family:monospace',
+      'white-space:pre-line',
+      'overflow:auto',
+      'pointer-events:all',
+      'touch-action:pan-y',
+      '-webkit-overflow-scrolling:touch',
+    ].join(';') + ';';
+    panel.textContent = '核心 --/--\n第 -- 關\n敵人 --';
+    this._leftPanel.appendChild(panel);
+    this._statusPanel = panel;
+  }
+
   // ── D-pad ────────────────────────────────────────────────────────────────
 
   _buildDpad() {
@@ -119,7 +316,8 @@ export class TouchControls {
     wrap.style.cssText = [
       'position:absolute',
       'bottom:8px',
-      'left:8px',
+      'left:50%',
+      'transform:translateX(-50%)',
       'pointer-events:all',
       'display:grid',
       'grid-template-columns:repeat(3,48px)',
@@ -151,7 +349,7 @@ export class TouchControls {
       }
       wrap.appendChild(btn);
     }
-    this._overlay.appendChild(wrap);
+    this._leftPanel.appendChild(wrap);
   }
 
   _dirToKeys(id) {
@@ -175,7 +373,8 @@ export class TouchControls {
     wrap.style.cssText = [
       'position:absolute',
       'bottom:8px',
-      'right:8px',
+      'right:50%',
+      'transform:translateX(50%)',
       'pointer-events:all',
       'display:grid',
       'grid-template-columns:repeat(2,68px)',
@@ -210,7 +409,7 @@ export class TouchControls {
       () => { this.pendingRemove = true; }
     ));
 
-    this._overlay.appendChild(wrap);
+    this._rightPanel.appendChild(wrap);
   }
 
   // ── 快捷列 ───────────────────────────────────────────────────────────────
@@ -224,31 +423,38 @@ export class TouchControls {
       'transform:translateX(-50%)',
       'pointer-events:all',
       'display:flex',
-      'gap:3px',
+      'gap:2px',
     ].join(';') + ';';
 
     this._hotbarEls = [];
-    for (let i = 0; i < this.hotbarSlots; i++) {
+    const labels = ['1','2','3','4','5','6','7','8','9','0'];
+    for (let i = 0; i < HOTBAR_DISPLAY_SLOTS; i++) {
       const btn = document.createElement('button');
-      btn.textContent = String(i + 1);
-      btn.style.cssText = `width:38px;height:38px;font-size:13px;${BTN_BASE};`;
+      btn.textContent = labels[i];
+      const enabled = i < this.hotbarSlots;
+      btn.disabled = !enabled;
+      btn.style.cssText = `width:34px;height:38px;font-size:13px;${BTN_BASE};`;
       const idx = i;
       btn.addEventListener('pointerdown', (e) => {
         e.preventDefault();
+        if (btn.disabled) return;
         this.setSelectedSlot(this.selectedSlot === idx ? null : idx);
       });
       this._hotbarEls.push(btn);
       wrap.appendChild(btn);
     }
-    this._overlay.appendChild(wrap);
+    this._centerPanel.appendChild(wrap);
     this._refreshHotbar();
   }
 
   _refreshHotbar() {
     this._hotbarEls.forEach((btn, i) => {
+      const enabled = i < this.hotbarSlots;
       const sel = i === this.selectedSlot;
-      btn.style.borderColor = sel ? '#D4A017' : 'rgba(255,180,0,0.4)';
-      btn.style.background  = sel ? 'rgba(212,160,23,0.25)' : 'rgba(0,0,0,0.6)';
+      btn.disabled = !enabled;
+      btn.style.borderColor = sel ? '#D4A017' : (enabled ? 'rgba(255,180,0,0.4)' : 'rgba(255,255,255,0.12)');
+      btn.style.background  = sel ? 'rgba(212,160,23,0.25)' : (enabled ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.25)');
+      btn.style.color = enabled ? '#f0b020' : 'rgba(255,255,255,0.25)';
     });
   }
 
@@ -261,16 +467,22 @@ export class TouchControls {
     panel.id = 'debug-panel-touch';
     panel.style.cssText = [
       'display:none',
-      'position:fixed',
-      'top:50px',
+      'position:absolute',
+      'top:58px',
+      'left:8px',
       'right:8px',
-      'z-index:250',
+      'z-index:280',
       'background:rgba(10,16,24,0.92)',
       'border:1px solid rgba(255,180,0,0.4)',
       'color:#f0b020',
       'padding:10px',
       'font-size:12px',
-      'min-width:170px',
+      'box-sizing:border-box',
+      'max-height:calc(100vh - 174px)',
+      'overflow:auto',
+      'pointer-events:all',
+      'touch-action:pan-y',
+      '-webkit-overflow-scrolling:touch',
       'font-family:monospace',
     ].join(';') + ';';
 
@@ -279,8 +491,9 @@ export class TouchControls {
       btn.textContent = label;
       btn.style.cssText = 'display:block;width:100%;margin:2px 0;padding:5px 6px;' +
         'background:rgba(0,0,0,0.45);border:1px solid rgba(255,180,0,0.3);' +
-        'color:#f0b020;font-size:12px;cursor:pointer;text-align:left;font-family:monospace;';
-      btn.addEventListener('click', handler);
+        'color:#f0b020;font-size:12px;cursor:pointer;text-align:left;font-family:monospace;' +
+        'pointer-events:all;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;';
+      btn.addEventListener('pointerdown', (e) => { e.preventDefault(); handler(); });
       return btn;
     };
 
@@ -310,7 +523,7 @@ export class TouchControls {
       window.location.reload();
     }));
 
-    document.body.appendChild(panel);
+    this._rightPanel.appendChild(panel);
     this._debugPanel = panel;
   }
 

@@ -29,7 +29,7 @@ import { saveWorld, loadWorld } from './storage/saveManager.js';
 import { clearSave } from './storage/saveLocal.js';
 import { refreshCoreSnapshot } from './game/coreSnapshot.js';
 import { showSplashScreen } from './ui/splash.js';
-import { computeTilePx, applyTilePx, setupOrientationGuard } from './ui/mobileLayout.js';
+import { applyThreeColumnLayout, setupOrientationGuard } from './ui/mobileLayout.js';
 
 export function boot() {
   const versionEl = document.getElementById('version');
@@ -39,29 +39,34 @@ export function boot() {
 
   showSplashScreen((diffMode, inputMode) => {
     // 1. 確定 cfg
-    const cfg = diffMode === 'test' ? buildTestConfig(GAME_CONFIG) : GAME_CONFIG;
-
-    // 2. 觸控模式：填滿寬度，高度截斷至扣除按鍵後的可用空間
-    //    桌面模式：保留 cfg 原始值（tilePx=16, viewportPx=800×600）
-    const TOUCH_RESERVE = 160; // D-pad 高度 ≈158px
+    let cfg = diffMode === 'test' ? buildTestConfig(GAME_CONFIG) : GAME_CONFIG;
     if (inputMode === 'touch') {
-      applyTilePx(cfg, computeTilePx(cfg), TOUCH_RESERVE);
+      cfg = {
+        ...cfg,
+        render: { ...cfg.render, drawCanvasHud: false },
+        map: { ...cfg.map, viewportPx: { ...cfg.map.viewportPx } },
+      };
     }
 
-    // 3. Renderer（觸控已更新 cfg；桌面用原始 tilePx=16）
+    // 2. Renderer（手機三欄只縮放 CSS 呈現；遊戲內部仍保留桌面 viewport）
     const renderer = new Renderer(canvas, cfg);
+    let touchLayout = null;
+    if (inputMode === 'touch') {
+      touchLayout = applyThreeColumnLayout(cfg, canvas);
+    }
 
-    // 4. 輸入器
+    // 3. 輸入器
     const controls = inputMode === 'touch'
       ? new TouchControls(canvas, cfg)
       : new Controls(canvas, { hotbarSlots: cfg.hotbar.length });
 
-    // 5. 手機：直向警告 + resize 監聽（地址欄收起/展開也會觸發）
+    // 4. 手機：直向警告 + resize 監聽（地址欄收起/展開也會觸發）
     if (inputMode === 'touch') {
       setupOrientationGuard();
       const onResize = () => {
-        applyTilePx(cfg, computeTilePx(cfg), TOUCH_RESERVE);
         renderer.resize(cfg);
+        touchLayout = applyThreeColumnLayout(cfg, canvas);
+        controls.updateLayout?.(touchLayout);
       };
       window.visualViewport?.addEventListener('resize', onResize);
       window.addEventListener('resize', onResize);
@@ -87,6 +92,9 @@ export function boot() {
     }
     world.testMode = (diffMode === 'test');
 
+    controls.attach();
+    if (inputMode === 'touch') controls.updateLayout?.(touchLayout);
+
     // 9. ⚙ Debug 按鈕（keyboard 和 touch 都顯示）
     if (cfg.debug?.hotkeys) {
       const debugBtn = document.createElement('button');
@@ -100,7 +108,11 @@ export function boot() {
         const panel = document.getElementById('debug-panel-touch');
         if (panel) panel.style.display = world.showDebug ? 'block' : 'none';
       });
-      document.body.appendChild(debugBtn);
+      if (inputMode === 'touch') {
+        controls.mountDebugButton?.(debugBtn);
+      } else {
+        document.body.appendChild(debugBtn);
+      }
     }
 
     // 10. ` 鍵切換 debug 浮層；X 鍵清除存檔後重整（keyboard 模式 debug.hotkeys 才掛）
@@ -117,9 +129,6 @@ export function boot() {
         }
       });
     }
-
-    controls.attach();
-
     let lastRenderMs = 0;
     let prevPhase = world.phase;
 
@@ -143,6 +152,7 @@ export function boot() {
         if (inputMode === 'touch') {
           controls.mouse.x = world.player.x * t - world.camera.x;
           controls.mouse.y = world.player.y * t - world.camera.y;
+          controls.updateStatus?.(world);
         }
 
         const tileX = Math.floor((controls.mouse.x + world.camera.x) / t);

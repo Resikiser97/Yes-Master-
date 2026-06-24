@@ -147,7 +147,7 @@ export class Renderer {
 
     ctx.restore();
 
-    this._drawHud(world); // 螢幕座標 HUD（不受鏡頭位移）
+    if (this.cfg.render.drawCanvasHud !== false) this._drawHud(world); // 螢幕座標 HUD（不受鏡頭位移）
     if (world.phase === 'gameover') this._drawGameOverOverlay(world);
     if (world.phase === 'cardOffer') this._drawCardOffer(world);
     if (world.firstGame && world.tutorialTimer > 0) this._drawTutorialHint(world);

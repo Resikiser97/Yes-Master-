@@ -151,7 +151,8 @@
 | 11A. HUD 底部左右分欄（Codex） | ✅ `_drawHud` 左欄（核心/背包/資源/已放置）+ 右欄（phase/操作/疲勞/敵人/狀態），高度縮至 ~86px，中間細分隔線（v0.0.7.1） |
 | 11B. Debug 浮層（Claude） | ✅ ` 鍵切換 showDebug → `_drawDebugOverlay` 右上角疊加；hotkeys + 即時狀態（v0.0.7.0） |
 | 11C. 測試難度 preset（Claude） | ✅ `config/testPreset.js` + splash 兩按鈕 + saveLocal/saveManager key 參數化 + _testInit 強化注入（v0.0.7.0） |
-| 12. 手機操作 UI | 🔲 待討論（新 Chat）：虛擬搖桿/按鈕、觸控事件接入；需詳細 Prompt 先討論再交 CC |
+| 12. 手機操作 UI | ✅ v0.0.8.0 已接入；下一步調整三欄手機 layout，避免按鈕遮擋 canvas/debug |
+| 13. PWA / 加入主畫面支援 | 🔲 後排任務：本輪不做。後續再補 manifest、icon、apple mobile web app meta、加入主畫面提示、Android install prompt 檢查 |
 
 ---
 

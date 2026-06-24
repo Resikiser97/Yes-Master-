@@ -1,8 +1,8 @@
 /**
  * @file        mobileLayout.js
  * @module      ui
- * @summary     手機版面輔助：動態 tilePx 計算、applyTilePx、觸控偵測、直向遮罩
- * @exports     computeTilePx, applyTilePx, isTouchDevice, getSavedInputMode, saveInputMode, setupOrientationGuard
+ * @summary     手機版面輔助：動態 tilePx 計算、三欄觸控版面、觸控偵測、直向遮罩
+ * @exports     computeTilePx, applyTilePx, computeThreeColumnLayout, applyThreeColumnLayout, isTouchDevice, getSavedInputMode, saveInputMode, setupOrientationGuard
  * @depends     （無）
  * @version     v0.0.8.0
  *
@@ -11,11 +11,13 @@
 
 let _baseViewCols = null;
 let _baseViewRows = null;
+let _baseViewportPx = null;
 
 function ensureBase(cfg) {
   if (_baseViewCols === null) {
     _baseViewCols = Math.round(cfg.map.viewportPx.width / cfg.render.tilePx);
     _baseViewRows = Math.round(cfg.map.viewportPx.height / cfg.render.tilePx);
+    _baseViewportPx = { ...cfg.map.viewportPx };
   }
 }
 
@@ -41,6 +43,61 @@ export function applyTilePx(cfg, tilePx, reserveBottomPx = 0) {
     width:  _baseViewCols * tilePx,
     height: Math.min(_baseViewRows * tilePx, Math.max(maxH, tilePx * 6)),
   };
+}
+
+/**
+ * 手機三欄 layout：左右固定操作區，中間保留桌面 canvas 比例等比縮小。
+ * 不改 cfg.render.tilePx，避免觸控模式影響遊戲邏輯與 HUD 座標。
+ */
+export function computeThreeColumnLayout(cfg) {
+  ensureBase(cfg);
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const sideMin = 150;
+  const sideMax = 164;
+  const preferredSide = Math.round(w * 0.22);
+  const sideWidth = Math.max(sideMin, Math.min(sideMax, preferredSide));
+  const centerWidth = Math.max(1, w - sideWidth * 2);
+  const scale = Math.min(centerWidth / _baseViewportPx.width, h / _baseViewportPx.height);
+  const canvasWidth = Math.floor(_baseViewportPx.width * scale);
+  const canvasHeight = Math.floor(_baseViewportPx.height * scale);
+
+  return {
+    sideWidth,
+    centerWidth,
+    canvasWidth,
+    canvasHeight,
+    stageLeft: sideWidth + Math.floor((centerWidth - canvasWidth) / 2),
+    stageTop: Math.floor((h - canvasHeight) / 2),
+  };
+}
+
+export function applyThreeColumnLayout(cfg, canvas) {
+  ensureBase(cfg);
+  cfg.render.tilePx = GAME_CONFIG_TILEPX_FALLBACK(cfg);
+  cfg.map.viewportPx = { ..._baseViewportPx };
+
+  const layout = computeThreeColumnLayout(cfg);
+  const stage = document.getElementById('stage');
+  if (stage) {
+    stage.style.position = 'fixed';
+    stage.style.left = `${layout.stageLeft}px`;
+    stage.style.top = `${layout.stageTop}px`;
+    stage.style.width = `${layout.canvasWidth}px`;
+    stage.style.height = `${layout.canvasHeight}px`;
+    stage.style.background = '#141820';
+    stage.style.overflow = 'hidden';
+  }
+  if (canvas) {
+    canvas.style.width = `${layout.canvasWidth}px`;
+    canvas.style.height = `${layout.canvasHeight}px`;
+  }
+  document.body.style.background = '#30343a';
+  return layout;
+}
+
+function GAME_CONFIG_TILEPX_FALLBACK(cfg) {
+  return Math.round(_baseViewportPx.width / _baseViewCols) || cfg.render.tilePx;
 }
 
 export function isTouchDevice() {
