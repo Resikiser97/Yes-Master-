@@ -50,11 +50,11 @@
 > 裁剪輸出目錄：`assets/enemies/`
 > Codex 任務：Python PIL 裁成 3×4 幀，已輸出獨立 PNG；後續仍可接敵人動畫。
 
-| row | 敵人 | 中文名 | 幀數 | 狀態 | 輸出檔名 |
-|---|---|---|---|---|---|
-| 0 | shield | 盾兵 | 4 | ✅ | `shield_walk_f0~f3.png` |
-| 1 | muscle | 猛男 | 4 | ✅ | `muscle_walk_f0~f3.png` |
-| 2 | leader | 小隊長 | 4 | ✅ | `leader_walk_f0~f3.png` |
+| row | 敵人 | 中文名 | 幀數 | 狀態 | 輸出檔名 | 備註 |
+|---|---|---|---|---|---|---|
+| 0 | shield | 盾兵 | 4 | ✅ | `shield_walk_f0~f3.png` | |
+| 1 | muscle | 猛男 | 4 | ⚠️ | `muscle_walk_f0~f3.png` | **已知問題**：f2 有相鄰格子像素滲入（右側殘影手臂、下方殘影頭），原始 spritesheet 素材越界所致，需手動修或程式濾最大連通分量 |
+| 2 | leader | 小隊長 | 4 | ✅ | `leader_walk_f0~f3.png` | |
 
 > 來源：`spritesheet_enemy_civilian_2x2_walk.png`
 

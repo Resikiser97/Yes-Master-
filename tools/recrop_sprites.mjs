@@ -1,12 +1,13 @@
 /**
- * recrop_sprites.mjs — Spritesheet 重新裁剪 + 去背 + 置中
+ * recrop_sprites.mjs — Spritesheet 重新裁剪（union bbox，動畫對齊版）
  *
- * 問題：Codex 上次裁剪沒去背，且各幀沒置中。
- * 做法：
- *   1. 邊界 flood-fill 找背景（從四角連通的近白/灰像素）→ 設透明
- *   2. 找每幀實際 content bounding box（有 alpha 的像素）
- *   3. 在正方形畫布上置中輸出（加 10% padding）
- *   4. 所有幀統一用同一個 output size（同一 sheet 最大 content + padding）
+ * 策略：
+ *   同一 row（同一段動畫）的所有幀，先各自找 content bbox，
+ *   再取 union bbox，讓每幀用相同的裁切區域 → 動畫播放時角色不會亂跳。
+ *   最後所有 row 的最大 union 決定全 sheet 的統一 outSize。
+ *
+ * 原始 spritesheet 已有透明背景，不需要去背。
+ * 備注：若某幀角色超出格子邊界（素材品質問題），union crop 後邊緣仍可能有截斷。
  *
  * 執行：node tools/recrop_sprites.mjs
  */
@@ -73,79 +74,17 @@ const SHEETS = [
   },
 ];
 
-// 去背容差（0~255）
-const BG_TOLERANCE = 40;
-// 內距比例（相對 content 最長邊）
-const PADDING_RATIO = 0.10;
+const PADDING_RATIO = 0.08;
 const MIN_SIZE = 64;
 
-// ── 去背：邊界 flood-fill ─────────────────────────────────────────────────────
+// ── Content bounding box（alpha > 10 的像素範圍）────────────────────────────
 
-function removeBackground(img) {
-  const w = img.bitmap.width;
-  const h = img.bitmap.height;
-
-  // 取四角像素的 RGB 均值作為背景色樣本
-  const corners = [[0,0],[0,w-1],[h-1,0],[h-1,w-1]].map(([r,c]) => {
-    const idx = (r * w + c) * 4;
-    return [img.bitmap.data[idx], img.bitmap.data[idx+1], img.bitmap.data[idx+2]];
-  });
-  const bgR = corners.reduce((s,p)=>s+p[0],0)/4;
-  const bgG = corners.reduce((s,p)=>s+p[1],0)/4;
-  const bgB = corners.reduce((s,p)=>s+p[2],0)/4;
-
-  const visited = new Uint8Array(w * h);
-
-  function isBg(r, c) {
-    const i = r * w + c;
-    if (visited[i]) return false;
-    const idx = i * 4;
-    const dr = img.bitmap.data[idx]   - bgR;
-    const dg = img.bitmap.data[idx+1] - bgG;
-    const db = img.bitmap.data[idx+2] - bgB;
-    return Math.sqrt(dr*dr + dg*dg + db*db) <= BG_TOLERANCE;
-  }
-
-  // BFS
-  const queue = [];
-  const enqueue = (r, c) => {
-    if (r < 0 || r >= h || c < 0 || c >= w) return;
-    if (isBg(r, c)) { visited[r*w+c] = 1; queue.push(r, c); }
-  };
-
-  // 種子：四邊
-  for (let c = 0; c < w; c++) { enqueue(0, c); enqueue(h-1, c); }
-  for (let r = 0; r < h; r++) { enqueue(r, 0); enqueue(r, w-1); }
-
-  let qi = 0;
-  while (qi < queue.length) {
-    const r = queue[qi++];
-    const c = queue[qi++];
-    enqueue(r-1, c); enqueue(r+1, c); enqueue(r, c-1); enqueue(r, c+1);
-  }
-
-  // 把背景設透明
-  const result = img.clone();
-  for (let r = 0; r < h; r++) {
-    for (let c = 0; c < w; c++) {
-      if (visited[r*w+c]) {
-        const idx = (r*w+c)*4;
-        result.bitmap.data[idx+3] = 0;
-      }
-    }
-  }
-  return result;
-}
-
-// ── 找 content bounding box ───────────────────────────────────────────────────
-
-function contentBBox(img) {
-  const w = img.bitmap.width;
-  const h = img.bitmap.height;
-  let minR=h, maxR=-1, minC=w, maxC=-1;
-  for (let r = 0; r < h; r++) {
-    for (let c = 0; c < w; c++) {
-      const a = img.bitmap.data[(r*w+c)*4+3];
+function contentBBox(img, fw, fh) {
+  let minR = fh, maxR = -1, minC = fw, maxC = -1;
+  const data = img.bitmap.data;
+  for (let r = 0; r < fh; r++) {
+    for (let c = 0; c < fw; c++) {
+      const a = data[(r * fw + c) * 4 + 3];
       if (a > 10) {
         if (r < minR) minR = r;
         if (r > maxR) maxR = r;
@@ -154,29 +93,13 @@ function contentBBox(img) {
       }
     }
   }
-  if (maxR < 0) return null; // 完全透明
-  return { minR, maxR, minC, maxC, w: maxC-minC+1, h: maxR-minR+1 };
+  if (maxR < 0) return null;
+  return { minR, maxR, minC, maxC, w: maxC - minC + 1, h: maxR - minR + 1 };
 }
 
-// ── 置中到正方形 ──────────────────────────────────────────────────────────────
+// ── 把裁切好的 content 置中貼到正方形畫布 ───────────────────────────────────
 
-async function centerOnCanvas(img, outSize) {
-  const bbox = contentBBox(img);
-  if (!bbox) {
-    return new Jimp({ width: outSize, height: outSize, color: 0x00000000 });
-  }
-  const content = img.clone().crop({ x: bbox.minC, y: bbox.minR, w: bbox.w, h: bbox.h });
-
-  // 若 content 比 canvas 大，縮小但保持比例
-  let cw = bbox.w, ch = bbox.h;
-  const maxContent = outSize - Math.max(4, Math.round(outSize * PADDING_RATIO * 2));
-  if (cw > maxContent || ch > maxContent) {
-    const scale = maxContent / Math.max(cw, ch);
-    cw = Math.max(1, Math.round(cw * scale));
-    ch = Math.max(1, Math.round(ch * scale));
-    content.resize({ w: cw, h: ch });
-  }
-
+async function placeOnCanvas(content, cw, ch, outSize) {
   const canvas = new Jimp({ width: outSize, height: outSize, color: 0x00000000 });
   const px = Math.round((outSize - cw) / 2);
   const py = Math.round((outSize - ch) / 2);
@@ -190,12 +113,8 @@ async function processSheet(sheet) {
   const srcPath = path.join(ROOT, sheet.src);
   const outDir  = path.join(ROOT, sheet.out);
 
-  try {
-    await fs.access(srcPath);
-  } catch {
-    console.log(`  [SKIP] 找不到來源：${sheet.src}`);
-    return;
-  }
+  try { await fs.access(srcPath); }
+  catch { console.log(`  [SKIP] 找不到：${sheet.src}`); return; }
 
   await fs.mkdir(outDir, { recursive: true });
   const img = await Jimp.read(srcPath);
@@ -205,33 +124,64 @@ async function processSheet(sheet) {
   const fh = Math.floor(H / sheet.rows);
   console.log(`  來源：${sheet.src}  (${W}×${H})  幀尺寸：${fw}×${fh}`);
 
-  // Pass 1：去背所有幀，找最大 content 尺寸
-  const frames = [];
-  let maxContent = MIN_SIZE;
+  // ── Pass 1：逐 row 計算 union bbox ─────────────────────────────────────────
+  // rowUnions[r] = { minR, maxR, minC, maxC } 在 cell 內的座標
+  const rowUnions = [];
+  const allFrameData = []; // [row][col] = { frame jimp }
 
   for (let r = 0; r < sheet.rows; r++) {
+    let uMinR = fh, uMaxR = -1, uMinC = fw, uMaxC = -1;
+    const rowData = [];
+
     for (let c = 0; c < sheet.cols; c++) {
-      const frame = img.clone().crop({ x: c*fw, y: r*fh, w: fw, h: fh });
-      const clean = removeBackground(frame);
-      const bbox  = contentBBox(clean);
-      if (bbox) maxContent = Math.max(maxContent, bbox.w, bbox.h);
-      frames.push({ r, c, clean });
+      const frame = img.clone().crop({ x: c * fw, y: r * fh, w: fw, h: fh });
+      const bbox  = contentBBox(frame, fw, fh);
+      if (bbox) {
+        uMinR = Math.min(uMinR, bbox.minR);
+        uMaxR = Math.max(uMaxR, bbox.maxR);
+        uMinC = Math.min(uMinC, bbox.minC);
+        uMaxC = Math.max(uMaxC, bbox.maxC);
+      }
+      rowData.push(frame);
     }
+
+    rowUnions.push(uMaxR >= 0
+      ? { minR: uMinR, maxR: uMaxR, minC: uMinC, maxC: uMaxC,
+          w: uMaxC - uMinC + 1, h: uMaxR - uMinR + 1 }
+      : null);
+    allFrameData.push(rowData);
   }
 
-  const pad     = Math.max(4, Math.round(maxContent * PADDING_RATIO));
-  let outSize   = maxContent + pad * 2;
-  outSize       = Math.ceil(outSize / 8) * 8; // 對齊 8px
-  outSize       = Math.max(outSize, MIN_SIZE);
-  console.log(`  最大 content：${maxContent}px  輸出尺寸：${outSize}×${outSize}`);
+  // ── Pass 2：決定全 sheet 統一輸出尺寸（所有 row union 的最大值）──────────
+  let maxDim = MIN_SIZE;
+  for (const u of rowUnions) {
+    if (u) maxDim = Math.max(maxDim, u.w, u.h);
+  }
+  const pad     = Math.max(4, Math.round(maxDim * PADDING_RATIO));
+  let   outSize = maxDim + pad * 2;
+  outSize = Math.ceil(outSize / 8) * 8;
+  outSize = Math.max(outSize, MIN_SIZE);
+  console.log(`  最大 union content：${maxDim}px  輸出尺寸：${outSize}×${outSize}`);
 
-  // Pass 2：置中輸出
-  for (const { r, c, clean } of frames) {
-    const name    = sheet.names[r][c];
-    const outPath = path.join(outDir, `${name}.png`);
-    const out     = await centerOnCanvas(clean, outSize);
-    await out.write(outPath);
-    console.log(`    ✅ ${path.relative(ROOT, outPath)}`);
+  // ── Pass 3：裁切 union bbox → 置中輸出 ────────────────────────────────────
+  for (let r = 0; r < sheet.rows; r++) {
+    const u = rowUnions[r];
+    for (let c = 0; c < sheet.cols; c++) {
+      const name    = sheet.names[r][c];
+      const outPath = path.join(outDir, `${name}.png`);
+      let   out;
+
+      if (!u) {
+        // 空白 row → 輸出全透明
+        out = new Jimp({ width: outSize, height: outSize, color: 0x00000000 });
+      } else {
+        const content = allFrameData[r][c].crop({ x: u.minC, y: u.minR, w: u.w, h: u.h });
+        out = await placeOnCanvas(content, u.w, u.h, outSize);
+      }
+
+      await out.write(outPath);
+      console.log(`    ✅ ${path.relative(ROOT, outPath)}`);
+    }
   }
 }
 
