@@ -32,8 +32,11 @@ export function spawnPositions(count, world, cfg, rng) {
   const y    = world.groundY - 1;
   const cx   = world.coreCenter.x;
 
-  // 礦山禁區：從 world.mines 取出所有礦山的列範圍 [colMin, colMax]
-  const mineZones = Object.values(world.mines ?? {}).map((m) => m.cols); // [[15,24],[135,144]]
+  // 礦山禁區（含 5 格緩衝）：怪物不得生成在礦山範圍或其鄰近 5 格
+  const MINE_BUFFER = 5;
+  const mineZones = Object.values(world.mines ?? {}).map(
+    (m) => [m.cols[0] - MINE_BUFFER, m.cols[1] + MINE_BUFFER],
+  );
 
   for (let i = 0; i < count; i++) {
     const side   = i % 2 === 0 ? 1 : -1; // 右、左交替
@@ -41,6 +44,7 @@ export function spawnPositions(count, world, cfg, rng) {
 
     let x = cx + side * (half + jitter);
 
+    // 若落在禁區，往外推到禁區外緣（side > 0 推到右緣，side < 0 推到左緣）
     for (const [zMin, zMax] of mineZones) {
       if (x >= zMin && x <= zMax) {
         x = side > 0 ? zMax + 1 : zMin - 1;

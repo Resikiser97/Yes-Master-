@@ -179,15 +179,17 @@ export function applyDebugAction(world, action, cfg = GAME_CONFIG) {
     return { ok: true };
   }
   if (action === 'restartStage') {
-    // 清除敵人、重設 phase 回 prep，保留 storage / dirt / fore / coreHp
+    // 清除敵人、重設 phase 回 prep，保留 storage / dirt / fore
     world.enemies = [];
     world.phase   = 'prep';
-    world.phaseTimer   = cfg.phases.prepSeconds;
-    world.pendingSpawns  = [];
-    world.nightElapsed   = 0;
+    world.phaseTimer        = cfg.phases.prepSeconds;
+    world.pendingSpawns     = [];
+    world.nightElapsed      = 0;
     world.combat.overtimeMultiplier = 1;
     world.combat.attackCooldown     = 0;
     world.combat.lastHits           = [];
+    // 恢復核心 HP（不恢復的話下一幀 updatePhase 看到 coreHp<=0 → 立刻重觸 gameover）
+    world.coreHp = world.coreStats?.hpMax ?? cfg.core.base.hp;
     return { ok: true };
   }
   return { ok: false, reason: 'unknown_debug_action' };
