@@ -5,12 +5,12 @@
  * @exports     GAME_CONFIG
  * @depends     （無）
  * @sourceOfTruth Docs/game-design-plan.md、Docs/game-architecture-plan.md、Docs/waveplan.md
- * @version     v0.0.10.0
+ * @version     v0.0.11.0
  */
 
 export const GAME_CONFIG = {
   // 版本同步點之一（見 .claude/instructions.md 版本號同步鐵則）
-  version: 'v0.0.10.0',
+  version: 'v0.0.11.0',
 
   // MVP 模式角標（單人 / 多人），方便錄影分辨測試版本
   mode: 'single', // 'single' | 'multi'
@@ -129,6 +129,7 @@ export const GAME_CONFIG = {
   // 掉落物
   drops: {
     pickupReachTiles: 1, // 玩家與掉落物的自動撿取距離（Chebyshev，1 = 相鄰格即撿）
+    maxStacks: 128,      // 地面掉落物 stack 上限；滿時停止出塊
   },
 
   // localStorage 存檔

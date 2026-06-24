@@ -1,6 +1,6 @@
 # QUICKREF.md — 每次啟動速查表
 
-> 版本：v0.0.10.0
+> 版本：v0.0.11.0
 > 類型：**代碼優先**（文件描述錯了，以代碼為準去改本檔）。
 > ⚠️ MVP 單機可動：移動/挖礦/背包/塔內資源/掉落物自動撿取/跟隨鏡頭/初版建造/核心數值回饋/核心 HP 與修復/debug 核心戰鬥/正式波次/晝夜/卡片選擇（hover+tier中文）/localStorage 存檔/新手教學提示/**debug 浮層（` 鍵）/測試難度 preset（1~30 關）/手機三欄觸控 UI（左 HUD+D-pad、中 canvas+1~0 快捷列、右 Debug Tool+動作鍵）/動態 canvas 縮放/**PWA manifest + iOS/Android 安裝引導畫面**/**手機 3×3 放置方向選擇器**已成完整循環。
 
@@ -83,6 +83,7 @@
 | `computeConnected()` 返回 Set 不含核心格，判斷「站在地基上」若只用 `connected.has()` 會漏掉核心 | 凡對連通泥土生效的功能（卸貨/修復/…）一律用 `isOnFoundation()`；規則見 `Docs/design-patterns.md` |
 | 手機虛擬按鈕蓋在 canvas 上會遮擋 HUD/debug，且 iOS/Android 可能叫出原生 tap highlight | 手機橫向使用三欄 layout：左右灰色操作區放 HUD/D-pad/Debug Tool/動作鍵，中間只放 canvas 與快捷列；所有 touch button 要加 `preventDefault()`、`touch-action:none`、`-webkit-tap-highlight-color:transparent` |
 | 手機模式若直接改全域 `GAME_CONFIG.render.drawCanvasHud` 會污染桌面模式 | `main.js` 進 touch mode 時 clone cfg/render/map，再設 `drawCanvasHud=false`；桌面 renderer 仍照常畫 `_drawHud` |
+| **[部署前必修]** debug 功能預設開啟，全域暴露 app 狀態 | 正式 build 前必須：① `debug.enabled=false`、`debug.hotkeys=false`；② `window.__YES_MASTER__` 只在 `debug.enabled` 時掛載；③ 手機 debug panel（`_buildDebugPanel`）只在 debug 下建立。未來若導入 build pipeline 再做 build-time strip，目前開發期維持開啟 |
 
 > Debug hotkeys（`config/gameConfig.js debug.enabled && debug.hotkeys`）：H 扣核心血、J 回核心血、K 補塔內測試資源、L 生成 1 敵人、P 生成 5 敵人、C 直接開抽卡面板、X 清除 localStorage 存檔並重新整理（回新局）、**` 鍵切換 debug 浮層**（右上角疊加，顯示 tick/phase/drops/coreHp 等即時狀態）。手機模式另有右上 ⚙ Debug Tool，掛在右側灰欄，與 canvas debug overlay 可同時存在。
 

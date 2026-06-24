@@ -5,7 +5,7 @@
  * @exports     Renderer
  * @depends     config/gameConfig.js
  * @sourceOfTruth Docs/game-design-plan.md「建築維度」「遊戲內 UI 設計」
- * @version     v0.0.8.0
+ * @version     v0.0.11.0
  *
  * 渲染層只「讀」world 狀態畫圖，不寫任何遊戲規則（鐵則 9）。
  */
@@ -196,10 +196,16 @@ export class Renderer {
       const color = PALETTE.block[d.blockKey] ?? '#888';
       ctx.fillStyle = color;
       ctx.fillRect(d.x * t + inset, d.y * t + inset + Math.round(t * 0.3), sz, sz);
-      // 白色輪廓讓掉落物易於辨識
       ctx.strokeStyle = 'rgba(255,255,255,0.6)';
       ctx.lineWidth = 1;
       ctx.strokeRect(d.x * t + inset + 0.5, d.y * t + inset + Math.round(t * 0.3) + 0.5, sz - 1, sz - 1);
+      if ((d.qty ?? 1) > 1) {
+        ctx.fillStyle = '#fff';
+        ctx.font = `bold ${Math.max(8, Math.round(t * 0.45))}px sans-serif`;
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(String(d.qty), d.x * t + t - 1, d.y * t + t);
+      }
     }
   }
 
@@ -246,7 +252,8 @@ export class Renderer {
       fatigueLine,
       enemyLine,
     ].filter(Boolean);
-    if (world.mining?.full) rightLines.push('⚠ 背包已滿');
+    if (world.mining?.dropFull) rightLines.push('⚠ 地面已滿');
+    else if (world.mining?.full) rightLines.push('⚠ 背包已滿');
     else if (world.repair?.active) rightLines.push('修復中');
     else if (world.repair?.reason === 'not_on_foundation') rightLines.push('需站在核心或連通地基上');
     else if (world.repair?.reason === 'no_fatigue') rightLines.push('疲勞不足');

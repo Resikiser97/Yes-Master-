@@ -8,6 +8,11 @@ import { applyDebugAction } from '../src/game/actions.js';
 import { spawnPositions } from '../src/logic/spawnPosition.js';
 import './cardEffect.test.js';
 import './cardOffer.test.js';
+import './drops.test.js';
+import './actions-mining.test.js';
+import './import-smoke.test.js';
+import './mobileLayout.test.js';
+import './saveManager.test.js';
 
 function fakeRng(value = 0) {
   return { next: () => value };
@@ -131,4 +136,4 @@ testSpawnedWaveEnemyWalksToCoreAndAttacks();
 testEnemiesDamageCoreAndCanGameOver();
 testRestartStageClearsCombatPhase();
 
-console.log('Step 7 tests passed');
+console.log('All tests passed (v0.0.11.0)');

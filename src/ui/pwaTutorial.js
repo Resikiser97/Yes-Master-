@@ -4,7 +4,7 @@
  * @summary     PWA 安裝引導畫面；教 iOS/Android 玩家如何加入主畫面以移除地址欄
  * @exports     showPwaTutorial, shouldShowPwaTutorial
  * @depends     （無）
- * @version     v0.0.9.0
+ * @version     v0.0.11.0
  *
  * localStorage key：yesmaster.pwaSkip（整數 0~3，≥3 不再顯示）
  * 顯示條件由呼叫端控制（isTouchDevice && !isStandalone && shouldShowPwaTutorial）
@@ -16,10 +16,12 @@ const MAX_SKIP = 3;
 let _deferredPrompt = null;
 
 // 攔截 Android Chrome 的原生安裝提示，留給按鈕手動觸發
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();
-  _deferredPrompt = e;
-});
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    _deferredPrompt = e;
+  });
+}
 
 function getSkipCount() {
   try { return Math.max(0, parseInt(localStorage.getItem(PWA_SKIP_KEY) ?? '0', 10) || 0); } catch { return 0; }

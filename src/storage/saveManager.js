@@ -5,7 +5,7 @@
  * @exports     saveWorld, loadWorld
  * @depends     config/gameConfig.js、src/storage/saveLocal.js、src/game/world.js、src/game/coreSnapshot.js
  * @sourceOfTruth Docs/game-architecture-plan.md「Save File 資料結構」
- * @version     v0.0.7.0
+ * @version     v0.0.11.0
  *
  * 只在 phase=prep 時呼叫 saveWorld（wave clear 後）。
  * 存檔不包含：enemies / pendingSpawns / mining / repair / combat / camera / clock（皆為暫態或可重算）。
@@ -62,7 +62,7 @@ function deserializeWorld(data, cfg = GAME_CONFIG) {
   world.coreHp = data.coreHp ?? null;
   world.cardBonuses = { ...(data.cardBonuses ?? {}) };
   world.cardModifiers = [...(data.cardModifiers ?? [])];
-  world.drops = [...(data.drops ?? [])];
+  world.drops = (data.drops ?? []).map(d => ({ ...d, qty: d.qty ?? 1 }));
   world.mineProgress = { ...(data.mineProgress ?? {}) };
 
   if (data.mines?.A?.columns) {

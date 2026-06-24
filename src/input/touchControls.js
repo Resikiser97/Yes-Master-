@@ -3,15 +3,13 @@
  * @module      input（輸入層，非純邏輯）
  * @summary     手機觸控輸入：8方向D-pad、動作按鍵（挖礦/修復/放置/拆除）、快捷列；介面與 Controls 完全相容
  * @exports     TouchControls
- * @depends     src/game/actions.js（applyDebugAction）、src/storage/saveLocal.js（clearSave）
- * @version     v0.0.10.0
+ * @depends     config/blocks.js、src/logic/inventory.js
+ * @version     v0.0.11.0
  *
  * 鐵則 9：只把操作「轉成資料」丟給上層，不在此做規則判定。
  * 介面與 Controls 完全相容，main.js 的 game loop 不需判斷輸入類型。
  */
 
-import { applyDebugAction } from '../game/actions.js';
-import { clearSave } from '../storage/saveLocal.js';
 import { BLOCKS } from '../../config/blocks.js';
 import { inventoryWeight } from '../logic/inventory.js';
 
@@ -238,7 +236,8 @@ export class TouchControls {
       `已放 ${fmtItemsShort(world.blockCounts, 3)}`,
     ];
 
-    if (world.mining?.full) lines.push('! 背包已滿');
+    if (world.mining?.dropFull) lines.push('! 地面已滿');
+    else if (world.mining?.full) lines.push('! 背包已滿');
     else if (world.repair?.active) lines.push('修復中');
     else if (world.repair?.reason === 'not_on_foundation') lines.push('需站核心/地基');
     else if (world.repair?.reason === 'no_fatigue') lines.push('疲勞不足');
@@ -582,17 +581,13 @@ export class TouchControls {
 
     for (const [label, action] of debugActions) {
       panel.appendChild(mkDbgBtn(label, () => {
-        const app = window.__YES_MASTER__;
-        if (app) applyDebugAction(app.world, action, app.config);
+        this.pendingDebug.push(action);
       }));
     }
 
-    // X — 重置存檔（特殊：直接清除後 reload）
+    // X — 重置存檔（事件資料，由 main.js consume 處理）
     panel.appendChild(mkDbgBtn('X — 重置存檔', () => {
-      const app = window.__YES_MASTER__;
-      if (!app) return;
-      clearSave(app.config.save.storageKey);
-      window.location.reload();
+      this.pendingDebug.push('resetSave');
     }));
 
     this._rightPanel.appendChild(panel);

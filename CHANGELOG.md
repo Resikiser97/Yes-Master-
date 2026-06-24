@@ -1,10 +1,37 @@
 # CHANGELOG.md — 版本歷史
 
-> 版本：v0.0.10.0
+> 版本：v0.0.11.0
 > 類型：**只增不改**（歷史紀錄，永遠往上加，最新在最上方，不回頭改舊條目）。
 > 條目格式：`## vX.Y.Z.W - YYYY-MM-DD`，下分「新增 / 修復 / 調整」。
 
 ---
+
+## v0.0.11.0 - 2026-06-24
+
+### 新增
+- **掉落物合併與上限機制**：
+  - `src/logic/drops.js`：掉落物加入 `qty` 欄位支援堆疊；新增 `addDrop(drops, blockKey, x, y, maxStacks)` 同格同物品自動合併 qty，受 `maxStacks` 上限控制。
+  - `config/gameConfig.js`：新增 `drops.maxStacks: 128`（地面掉落物 stack 上限）。
+  - `src/game/actions.js`：背包滿且地面滿時不呼叫 `digMineCell`，`m.damage` clamp 在 `need`，新增 `m.dropFull` 旗標；`collectDrops` 清空時同步重置 `dropFull`。
+  - `src/render/renderer.js`：`_drawDrops` 掉落物 qty > 1 時顯示數量標籤。
+  - `src/storage/saveManager.js`：反序列化舊格式 drops（無 `qty`）自動補 `qty: 1`。
+- **測試覆蓋大幅擴充**（v0.0.6.0–v0.0.10.0 核心新增）：
+  - `tests/drops.test.js`：createDrop qty、addDrop 合併/新建/cap、collectNearbyDrops reach/qty/partial pickup/舊格式。
+  - `tests/actions-mining.test.js`：mineProgress 停手保存→恢復→破塊清除、背包滿產生 drops、dropFull cap 旗標、collectDrops 重置旗標。
+  - `tests/saveManager.test.js`：drops+mineProgress round-trip、舊格式 compat、test preset 獨立 storageKey。
+  - `tests/mobileLayout.test.js`：computeThreeColumnLayout 多種螢幕尺寸不產生負數。
+  - `tests/import-smoke.test.js`：Node 環境下 import pwaTutorial.js / splash.js 不報錯。
+  - `tests/index.js`：匯入上述 5 個新測試檔，輸出更新。
+- **HUD 新增「地面已滿」提示**：`src/render/renderer.js`、`src/input/touchControls.js` 在 `mining.dropFull` 時顯示。
+
+### 修復
+- **pwaTutorial.js Node 環境 import 炸**：top-level `window.addEventListener('beforeinstallprompt', ...)` 加 `typeof window !== 'undefined' && typeof window.addEventListener === 'function'` guard，瀏覽器行為不變。
+- **TouchControls 越過輸入層邊界**：移除對 `src/game/actions.js`（applyDebugAction）與 `src/storage/saveLocal.js`（clearSave）的直接 import；debug panel 按鈕全部改為 `this.pendingDebug.push(action)`，由 `main.js` consume 管線統一處理；`resetSave` 在 main.js 中 special-case（不混進 `applyDebugAction`）。
+- **drops.js `addDrop` 違反純函式分層**：改為不 mutate 傳入陣列，回傳 `{ drops, added }`；`actions.js` 同步改接新介面。
+- **world.js `mining` 缺少 `dropFull` 初始化**：`createWorld` 的 `mining` 補 `dropFull: false`；`drops` 註解同步 `qty` 欄位。
+
+### 調整
+- **QUICKREF.md 陷阱表**：新增「部署前必修」風險記錄（debug 預設開啟、`window.__YES_MASTER__` 全域暴露、手機 debug panel），記錄正式 build 應關閉的項目。
 
 ## v0.0.10.0 - 2026-06-24
 

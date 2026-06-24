@@ -1,20 +1,32 @@
-﻿/**
+/**
  * @file        drops.js
  * @module      logic（pure）
- * @summary     掉落物生成與自動撿取純邏輯（背包滿時方塊掉地，走近自動拾取）
- * @exports     createDrop, collectNearbyDrops
+ * @summary     掉落物生成（qty 堆疊 + 同格合併）與自動撿取純邏輯
+ * @exports     createDrop, addDrop, collectNearbyDrops
  * @depends     src/logic/inventory.js
- * @version     v0.0.6.0
+ * @version     v0.0.11.0
  */
 
 import { canAdd, addItem } from './inventory.js';
 
-// 建立一個掉落物物件（世界 tile 座標）
-export function createDrop(blockKey, x, y) {
-  return { blockKey, x, y };
+export function createDrop(blockKey, x, y, qty = 1) {
+  return { blockKey, x, y, qty };
 }
 
-// 撿取玩家附近的掉落物（距離 ≤ reach tile）；回傳 { drops, inventory }（純函式，不改原物件）
+// 純函式：同 blockKey + 同座標 → 合併 qty；否則新增 stack（受 maxStacks 限制）。
+// 不修改傳入的 drops 或其中物件，回傳 { drops: nextDrops, added: boolean }。
+export function addDrop(drops, blockKey, x, y, maxStacks = Infinity) {
+  const idx = drops.findIndex(d => d.blockKey === blockKey && d.x === x && d.y === y);
+  if (idx !== -1) {
+    const nextDrops = drops.map((d, i) => i === idx ? { ...d, qty: d.qty + 1 } : d);
+    return { drops: nextDrops, added: true };
+  }
+  if (drops.length >= maxStacks) {
+    return { drops, added: false };
+  }
+  return { drops: [...drops, createDrop(blockKey, x, y, 1)], added: true };
+}
+
 export function collectNearbyDrops(drops, player, inventory, cfg) {
   const reach = cfg?.drops?.pickupReachTiles ?? 1;
   const capacity = player.capacity;
@@ -24,11 +36,14 @@ export function collectNearbyDrops(drops, player, inventory, cfg) {
 
   for (const drop of drops) {
     const dist = Math.max(Math.abs(drop.x - player.x), Math.abs(drop.y - player.y));
-    if (dist <= reach && canAdd(inv, drop.blockKey, 1, { capacity, slots })) {
+    if (dist > reach) { remaining.push({ ...drop }); continue; }
+
+    let qty = drop.qty ?? 1;
+    while (qty > 0 && canAdd(inv, drop.blockKey, 1, { capacity, slots })) {
       inv = addItem(inv, drop.blockKey, 1);
-    } else {
-      remaining.push(drop);
+      qty -= 1;
     }
+    if (qty > 0) remaining.push({ ...drop, qty });
   }
 
   return { drops: remaining, inventory: inv };

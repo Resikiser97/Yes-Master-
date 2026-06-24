@@ -5,7 +5,7 @@
  * @exports     createWorld, coreCenterTile, focusCamera
  * @depends     config/gameConfig.js、config/mines.js、src/game/coreSnapshot.js、src/logic/connectivity.js、src/logic/rng.js、src/logic/mineGen.js
  * @sourceOfTruth Docs/game-architecture-plan.md「核心地基系統」、game-design-plan.md「建築維度」
- * @version     v0.0.7.0
+ * @version     v0.0.11.0
  *
  * 座標：tile (col x, row y)。x 0..widthTiles-1（左→右）；y 0..heightTiles-1（0=上、大=下）。
  * 兩深度層（Z）：dirt = 背景泥土地基（Set<"x,y">）；fore = 前景第二層方塊（Map<"x,y", blockKey>）。
@@ -74,7 +74,7 @@ export function createWorld(cfg = GAME_CONFIG) {
     phaseTimer: cfg.phases.prepSeconds, // 當前 phase 剩餘秒數（prep=30s / night=60s / overtime=30s）
     nightElapsed: 0,                    // 本夜已過秒數（出怪分批用）
     pendingSpawns: [],                  // [{atSecond:N, defs:[{...enemy+x,y}]}]（由 phaseRuntime 填入）
-    mining: { targetKey: null, damage: 0, full: false }, // 當前挖礦目標、累積傷害、背包滿旗標
+    mining: { targetKey: null, damage: 0, full: false, dropFull: false }, // 當前挖礦目標、累積傷害、背包滿/地面滿旗標
     mineProgress: {},  // 礦格已累積傷害存檔：targetKey → damage（停手/換格時寫入）
     repair: { active: false, canRepair: false, reason: null, healed: 0 },
     mineRng,                 // 續用同一隨機流做補位（可重現）
@@ -87,7 +87,7 @@ export function createWorld(cfg = GAME_CONFIG) {
     stage: 0,
     firstGame: false,  // 無存檔首次遊玩 → 顯示新手提示
     tutorialTimer: 0,  // 提示剩餘秒數（> 0 時顯示）
-    drops: [],         // 掉落物列表 [{ blockKey, x, y }]（背包滿時溢出）
+    drops: [],         // 掉落物列表 [{ blockKey, x, y, qty }]（背包滿時溢出，同格同物品合併 qty）
     cardHoverIndex: null, // 卡片面板滑鼠懸停索引（null | 0 | 1 | 2）
     showDebug: false,  // ` 鍵切換 debug 浮層（不影響遊戲進程）
     testMode: false,   // 由 splash 傳入；true = 測試難度 1~30
