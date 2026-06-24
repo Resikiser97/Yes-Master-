@@ -52,23 +52,29 @@ export function updateMining(world, isMining, dt, cfg = GAME_CONFIG) {
   m.targetKey = null; // 下一 tick 重新鎖定最近格（補位後可能換塊）
 }
 
-// 站在「與核心連通的泥土格」上 → 自動把背包倒入塔內資源欄
+// 站在「核心格」或「與核心連通的泥土格」上 → 自動把背包倒入塔內資源欄
+// ⚠️ 設計原則：核心格視同連通地基（見 Docs/design-patterns.md），凡對連通泥土生效的功能也對核心生效
 export function tryDeposit(world) {
   if (Object.keys(world.player.inventory).length === 0) return;
-  const connected = computeConnected(world.dirt, world.core);
   const px = Math.round(world.player.x);
   const py = Math.round(world.player.y);
-  if (!connected.has(key(px, py))) return;
+  const onFoundation = isOnFoundation(world, px, py);
+  if (!onFoundation) return;
   const out = depositAll(world.player.inventory, world.storage);
   world.player.inventory = out.inventory;
   world.storage = out.storage;
 }
 
+// 判斷是否在「核心格或連通地基上」（兩個功能共用同一判斷，避免日後再出現修復/卸貨不一致）
+function isOnFoundation(world, px, py) {
+  if (world.core.some(([x, y]) => x === px && y === py)) return true;
+  return computeConnected(world.dirt, world.core).has(key(px, py));
+}
+
 function isOnRepairSurface(world) {
-  const connected = computeConnected(world.dirt, world.core);
   const px = Math.round(world.player.x);
   const py = Math.round(world.player.y);
-  return world.core.some(([x, y]) => x === px && y === py) || connected.has(key(px, py));
+  return isOnFoundation(world, px, py);
 }
 
 // 建造 ctx（給 building.js 純函式）

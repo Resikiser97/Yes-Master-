@@ -74,6 +74,7 @@
 | 未來存檔 / debug / migration 若帶入孤立泥土，`world.dirt.size` 會多算核心血量 | 接存檔或外部載入世界時，核心統計要改成只計 `computeConnected(world.dirt, world.core)` 的泥土 |
 | 拆土同步扣 current/max HP 時可能把自己拆死 | `tryRemove` 必須先檢查拆除後 `coreHp > 0`，否則回傳 `would_destroy_core` 禁止拆除 |
 | 修復如果不檢查站位會變成免費遠端回血 | R 修復必須站在核心或 connected dirt 上，且每秒消耗 1 fatigue |
+| `computeConnected()` 返回 Set 不含核心格，判斷「站在地基上」若只用 `connected.has()` 會漏掉核心 | 凡對連通泥土生效的功能（卸貨/修復/…）一律用 `isOnFoundation()`；規則見 `Docs/design-patterns.md` |
 
 > Debug hotkeys（`config/gameConfig.js debug.enabled && debug.hotkeys`）：H 扣核心血、J 回核心血、K 補塔內測試資源、L 生成 1 敵人、P 生成 5 敵人。
 

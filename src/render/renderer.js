@@ -13,6 +13,7 @@
 import { GAME_CONFIG } from '../../config/gameConfig.js';
 import { BLOCKS } from '../../config/blocks.js';
 import { inventoryWeight } from '../logic/inventory.js';
+import { durabilityToBreak } from '../logic/mining.js';
 
 const fmtItems = (obj) => {
   const parts = Object.entries(obj)
@@ -93,12 +94,44 @@ export class Renderer {
     this._drawCore(world);
     this._drawEnemies(world);
     this._drawPlayer(world);
-    this._drawBuildPreview(world); // 放置預覽（世界座標）
+    this._drawBuildPreview(world);   // 放置預覽（世界座標）
+    this._drawMiningProgress(world); // 挖礦進度血條（世界座標，只顯示已被敲過的格）
 
     ctx.restore();
 
     this._drawHud(world); // 螢幕座標 HUD（不受鏡頭位移）
     if (world.phase === 'gameover') this._drawGameOverOverlay(world);
+  }
+
+  _drawMiningProgress(world) {
+    const m = world.mining;
+    if (!m?.targetKey || m.damage <= 0) return; // 未開始挖或剛重置 → 不顯示
+    // targetKey 格式："{mineId},{col},{row},{blockKey}"
+    const parts = m.targetKey.split(',');
+    if (parts.length < 4) return;
+    const [mineId, colStr, rowStr, blockKey] = parts;
+    const mine = world.mines?.[mineId];
+    if (!mine) return;
+    const col = Number(colStr);
+    const row = Number(rowStr);
+    const wx = mine.cols[0] + col;
+    const wy = mine.rows[0] + row;
+    const t = this.t;
+    const maxDur = durabilityToBreak(blockKey);
+    if (maxDur <= 0) return;
+    const pct = Math.min(1, m.damage / maxDur);
+    const barW = t - 4;
+    const barH = 3;
+    const bx = wx * t + 2;
+    const by = wy * t - 5;
+    // 背景（灰）
+    this.ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    this.ctx.fillRect(bx, by, barW, barH);
+    // 前景（白→橙，依耐久比例）
+    const r = Math.round(255 * pct);
+    const g = Math.round(180 * (1 - pct));
+    this.ctx.fillStyle = `rgb(${r},${g},40)`;
+    this.ctx.fillRect(bx, by, Math.round(barW * pct), barH);
   }
 
   _drawBuildPreview(world) {
