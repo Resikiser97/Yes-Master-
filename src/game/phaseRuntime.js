@@ -5,7 +5,7 @@
  * @exports     initPhaseState, updatePhase
  * @depends     config/gameConfig.js、config/waves.js、src/logic/waveGen.js、src/logic/spawnPosition.js、src/logic/rng.js
  * @sourceOfTruth Docs/waveplan.md「晝夜節奏」「怪物生成安全規則」「夜晚加時賽/狂暴模式」
- * @version     v0.0.3.0
+ * @version     v0.0.4.0
  *
  * phase 轉換：
  *   prep（30s 或按 N）→ night（60s，分批出怪）
@@ -21,9 +21,15 @@ import { createRng } from '../logic/rng.js';
 import { BLOCKER_BAND } from '../../config/waves.js';
 import { GAME_CONFIG } from '../../config/gameConfig.js';
 import { ENEMIES } from '../../config/enemies.js';
+import { generateOffer } from '../logic/cardOffer.js';
+import { applyCardEffect } from '../logic/cardEffect.js';
+import { refreshCoreSnapshot } from './coreSnapshot.js';
 
 // 出怪隨機序列 seed（與礦山 RNG 獨立，固定可重現）
 const WAVE_RNG_SEED = 20260624;
+
+// 清完第幾關（stage 1-indexed）後進入卡片選擇（10/20/30）
+const BOSS_STAGES = new Set([10, 20, 30]);
 
 /**
  * 初始化 / 重設 world 的波次狀態（createWorld 呼叫；restartStage debug 也呼叫）。
@@ -41,6 +47,7 @@ export function initPhaseState(world, cfg = GAME_CONFIG) {
  */
 export function updatePhase(world, dt, cfg = GAME_CONFIG) {
   if (world.phase === 'gameover') return;
+  if (world.phase === 'cardOffer') return; // 等玩家選牌，由 resolveCardOffer 推進
 
   // 核心血量歸零 → 立即 gameover（優先於計時）
   if ((world.coreHp ?? 1) <= 0) {
@@ -176,10 +183,43 @@ function _updateOvertime(world, dt, cfg) {
 // ─── wave clear ──────────────────────────────────────────────────────────────
 
 function _waveClear(world, cfg) {
-  world.stage   += 1;
-  world.phase    = 'prep';
-  world.phaseTimer = cfg.phases.prepSeconds;
+  world.stage += 1;
   world.pendingSpawns = [];
   world.nightElapsed  = 0;
   world.combat.overtimeMultiplier = 1;
+
+  if (BOSS_STAGES.has(world.stage)) {
+    _enterCardOffer(world);
+    return;
+  }
+
+  world.phase      = 'prep';
+  world.phaseTimer = cfg.phases.prepSeconds;
+}
+
+function _enterCardOffer(world) {
+  const offerRng = createRng(WAVE_RNG_SEED + world.stage * 7919);
+  world.phase           = 'cardOffer';
+  world.phaseTimer      = 0;
+  world.pendingCardOffer = generateOffer(offerRng, world.stage);
+}
+
+/**
+ * 玩家點選卡片後呼叫：套用 effect、刷新快照、轉回 prep。
+ * @param {Object} world
+ * @param {number} chosenIndex  0/1/2（pendingCardOffer 的索引）
+ * @param {Object} cfg
+ */
+export function resolveCardOffer(world, chosenIndex, cfg = GAME_CONFIG) {
+  const offer = world.pendingCardOffer;
+  if (!offer || chosenIndex < 0 || chosenIndex >= offer.length) return;
+  const chosen = offer[chosenIndex];
+  if (!chosen) return;
+
+  applyCardEffect(world, chosen.key);
+  refreshCoreSnapshot(world, { applyHpMaxDelta: true });
+
+  world.pendingCardOffer = null;
+  world.phase      = 'prep';
+  world.phaseTimer = cfg.phases.prepSeconds;
 }

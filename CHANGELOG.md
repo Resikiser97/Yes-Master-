@@ -1,10 +1,30 @@
 # CHANGELOG.md — 版本歷史
 
-> 版本：v0.0.3.0
+> 版本：v0.0.4.0
 > 類型：**只增不改**（歷史紀錄，永遠往上加，最新在最上方，不回頭改舊條目）。
 > 條目格式：`## vX.Y.Z.W - YYYY-MM-DD`，下分「新增 / 修復 / 調整」。
 
 ---
+
+## v0.0.4.0 - 2026-06-24
+
+### 新增
+- **Step 8 王關卡片系統接入**：
+  - `src/logic/cardEffect.js`（新檔）：4 種 effect 純函式實作（`coreStat` / `playerStat` / `resource` / `modifier`），消費 `world.cardBonuses / world.cardModifiers / world.storage / world.player`。
+  - `src/game/phaseRuntime.js`：`_waveClear` 於 stage=10/20/30 轉入 `cardOffer` phase；新增 `_enterCardOffer`（呼叫 `generateOffer`）、`resolveCardOffer`（套用 effect + 刷新快照 + 回 prep）。
+  - `src/game/world.js`：world 新增 `pendingCardOffer`、`cardBonuses`、`cardModifiers` 三欄位；phase 說明加 `cardOffer`。
+  - `src/game/coreSnapshot.js`：`refreshCoreSnapshot` 將 `world.cardBonuses` 傳入 `computeCoreStats` opts.cardAdd，使卡片加值反映到核心數值快照。
+  - `src/render/renderer.js`：`_drawCardOffer` 完整卡片面板（3 張水平排列，顯示名稱/類型/tier/效果文字），寫入 `world.cardOfferRects`；`_phaseLine` 新增 `cardOffer` case；`cardEffectText` / `wrapText` 工具函式。
+  - `src/input/controls.js`：`cardOfferMode` flag、`cardOfferRects`（由 main.js 每幀同步）、`pendingCardChoice` 與 `consumeCardChoice()`；`_handlePointerDown` 在 cardOffer 模式下偵測點選卡片座標。
+  - `src/main.js`：import `resolveCardOffer`，每幀同步 `controls.cardOfferMode / controls.cardOfferRects`，消費 `consumeCardChoice()` 並呼叫 `resolveCardOffer`。
+  - `src/game/actions.js`：新增 debug action `showCardOffer`，C 鍵直接開抽卡面板（prep phase 有效）。
+  - Debug hotkey C 新增至 `config/gameConfig.js`（debug hotkeys）與 `QUICKREF.md` 陷阱/hotkey 表。
+  - `tests/cardEffect.test.js`：測 4 種 card effect 套用。
+  - `tests/cardOffer.test.js`：測出卡規則、boss 清關進 cardOffer、debug C、rect 點選、resolveCardOffer 回 prep。
+  - `tests/index.js`：匯入以上兩個新測試檔。
+  - `package.json`：補 `npm test`/`node tests/` 跑測試腳本。
+  - `index.html`：標題改為 `Yes, Master! — MVP`。
+  - 多份文件（`ARCH.md`、`Docs/`、`assets/`）統一強調正式遊戲名 **Yes, Master!**，哥布林的信仰為副標 / lore。
 
 ## v0.0.3.0 - 2026-06-23
 

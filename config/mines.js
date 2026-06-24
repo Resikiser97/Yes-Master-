@@ -5,7 +5,7 @@
  * @exports     MINES, INITIAL_RESOURCE_PACK, MINE_SEED
  * @depends     （無）
  * @sourceOfTruth Docs/game-design-plan.md「礦山系統」「第 0 關初始資源包」
- * @version     v0.0.3.0
+ * @version     v0.0.4.0
  */
 
 // 礦山補位隨機序列固定 seed（每場可重現；Loading 時預生成 Queue 的概念）

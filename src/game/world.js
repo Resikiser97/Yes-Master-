@@ -5,7 +5,7 @@
  * @exports     createWorld, coreCenterTile, focusCamera
  * @depends     config/gameConfig.js、config/mines.js、src/game/coreSnapshot.js、src/logic/connectivity.js、src/logic/rng.js、src/logic/mineGen.js
  * @sourceOfTruth Docs/game-architecture-plan.md「核心地基系統」、game-design-plan.md「建築維度」
- * @version     v0.0.3.0
+ * @version     v0.0.4.0
  *
  * 座標：tile (col x, row y)。x 0..widthTiles-1（左→右）；y 0..heightTiles-1（0=上、大=下）。
  * 兩深度層（Z）：dirt = 背景泥土地基（Set<"x,y">）；fore = 前景第二層方塊（Map<"x,y", blockKey>）。
@@ -79,7 +79,10 @@ export function createWorld(cfg = GAME_CONFIG) {
     mineRng,                 // 續用同一隨機流做補位（可重現）
     camera: { x: 0, y: 0 },
     clock: { elapsedSeconds: 0, fixedStepSeconds: cfg.time.fixedStepSeconds, updateTick: 0 },
-    phase: 'prep', // prep | day | night | overtime | gameover
+    pendingCardOffer: null,  // generateOffer() 結果（phase='cardOffer' 時非 null）
+    cardBonuses: {},         // 累積卡片 coreStat 加值 → computeCoreStats opts.cardAdd
+    cardModifiers: [],       // 流派型修飾器列表 [{ stat, pct?, add? }]
+    phase: 'prep', // prep | night | overtime | gameover | cardOffer
     stage: 0,
   };
 

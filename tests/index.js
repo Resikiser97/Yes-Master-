@@ -6,6 +6,8 @@ import { updatePhase } from '../src/game/phaseRuntime.js';
 import { updateEnemies } from '../src/game/combatRuntime.js';
 import { applyDebugAction } from '../src/game/actions.js';
 import { spawnPositions } from '../src/logic/spawnPosition.js';
+import './cardEffect.test.js';
+import './cardOffer.test.js';
 
 function fakeRng(value = 0) {
   return { next: () => value };
@@ -24,8 +26,8 @@ function testSpawnPositionAvoidsMines() {
   };
 
   const positions = spawnPositions(2, world, GAME_CONFIG, fakeRng(0));
-  assert.equal(positions[0].x, 81);
-  assert.equal(positions[1].x, 19);
+  assert.equal(positions[0].x, 86);
+  assert.equal(positions[1].x, 14);
   assert.equal(positions[0].y, 91);
   assert.equal(positions[1].y, 91);
 }

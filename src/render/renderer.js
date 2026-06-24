@@ -5,7 +5,7 @@
  * @exports     Renderer
  * @depends     config/gameConfig.js
  * @sourceOfTruth Docs/game-design-plan.md「建築維度」「遊戲內 UI 設計」
- * @version     v0.0.3.0
+ * @version     v0.0.4.0
  *
  * 渲染層只「讀」world 狀態畫圖，不寫任何遊戲規則（鐵則 9）。
  */
@@ -45,6 +45,39 @@ const PALETTE = {
 const parseKey = (k) => k.split(',').map(Number);
 const fmt1 = (n) => Number(n ?? 0).toFixed(1).replace(/\.0$/, '');
 const fmt2 = (n) => Number(n ?? 0).toFixed(2).replace(/0$/, '').replace(/\.0$/, '');
+
+function cardEffectText(effect = {}) {
+  if (effect.hint) return effect.hint;
+  if (effect.kind === 'coreStat') {
+    const heal = effect.heal != null ? `，回復 ${fmt2(effect.heal)}` : '';
+    return `核心 ${effect.stat} +${fmt2(effect.add)}${heal}`;
+  }
+  if (effect.kind === 'playerStat') return `玩家 ${effect.stat} +${fmt2(effect.add)}`;
+  if (effect.kind === 'resource') return `獲得 ${fmtItems(effect.grant ?? {})}`;
+  if (effect.kind === 'modifier') {
+    return (effect.mods ?? []).map((m) => `${m.stat} ${m.pct != null ? `${m.pct}%` : fmt2(m.add)}`).join(' / ');
+  }
+  return '效果待確認';
+}
+
+function wrapText(ctx, text, x, y, maxW, lineH, maxLines) {
+  const chars = String(text ?? '').split('');
+  let line = '';
+  let lineCount = 0;
+
+  for (const ch of chars) {
+    const test = line + ch;
+    if (line && ctx.measureText(test).width > maxW) {
+      ctx.fillText(line, x, y + lineCount * lineH);
+      line = ch;
+      lineCount += 1;
+      if (lineCount >= maxLines) return;
+    } else {
+      line = test;
+    }
+  }
+  if (line && lineCount < maxLines) ctx.fillText(line, x, y + lineCount * lineH);
+}
 
 export class Renderer {
   constructor(canvas, cfg = GAME_CONFIG) {
@@ -101,6 +134,7 @@ export class Renderer {
 
     this._drawHud(world); // 螢幕座標 HUD（不受鏡頭位移）
     if (world.phase === 'gameover') this._drawGameOverOverlay(world);
+    if (world.phase === 'cardOffer') this._drawCardOffer(world);
   }
 
   _drawMiningProgress(world) {
@@ -179,7 +213,7 @@ export class Renderer {
     if (world.repair?.active) lines.push('修復中');
     else if (world.repair?.reason === 'not_on_foundation') lines.push('修復需要站在核心或連通泥土地基上');
     else if (world.repair?.reason === 'no_fatigue') lines.push('疲勞不足，無法修復');
-    if (this.cfg.debug?.enabled && this.cfg.debug?.hotkeys) lines.push('DEBUG H扣血 J回血 K補建材 L敵人 P敵群');
+    if (this.cfg.debug?.enabled && this.cfg.debug?.hotkeys) lines.push('DEBUG H扣血 J回血 K補建材 L敵人 P敵群 C抽卡');
 
     const lineH = 16;
     const padY = 6;
@@ -211,6 +245,9 @@ export class Renderer {
     if (world.phase === 'gameover') {
       return `GAME OVER　第 ${waveNum} 關　按 Q 重試`;
     }
+    if (world.phase === 'cardOffer') {
+      return `第 ${waveNum} 關清關！　選擇一張卡片繼續`;
+    }
     return `第 ${waveNum} 關　${world.phase ?? '未知階段'}`;
   }
 
@@ -227,6 +264,70 @@ export class Renderer {
     ctx.fillText('GAME OVER', vw / 2, vh / 2 - 18);
     ctx.font = '18px sans-serif';
     ctx.fillText(`第 ${(world.stage ?? 0) + 1} 關　按 Q 重試`, vw / 2, vh / 2 + 28);
+    ctx.restore();
+  }
+
+  _drawCardOffer(world) {
+    const ctx = this.ctx;
+    const { width: vw, height: vh } = this.viewport;
+    const cards = world.pendingCardOffer ?? [];
+    const cardW = 160;
+    const cardH = 220;
+    const gap = 20;
+    const totalW = cards.length * cardW + Math.max(0, cards.length - 1) * gap;
+    const startX = Math.round((vw - totalW) / 2);
+    const y = Math.round(vh / 2 - cardH / 2 + 25);
+    world.cardOfferRects = cards.map((_, i) => ({
+      x: startX + i * (cardW + gap),
+      y,
+      w: cardW,
+      h: cardH,
+    }));
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.72)';
+    ctx.fillRect(0, 0, vw, vh);
+    ctx.fillStyle = '#f2f2f2';
+    ctx.font = 'bold 24px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('選擇一張卡片', vw / 2, vh / 2 - 130);
+    ctx.font = '14px sans-serif';
+    ctx.fillStyle = '#aaa';
+    ctx.fillText('（點擊卡片繼續）', vw / 2, vh / 2 - 100);
+
+    for (let i = 0; i < cards.length; i++) {
+      this._drawCardPanel(cards[i], world.cardOfferRects[i]);
+    }
+    ctx.restore();
+  }
+
+  _drawCardPanel(card, rect) {
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.fillStyle = '#1e2630';
+    ctx.strokeStyle = card.tier === 'strong' ? '#e6c64d' : card.tier === 'weak' ? '#8a8a8a' : '#7fd0e0';
+    ctx.lineWidth = 2;
+    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+    ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.w - 1, rect.h - 1);
+
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = '#f2f2f2';
+    ctx.font = 'bold 18px sans-serif';
+    wrapText(ctx, card.zh ?? card.key ?? '未知卡片', rect.x + 14, rect.y + 16, rect.w - 28, 22, 2);
+
+    ctx.font = '12px sans-serif';
+    ctx.fillStyle = '#b9c1cc';
+    ctx.fillText(`${card.type ?? 'unknown'}　${card.tier ?? 'tier?'}`, rect.x + 14, rect.y + 66);
+
+    ctx.fillStyle = '#e8edf2';
+    ctx.font = '14px sans-serif';
+    wrapText(ctx, cardEffectText(card.effect), rect.x + 14, rect.y + 96, rect.w - 28, 20, 5);
+
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '12px sans-serif';
+    ctx.fillText(`價值 ${card.value ?? '-'}`, rect.x + 14, rect.y + rect.h - 28);
     ctx.restore();
   }
 

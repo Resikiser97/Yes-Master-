@@ -254,8 +254,8 @@ core_orb_lowhp  -> lowhp
 ## 11. 旧版到新版的迁移说明
 
 ### 项目命名迁移
-旧：
-- Goblin’s Faith
+旧英文名（不要再用于标题 / 商店页 / 宣传主标）：
+- Goblin's Faith
 
 新：
 - Yes, Master!
@@ -280,4 +280,3 @@ core_orb_lowhp  -> lowhp
 2. 重做 / 采用新的 `tile_dirt`
 3. 统一后续资源命名为 `Yes, Master!` 项目标准
 4. 进入 Phase 1 第一批素材正式修订与导入测试
-

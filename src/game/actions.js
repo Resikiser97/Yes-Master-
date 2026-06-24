@@ -5,7 +5,7 @@
  * @exports     updateMining, tryDeposit, tryPlace, tryRemove, computeBuildPreview, updateRepair, damageCore, healCore, applyDebugAction
  * @depends     config/gameConfig.js、config/blocks.js、src/game/coreSnapshot.js、src/game/combatRuntime.js、src/logic/mining.js、src/logic/mineGen.js、src/logic/inventory.js、src/logic/connectivity.js、src/logic/building.js、src/logic/coreHealth.js
  * @sourceOfTruth Docs/game-design-plan.md「操作輸入方式」「方塊系統」「遊戲內 UI 設計」
- * @version     v0.0.3.0
+ * @version     v0.0.4.0
  */
 
 import { GAME_CONFIG } from '../../config/gameConfig.js';
@@ -18,6 +18,10 @@ import { validatePlacement, validateRemoval } from '../logic/building.js';
 import { damageCoreHp, repairCoreHp, clampCoreHp } from '../logic/coreHealth.js';
 import { refreshCoreSnapshot } from './coreSnapshot.js';
 import { spawnDebugEnemies } from './combatRuntime.js';
+import { generateOffer } from '../logic/cardOffer.js';
+import { createRng } from '../logic/rng.js';
+
+const DEBUG_CARD_OFFER_SEED = 20260624 + 8888;
 
 // 挖礦：長按時鎖定最近礦格，依「挖掘能力 × 每秒敲擊數 × dt」累積傷害，達耐久即出塊進背包
 export function updateMining(world, isMining, dt, cfg = GAME_CONFIG) {
@@ -173,6 +177,16 @@ export function applyDebugAction(world, action, cfg = GAME_CONFIG) {
   }
   if (action === 'spawnEnemy') return spawnDebugEnemies(world, 1, 'civilian', cfg);
   if (action === 'spawnEnemyPack') return spawnDebugEnemies(world, 5, 'civilian', cfg);
+  if (action === 'showCardOffer') {
+    world.enemies = [];
+    world.pendingSpawns = [];
+    world.nightElapsed = 0;
+    world.combat.overtimeMultiplier = 1;
+    world.pendingCardOffer = generateOffer(createRng(DEBUG_CARD_OFFER_SEED + (world.stage ?? 0)), 10);
+    world.phase = 'cardOffer';
+    world.phaseTimer = 0;
+    return { ok: true };
+  }
   if (action === 'startNight') {
     // prep 中立即觸發夜晚（phaseRuntime 在 phaseTimer<=0 時自動呼叫 _startNight）
     if (world.phase === 'prep') world.phaseTimer = 0;

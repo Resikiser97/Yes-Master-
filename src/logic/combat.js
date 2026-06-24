@@ -5,7 +5,7 @@
  * @exports     dist2, selectPrimaryTarget, chainHitCount, selectChainTargets, computeHit
  * @depends     src/logic/damageDefense.js
  * @sourceOfTruth Docs/game-design-plan.md「核心攻擊與防禦機制」（目標選擇 / 連鎖定案）
- * @version     v0.0.3.0
+ * @version     v0.0.4.0
  *
  * 定案規則：
  *  - 普攻：鎖定「離核心最近」的目標。

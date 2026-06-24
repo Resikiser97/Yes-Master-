@@ -5,7 +5,7 @@
  * @exports     loadSave, writeSave, clearSave
  * @depends     config/gameConfig.js、src/logic/migration.js
  * @sourceOfTruth Docs/game-architecture-plan.md「Schema Versioning」「Save File 資料結構」
- * @version     v0.0.3.0
+ * @version     v0.0.4.0
  *
  * 本檔屬 IO 層（碰 localStorage）。規則運算一律委派純邏輯，不在此寫遊戲規則。
  */

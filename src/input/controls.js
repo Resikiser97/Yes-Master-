@@ -5,7 +5,7 @@
  * @exports     Controls
  * @depends     （無；僅綁瀏覽器事件，不 import 其他模組）
  * @sourceOfTruth Docs/game-design-plan.md「操作輸入方式」
- * @version     v0.0.3.0
+ * @version     v0.0.4.0
  *
  * 輸入層只把操作「轉成資料」丟給上層，不在此做規則判定（鐵則 9）。
  * 模式：未選材料 = 挖礦模式（左鍵長按挖最近）；按快捷列數字選材料 = 建造模式（左鍵放置）。
@@ -26,6 +26,9 @@ export class Controls {
     this.pendingRemove = false;    // 本幀待處理的拆除（右鍵點擊，一次性）
     this.repairing = false;        // R 長按修復
     this.pendingDebug = [];        // 本幀待處理 debug action
+    this.cardOfferMode = false;    // 由 main.js 同步 world.phase === 'cardOffer'
+    this.cardOfferRects = null;    // 由 main.js 每幀同步 renderer 寫入的卡片座標
+    this.pendingCardChoice = null; // null | 0 | 1 | 2（玩家點選的卡片索引）
     this._onKeyDown = (e) => this._handleKey(e, true);
     this._onKeyUp = (e) => this._handleKey(e, false);
     this._onPointerDown = (e) => this._handlePointerDown(e);
@@ -44,6 +47,7 @@ export class Controls {
   consumeRemove() { const v = this.pendingRemove; this.pendingRemove = false; return v; }
   isRepairing() { return this.repairing; }
   consumeDebugActions() { const v = this.pendingDebug; this.pendingDebug = []; return v; }
+  consumeCardChoice() { const v = this.pendingCardChoice; this.pendingCardChoice = null; return v; }
 
   attach() {
     if (this.bound || typeof window === 'undefined') return;
@@ -87,6 +91,18 @@ export class Controls {
     this.target?.focus?.({ preventScroll: true });
     this._syncPointer(e);
     e.preventDefault?.();
+    // 卡片選擇模式：左鍵偵測點了哪張卡，右鍵忽略
+    if (e.button === 0 && this.cardOfferMode) {
+      const mx = this.mouse.x, my = this.mouse.y;
+      for (let i = 0; i < (this.cardOfferRects?.length ?? 0); i++) {
+        const r = this.cardOfferRects[i];
+        if (mx >= r.x && mx < r.x + r.w && my >= r.y && my < r.y + r.h) {
+          this.pendingCardChoice = i;
+          break;
+        }
+      }
+      return;
+    }
     if (e.button === 2) { this.pendingRemove = true; return; } // 右鍵拆除
     if (this.selectedSlot != null) this.pendingPlace = true;    // 建造模式：放置
     else this.mining = true;                                    // 挖礦模式：長按
@@ -137,6 +153,7 @@ function keyToDebugAction(event) {
     case 'KeyK': return 'grantResources';
     case 'KeyL': return 'spawnEnemy';
     case 'KeyP': return 'spawnEnemyPack';
+    case 'KeyC': return 'showCardOffer'; // 直接打開抽卡面板
     case 'KeyN': return 'startNight';    // 立即開始夜晚（prep 中有效）
     case 'KeyQ': return 'restartStage';  // 清除敵人並重設為 prep 狀態
     default: return null;

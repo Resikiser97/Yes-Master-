@@ -1,7 +1,8 @@
-# 哥布林的信仰 — 玩法設計文件
+# Yes, Master! — 玩法設計文件
 > 狀態：Planning 階段，部分細節待補完
 > 最後更新：2026-06-22
 > 對應文件：`game-architecture-plan.md`（技術架構）、`planning-dashboard.md`（進度追蹤）
+> 命名鐵則：正式遊戲名是 **Yes, Master!**；「哥布林的信仰」只作為副標 / 世界觀名，不作主標題。
 
 ---
 
