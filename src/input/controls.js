@@ -137,6 +137,8 @@ function keyToDebugAction(event) {
     case 'KeyK': return 'grantResources';
     case 'KeyL': return 'spawnEnemy';
     case 'KeyP': return 'spawnEnemyPack';
+    case 'KeyN': return 'startNight';    // 立即開始夜晚（prep 中有效）
+    case 'KeyQ': return 'restartStage';  // 清除敵人並重設為 prep 狀態
     default: return null;
   }
 }

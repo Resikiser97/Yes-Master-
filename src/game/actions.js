@@ -167,5 +167,22 @@ export function applyDebugAction(world, action, cfg = GAME_CONFIG) {
   }
   if (action === 'spawnEnemy') return spawnDebugEnemies(world, 1, 'civilian', cfg);
   if (action === 'spawnEnemyPack') return spawnDebugEnemies(world, 5, 'civilian', cfg);
+  if (action === 'startNight') {
+    // prep 中立即觸發夜晚（phaseRuntime 在 phaseTimer<=0 時自動呼叫 _startNight）
+    if (world.phase === 'prep') world.phaseTimer = 0;
+    return { ok: true };
+  }
+  if (action === 'restartStage') {
+    // 清除敵人、重設 phase 回 prep，保留 storage / dirt / fore / coreHp
+    world.enemies = [];
+    world.phase   = 'prep';
+    world.phaseTimer   = cfg.phases.prepSeconds;
+    world.pendingSpawns  = [];
+    world.nightElapsed   = 0;
+    world.combat.overtimeMultiplier = 1;
+    world.combat.attackCooldown     = 0;
+    world.combat.lastHits           = [];
+    return { ok: true };
+  }
   return { ok: false, reason: 'unknown_debug_action' };
 }

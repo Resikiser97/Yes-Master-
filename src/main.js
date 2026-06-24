@@ -16,6 +16,7 @@ import { Controls } from './input/controls.js';
 import { movePlayer } from './logic/playerMovement.js';
 import { updateMining, tryDeposit, tryPlace, tryRemove, computeBuildPreview, updateRepair, applyDebugAction } from './game/actions.js';
 import { updateEnemies, updateCoreCombat } from './game/combatRuntime.js';
+import { updatePhase } from './game/phaseRuntime.js';
 
 export function boot() {
   const badge = document.getElementById('mode-badge');
@@ -62,7 +63,8 @@ export function boot() {
 
       updateMining(world, controls.isMining(), dt, GAME_CONFIG); // 長按挖最近礦格 → 進背包（僅挖礦模式）
       updateRepair(world, controls.isRepairing(), dt, GAME_CONFIG); // R 長按：站核心/連通地基上消耗疲勞修復核心
-      updateEnemies(world, dt);                                      // Step 6B debug 敵人追玩家（暫不攻擊）
+      updatePhase(world, dt, GAME_CONFIG);                           // 晝夜狀態機 + 分批出怪（Step 7）
+      updateEnemies(world, dt);                                      // 怪物移動 + 攻擊核心（Step 7 後改追核心）
       updateCoreCombat(world, dt, GAME_CONFIG);                      // 核心普攻/連鎖打敵人
       tryDeposit(world);                                         // 站在連通泥土上 → 倒入塔內資源欄
       // TODO(步驟7+)：怪物/晝夜/戰鬥都吃 dt，不吃 frame count。
