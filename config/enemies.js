@@ -5,7 +5,7 @@
  * @exports     ENEMIES
  * @depends     （無）
  * @sourceOfTruth Docs/waveplan.md「敵人成長規則」、Docs/simulation/simulation-log-2.md
- * @version     v0.0.5.0
+ * @version     v0.0.6.0
  *
  * ⚠️ 交接給 Codex（見 Docs/claude-codex-worklist.md 任務 A / B）：
  *   - 請只填 hp / attack / moveSpeed（工兵另含 attackRange）= 目前為 null。

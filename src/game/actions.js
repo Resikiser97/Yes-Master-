@@ -2,10 +2,10 @@
  * @file        actions.js
  * @module      game（狀態/orchestration 層，非純邏輯、非渲染）
  * @summary     挖礦/卸貨/建造放置/拆除/核心修復/debug；呼叫純邏輯、改 world 狀態
- * @exports     updateMining, tryDeposit, tryPlace, tryRemove, computeBuildPreview, updateRepair, damageCore, healCore, applyDebugAction
- * @depends     config/gameConfig.js、config/blocks.js、src/game/coreSnapshot.js、src/game/combatRuntime.js、src/logic/mining.js、src/logic/mineGen.js、src/logic/inventory.js、src/logic/connectivity.js、src/logic/building.js、src/logic/coreHealth.js
+ * @exports     updateMining, collectDrops, tryDeposit, tryPlace, tryRemove, computeBuildPreview, updateRepair, damageCore, healCore, applyDebugAction
+ * @depends     config/gameConfig.js、config/blocks.js、src/game/coreSnapshot.js、src/game/combatRuntime.js、src/logic/mining.js、src/logic/mineGen.js、src/logic/inventory.js、src/logic/connectivity.js、src/logic/building.js、src/logic/coreHealth.js、src/logic/drops.js
  * @sourceOfTruth Docs/game-design-plan.md「操作輸入方式」「方塊系統」「遊戲內 UI 設計」
- * @version     v0.0.5.0
+ * @version     v0.0.6.0
  */
 
 import { GAME_CONFIG } from '../../config/gameConfig.js';
@@ -18,6 +18,7 @@ import { validatePlacement, validateRemoval } from '../logic/building.js';
 import { damageCoreHp, repairCoreHp, clampCoreHp } from '../logic/coreHealth.js';
 import { refreshCoreSnapshot } from './coreSnapshot.js';
 import { spawnDebugEnemies } from './combatRuntime.js';
+import { createDrop, collectNearbyDrops } from '../logic/drops.js';
 import { generateOffer } from '../logic/cardOffer.js';
 import { createRng } from '../logic/rng.js';
 
@@ -41,19 +42,30 @@ export function updateMining(world, isMining, dt, cfg = GAME_CONFIG) {
   const need = durabilityToBreak(target.blockKey);
   if (m.damage < need) return;
 
-  // 破塊：背包放得下才挖出，否則卡住等卸貨
-  if (!canAdd(world.player.inventory, target.blockKey, 1, {
-    capacity: world.player.capacity, slots: world.player.slots,
-  })) {
-    m.full = true;
-    m.damage = need; // 卡在臨界，不繼續累積
-    return;
-  }
+  // 破塊：背包放得下 → 進背包；否則 → 掉落在玩家腳下並繼續挖
   const dug = digMineCell(world.mines[target.mineId].mine, target.col, target.row, world.mineRng);
-  if (dug) world.player.inventory = addItem(world.player.inventory, dug, 1);
+  if (dug) {
+    if (canAdd(world.player.inventory, dug, 1, {
+      capacity: world.player.capacity, slots: world.player.slots,
+    })) {
+      world.player.inventory = addItem(world.player.inventory, dug, 1);
+      m.full = false;
+    } else {
+      world.drops.push(createDrop(dug, Math.round(world.player.x), Math.round(world.player.y)));
+      m.full = true; // 保留 full 旗標讓 HUD 顯示提示
+    }
+  }
   m.damage -= need;
-  m.full = false;
-  m.targetKey = null; // 下一 tick 重新鎖定最近格（補位後可能換塊）
+  m.targetKey = null;
+}
+
+// 自動撿取玩家附近掉落物（每 tick 呼叫）
+export function collectDrops(world, cfg = GAME_CONFIG) {
+  if (!world.drops?.length) return;
+  const result = collectNearbyDrops(world.drops, world.player, world.player.inventory, cfg);
+  world.drops = result.drops;
+  world.player.inventory = result.inventory;
+  if (world.drops.length === 0) world.mining.full = false;
 }
 
 // 站在「核心格」或「與核心連通的泥土格」上 → 自動把背包倒入塔內資源欄

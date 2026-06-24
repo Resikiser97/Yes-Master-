@@ -5,7 +5,7 @@
  * @exports     Renderer
  * @depends     config/gameConfig.js
  * @sourceOfTruth Docs/game-design-plan.md「建築維度」「遊戲內 UI 設計」
- * @version     v0.0.5.0
+ * @version     v0.0.6.0
  *
  * 渲染層只「讀」world 狀態畫圖，不寫任何遊戲規則（鐵則 9）。
  */
@@ -127,6 +127,7 @@ export class Renderer {
     this._drawCore(world);
     this._drawEnemies(world);
     this._drawPlayer(world);
+    this._drawDrops(world);          // 掉落物（世界座標）
     this._drawBuildPreview(world);   // 放置預覽（世界座標）
     this._drawMiningProgress(world); // 挖礦進度血條（世界座標，只顯示已被敲過的格）
 
@@ -167,6 +168,24 @@ export class Renderer {
     const g = Math.round(180 * (1 - pct));
     this.ctx.fillStyle = `rgb(${r},${g},40)`;
     this.ctx.fillRect(bx, by, Math.round(barW * pct), barH);
+  }
+
+  _drawDrops(world) {
+    const drops = world.drops;
+    if (!drops?.length) return;
+    const ctx = this.ctx;
+    const t = this.t;
+    const inset = Math.round(t * 0.2);
+    const sz = t - inset * 2;
+    for (const d of drops) {
+      const color = PALETTE.block[d.blockKey] ?? '#888';
+      ctx.fillStyle = color;
+      ctx.fillRect(d.x * t + inset, d.y * t + inset + Math.round(t * 0.3), sz, sz);
+      // 白色輪廓讓掉落物易於辨識
+      ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(d.x * t + inset + 0.5, d.y * t + inset + Math.round(t * 0.3) + 0.5, sz - 1, sz - 1);
+    }
   }
 
   _drawBuildPreview(world) {
@@ -325,33 +344,49 @@ export class Renderer {
     ctx.fillText('（點擊卡片繼續）', vw / 2, vh / 2 - 100);
 
     for (let i = 0; i < cards.length; i++) {
-      this._drawCardPanel(cards[i], world.cardOfferRects[i]);
+      this._drawCardPanel(cards[i], world.cardOfferRects[i], i === world.cardHoverIndex);
     }
     ctx.restore();
   }
 
-  _drawCardPanel(card, rect) {
+  _drawCardPanel(card, rect, hovered = false) {
     const ctx = this.ctx;
+    const tierLabelMap = { strong: '稀有', standard: '普通', weak: '基礎' };
+    const tierColorMap = { strong: '#e6c64d', standard: '#7fd0e0', weak: '#8a8a8a' };
+    const tierLabel = tierLabelMap[card.tier] ?? card.tier ?? 'tier?';
+    const borderColor = tierColorMap[card.tier] ?? tierColorMap.standard;
     ctx.save();
-    ctx.fillStyle = '#1e2630';
-    ctx.strokeStyle = card.tier === 'strong' ? '#e6c64d' : card.tier === 'weak' ? '#8a8a8a' : '#7fd0e0';
-    ctx.lineWidth = 2;
+    ctx.fillStyle = hovered ? '#252f3e' : '#1e2630';
+    ctx.strokeStyle = borderColor;
+    ctx.lineWidth = hovered ? 4 : 2;
     ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+    if (hovered) {
+      ctx.shadowColor = borderColor;
+      ctx.shadowBlur = 12;
+    }
     ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.w - 1, rect.h - 1);
+    ctx.shadowBlur = 0;
 
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     ctx.fillStyle = '#f2f2f2';
-    ctx.font = 'bold 18px sans-serif';
+    ctx.font = 'bold 16px sans-serif';
     wrapText(ctx, card.zh ?? card.key ?? '未知卡片', rect.x + 14, rect.y + 16, rect.w - 28, 22, 2);
 
     ctx.font = '12px sans-serif';
-    ctx.fillStyle = '#b9c1cc';
-    ctx.fillText(`${card.type ?? 'unknown'}　${card.tier ?? 'tier?'}`, rect.x + 14, rect.y + 66);
+    ctx.fillStyle = borderColor;
+    ctx.fillText(`${card.type ?? 'unknown'}・${tierLabel}`, rect.x + 14, rect.y + 66);
 
-    ctx.fillStyle = '#e8edf2';
+    ctx.fillStyle = '#d4dce8';
     ctx.font = '14px sans-serif';
     wrapText(ctx, cardEffectText(card.effect), rect.x + 14, rect.y + 96, rect.w - 28, 20, 5);
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(rect.x + 14, rect.y + rect.h - 40);
+    ctx.lineTo(rect.x + rect.w - 14, rect.y + rect.h - 40);
+    ctx.stroke();
 
     ctx.fillStyle = '#94a3b8';
     ctx.font = '12px sans-serif';

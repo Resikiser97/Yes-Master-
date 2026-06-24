@@ -1,8 +1,8 @@
 # QUICKREF.md — 每次啟動速查表
 
-> 版本：v0.0.5.0
+> 版本：v0.0.6.0
 > 類型：**代碼優先**（文件描述錯了，以代碼為準去改本檔）。
-> ⚠️ MVP 單機可動：移動/挖礦/背包/塔內資源/跟隨鏡頭/初版建造/核心數值回饋/核心 HP 與修復/debug 核心戰鬥/正式波次/晝夜/卡片選擇/localStorage 存檔/新手教學提示已成完整循環。
+> ⚠️ MVP 單機可動：移動/挖礦/背包/塔內資源/掉落物自動撿取/跟隨鏡頭/初版建造/核心數值回饋/核心 HP 與修復/debug 核心戰鬥/正式波次/晝夜/卡片選擇（hover+tier中文）/localStorage 存檔/新手教學提示已成完整循環。
 
 ---
 
@@ -27,9 +27,9 @@
 | `config/waves.js` | 1-30 波次/成長/Boss/加時/21-30 阻擋區 |
 | `config/cards.js` | 18 張卡池 + 出卡規則 |
 | `config/mines.js` | 礦山機率表 + 初始資源包 |
-| `src/logic/*`（純函式） | rng / damageDefense / coreStats / coreHealth / connectivity / building / combat / waveGen / cardOffer / migration / playerMovement / mineGen / inventory / mining |
-| `src/game/*` | world（狀態 + 鏡頭跟隨 updateCameraFollow）/ coreSnapshot（核心數值快照）/ combatRuntime（debug 敵人 + 核心攻擊）/ gameLoop（fixed timestep）/ actions（挖礦/卸貨/建造 orchestration） |
-| `src/render` `src/input` `src/storage` | 渲染（只讀 world、插值 + 整數平移 + 建造預覽 + 核心數值 HUD + 教學提示）/ 輸入（WASD + 滑鼠長按挖礦 + 快捷列建造/拆除）/ 存檔層（saveLocal + saveManager） |
+| `src/logic/*`（純函式） | rng / damageDefense / coreStats / coreHealth / connectivity / building / combat / waveGen / cardOffer / migration / playerMovement / mineGen / inventory / mining / **drops**（掉落物撿取） |
+| `src/game/*` | world（狀態 + 鏡頭跟隨 updateCameraFollow）/ coreSnapshot（核心數值快照）/ combatRuntime（debug 敵人 + 核心攻擊）/ gameLoop（fixed timestep）/ actions（挖礦/卸貨/建造/掉落物 orchestration） |
+| `src/render` `src/input` `src/storage` `src/ui` | 渲染（只讀 world、插值 + 整數平移 + 建造預覽 + 掉落物 + 核心數值 HUD + 卡片面板 hover + 教學提示）/ 輸入（WASD + 滑鼠長按挖礦 + 快捷列建造/拆除）/ 存檔層（saveLocal + saveManager）/ UI（splash 開場畫面） |
 | `Docs/claude-codex-worklist.md` | Claude↔Codex 交接看板 |
 
 > 函式級細節見 `MAIN.md`。

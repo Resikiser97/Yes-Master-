@@ -1,8 +1,8 @@
 # MAIN.md — 函式級參考
 
-> 版本：v0.0.5.0
+> 版本：v0.0.6.0
 > 類型：**代碼優先**（文件描述錯了，以代碼為準去改本檔）。
-> ⚠️ MVP 單機可動：移動/挖礦/背包/塔內資源/跟隨鏡頭/初版建造/核心數值回饋/核心 HP 與修復/核心戰鬥/正式波次晝夜/卡片選擇/localStorage 存檔/新手教學提示已成完整循環。
+> ⚠️ MVP 單機可動：移動/挖礦/背包/塔內資源/掉落物自動撿取/跟隨鏡頭/初版建造/核心數值回饋/核心 HP 與修復/核心戰鬥/正式波次晝夜/卡片選擇（hover+tier中文）/localStorage 存檔/新手教學提示已成完整循環。
 > 規則：新增 / 刪除函式必須同步本檔（見 `.claude/instructions.md` 開發鐵則）。
 >
 > 註：原本的「planning 進入點 / source map」已移至 `Docs/source-map.md`。
@@ -136,6 +136,13 @@ config/* 為靜態資料，被 logic 層 import。
 | `addItem/removeItem(inv, key, qty)` | 背包加/扣（回傳新物件） |
 | `depositAll(inv, storage)` | 背包全倒入塔內資源欄 |
 
+### `src/logic/drops.js`
+
+| 函式 | 職責 |
+|---|---|
+| `createDrop(blockKey, x, y)` | 建立掉落物物件 `{ blockKey, x, y }` |
+| `collectNearbyDrops(drops, player, inventory, cfg)` | 撿取 Chebyshev ≤ pickupReachTiles 內的掉落物（純函式，回傳 `{ drops, inventory }`） |
+
 ### `src/logic/mining.js`
 
 | 函式 | 職責 |
@@ -159,7 +166,8 @@ config/* 為靜態資料，被 logic 層 import。
 
 | 函式 | 職責 |
 |---|---|
-| `updateMining(world, isMining, dt, cfg?)` | 長按鎖最近礦格、累積傷害破塊進背包（滿則設 full 旗標） |
+| `updateMining(world, isMining, dt, cfg?)` | 長按鎖最近礦格、累積傷害破塊進背包；背包滿改掉落到玩家腳下 |
+| `collectDrops(world, cfg?)` | 每 tick 自動撿取玩家附近（Chebyshev ≤ pickupReachTiles）的掉落物 |
 | `tryDeposit(world)` | 站在連通泥土上 → 背包自動倒入塔內資源欄 |
 | `tryPlace(world, blockKey, x, y, cfg?)` | 消耗塔內資源，放置背景泥土或前景方塊 |
 | `tryRemove(world, x, y, cfg?)` | 拆除目標格，前景優先，材料退回塔內資源欄；拆土若會讓核心 HP 歸零則禁止 |

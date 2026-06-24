@@ -1,10 +1,27 @@
 # CHANGELOG.md — 版本歷史
 
-> 版本：v0.0.5.0
+> 版本：v0.0.6.0
 > 類型：**只增不改**（歷史紀錄，永遠往上加，最新在最上方，不回頭改舊條目）。
 > 條目格式：`## vX.Y.Z.W - YYYY-MM-DD`，下分「新增 / 修復 / 調整」。
 
 ---
+
+## v0.0.6.0 - 2026-06-24
+
+### 新增
+- **Step 10A 掉落物系統**：
+  - `src/logic/drops.js`（新檔）：`createDrop(blockKey,x,y)` 建立掉落物；`collectNearbyDrops(drops, player, inventory, cfg)` Chebyshev 距離 ≤ pickupReachTiles 時自動撿取（純函式）。
+  - `config/gameConfig.js`：新增 `drops.pickupReachTiles: 1`。
+  - `src/game/world.js`：`createWorld` 新增 `drops: []`；`firstGame / tutorialTimer` 欄位繼承自 v0.0.5.0。
+  - `src/game/actions.js`：`updateMining` 背包滿時改為掉落到玩家腳下並繼續挖；新增 `collectDrops(world, cfg)` 每 tick 呼叫，pickup 後若 drops 清空則清除 `mining.full`。
+  - `src/storage/saveManager.js`：序列化 / 反序列化 `drops` 陣列。
+  - `src/main.js`：update loop 每幀呼叫 `collectDrops`；`cardHoverIndex` 每幀由滑鼠 vs cardOfferRects 計算後寫入 world。
+  - `src/render/renderer.js`：新增 `_drawDrops(world)`，以方塊顏色 + 白色輪廓繪製掉落物。
+- **Step 10B 卡片 UI polish（Codex）**：
+  - `src/render/renderer.js`：`_drawCardPanel(card, rect, hovered)` 加 hover 參數，hover 時背景亮色 + 邊框加粗 + tier 顏色 glow；tier label 中文化（稀有/普通/基礎）；卡名 bold 16px；`type・tier` 副標；效果文字柔和色；底部細分隔線 + 價值欄位。
+
+### 修復
+- `src/render/renderer.js` `_drawCardPanel`：Codex 寫的 `tierLabelMap/tierColorMap` key 用 `normal`，實際 cards.js tier 值為 `standard`，修正為 `standard`。
 
 ## v0.0.5.0 - 2026-06-24
 

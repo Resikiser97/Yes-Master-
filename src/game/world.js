@@ -5,7 +5,7 @@
  * @exports     createWorld, coreCenterTile, focusCamera
  * @depends     config/gameConfig.js、config/mines.js、src/game/coreSnapshot.js、src/logic/connectivity.js、src/logic/rng.js、src/logic/mineGen.js
  * @sourceOfTruth Docs/game-architecture-plan.md「核心地基系統」、game-design-plan.md「建築維度」
- * @version     v0.0.5.0
+ * @version     v0.0.6.0
  *
  * 座標：tile (col x, row y)。x 0..widthTiles-1（左→右）；y 0..heightTiles-1（0=上、大=下）。
  * 兩深度層（Z）：dirt = 背景泥土地基（Set<"x,y">）；fore = 前景第二層方塊（Map<"x,y", blockKey>）。
@@ -86,6 +86,8 @@ export function createWorld(cfg = GAME_CONFIG) {
     stage: 0,
     firstGame: false,  // 無存檔首次遊玩 → 顯示新手提示
     tutorialTimer: 0,  // 提示剩餘秒數（> 0 時顯示）
+    drops: [],         // 掉落物列表 [{ blockKey, x, y }]（背包滿時溢出）
+    cardHoverIndex: null, // 卡片面板滑鼠懸停索引（null | 0 | 1 | 2）
   };
 
   // 第 0 關初始資源包：直接入塔內共享資源欄（shared、不依人數放大、只給一次）

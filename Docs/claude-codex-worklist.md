@@ -1,6 +1,6 @@
 # Claude ↔ Codex MVP 開工協作清單
-> 狀態：MVP 實作中（v0.0.2.0 起）
-> 最後更新：2026-06-22
+> 狀態：MVP 實作中（v0.0.5.0）
+> 最後更新：2026-06-24
 > 用途：單一交接看板。Claude 負責架構/純邏輯/骨架；Codex 負責數值/平衡填表。
 > 規則：**config/ 檔案就是雙方的交接介面**。Codex 把數值填進 config，Claude 的純邏輯層消費，互不踩線。
 
@@ -143,9 +143,11 @@
 | 4. 建造 + 連通性 BFS（`connectivity`） | ✅ 純邏輯完成 |
 | 5. 核心數值換算（`coreStats`） | ✅ 純邏輯完成 |
 | 6. 核心戰鬥（普攻/連鎖/傷害） | ✅ 純邏輯完成（消費 enemies.js，等 Codex A 填數才能跑） |
-| 7. 波次/晝夜/加時（`waveGen`） | 🟡 骨架完成（phaseRuntime/spawnPosition），等 Codex 7A/7B 填實作 |
-| 8. 王關/卡片（`cardOffer`） | 🟡 邏輯完成，等 C 數值 |
-| 9. 教學/localStorage 存檔 | 🔲 |
+| 7. 波次/晝夜/加時（`waveGen`） | ✅ phaseRuntime / spawnPosition / waveGen / combatRuntime 全實作完成（v0.0.3.0） |
+| 8. 王關/卡片（`cardOffer`） | ✅ cardOffer / cardEffect / resolveCardOffer 全實作完成（v0.0.4.0） |
+| 9. 教學/localStorage 存檔 | ✅ saveManager / 新手教學提示 / GOBLIN NEST splash 完成（v0.0.5.0） |
+| 10A. 掉落物系統（Claude） | ✅ drops.js 純函式 / collectDrops / updateMining 掉落邏輯 / renderer _drawDrops / saveManager 序列化（v0.0.6.0） |
+| 10B. 卡片 UI polish（Codex） | ✅ _drawCardPanel hover glow + tier 中文化（稀有/普通/基礎）+ 版面精調（v0.0.6.0） |
 
 ---
 

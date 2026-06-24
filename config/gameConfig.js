@@ -5,7 +5,7 @@
  * @exports     GAME_CONFIG
  * @depends     （無）
  * @sourceOfTruth Docs/game-design-plan.md、Docs/game-architecture-plan.md、Docs/waveplan.md
- * @version     v0.0.5.0
+ * @version     v0.0.6.0
  */
 
 export const GAME_CONFIG = {
@@ -124,6 +124,11 @@ export const GAME_CONFIG = {
     normalCountMultiplierPerPlayer: 1, // N 人 = 普通怪 xN
     bossCountEqualsPlayers: true,      // N 人 = N 隻 Boss
     fourPlayerNormalHpBonusPct: 20,    // 4 人房普通怪血量 +20%（Boss 不吃）
+  },
+
+  // 掉落物
+  drops: {
+    pickupReachTiles: 1, // 玩家與掉落物的自動撿取距離（Chebyshev，1 = 相鄰格即撿）
   },
 
   // localStorage 存檔

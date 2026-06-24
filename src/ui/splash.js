@@ -1,10 +1,10 @@
-/**
+﻿/**
  * @file        splash.js
  * @module      ui
  * @summary     開場 Splash Screen；點擊後呼叫 onStart callback
  * @exports     showSplashScreen
  * @depends     （無）
- * @version     v0.0.5.0
+ * @version     v0.0.6.0
  */
 
 export function showSplashScreen(onStart) {

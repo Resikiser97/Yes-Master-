@@ -5,7 +5,7 @@
  * @exports     boot
  * @depends     config/gameConfig.js、src/game/world.js、src/game/gameLoop.js、src/render/renderer.js、src/input/controls.js
  * @sourceOfTruth Docs/game-architecture-plan.md「MVP 開發範圍」
- * @version     v0.0.5.0
+ * @version     v0.0.6.0
  */
 
 import { GAME_CONFIG } from '../config/gameConfig.js';
@@ -14,7 +14,7 @@ import { startGameLoop } from './game/gameLoop.js';
 import { Renderer } from './render/renderer.js';
 import { Controls } from './input/controls.js';
 import { movePlayer } from './logic/playerMovement.js';
-import { updateMining, tryDeposit, tryPlace, tryRemove, computeBuildPreview, updateRepair, applyDebugAction } from './game/actions.js';
+import { updateMining, collectDrops, tryDeposit, tryPlace, tryRemove, computeBuildPreview, updateRepair, applyDebugAction } from './game/actions.js';
 import { updateEnemies, updateCoreCombat } from './game/combatRuntime.js';
 import { updatePhase, resolveCardOffer } from './game/phaseRuntime.js';
 import { saveWorld, loadWorld } from './storage/saveManager.js';
@@ -86,11 +86,23 @@ export function boot() {
         }
 
         updateMining(world, controls.isMining(), dt, GAME_CONFIG);
+        collectDrops(world, GAME_CONFIG);
         updateRepair(world, controls.isRepairing(), dt, GAME_CONFIG);
         updatePhase(world, dt, GAME_CONFIG);
         updateEnemies(world, dt);
         updateCoreCombat(world, dt, GAME_CONFIG);
         tryDeposit(world);
+
+        // cardOffer hover：偵測滑鼠與卡片 rect 的重疊，更新 world.cardHoverIndex
+        if (world.phase === 'cardOffer' && world.cardOfferRects?.length) {
+          const mx = controls.mouse.x, my = controls.mouse.y;
+          world.cardHoverIndex = world.cardOfferRects.findIndex(
+            r => mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h
+          );
+          if (world.cardHoverIndex === -1) world.cardHoverIndex = null;
+        } else {
+          world.cardHoverIndex = null;
+        }
 
         if (prevPhase !== 'prep' && world.phase === 'prep') saveWorld(world);
         if (world.firstGame && prevPhase !== 'night' && world.phase === 'night') world.tutorialTimer = 6;

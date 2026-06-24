@@ -5,7 +5,7 @@
  * @exports     createRng
  * @depends     （無）
  * @sourceOfTruth 開發鐵則 9：純邏輯內禁止直接呼叫 Math.random()，一律注入此 RNG
- * @version     v0.0.5.0
+ * @version     v0.0.6.0
  */
 
 // mulberry32：同一 seed → 同一序列，純函式可重現
