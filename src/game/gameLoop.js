@@ -1,11 +1,11 @@
-﻿/**
+/**
  * @file        gameLoop.js
  * @module      game（狀態/orchestration 層，非純邏輯、非渲染）
  * @summary     固定 timestep 遊戲 loop；requestAnimationFrame 只排畫面，不決定遊戲速度
  * @exports     createGameLoop, startGameLoop
  * @depends     config/gameConfig.js
  * @sourceOfTruth Docs/game-architecture-plan.md「隨機與時間必須注入」
- * @version     v0.0.6.0
+ * @version     v0.0.12.0
  */
 
 import { GAME_CONFIG } from '../../config/gameConfig.js';
@@ -69,3 +69,4 @@ export function startGameLoop(options) {
   loop.start();
   return loop;
 }
+

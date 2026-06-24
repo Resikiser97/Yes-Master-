@@ -1,11 +1,11 @@
-﻿/**
+/**
  * @file        building.js
  * @module      logic（pure）
  * @summary     建造放置/拆除合法性判定（reach + 分段範圍 + 高度 + 連通性 + 兩層規則），純函式
  * @exports     blockLayer, buildHalfWidth, validatePlacement, validateRemoval
  * @depends     config/blocks.js、src/logic/connectivity.js
  * @sourceOfTruth Docs/game-architecture-plan.md「核心地基系統」、Docs/waveplan.md「建造範圍」
- * @version     v0.0.6.0
+ * @version     v0.0.12.0
  *
  * 兩層（Z）：dirt = 背景泥土（第一層地基）；fore = 前景第二層方塊（蓋在連通泥土前方）。
  * 純函式：只讀傳入的 dirt/fore/core 等資料判斷，不碰 DOM/world 狀態。
@@ -73,3 +73,4 @@ export function validateRemoval(ctx, x, y) {
   }
   return { ok: false, reason: 'nothing_here' };
 }
+

@@ -1,11 +1,11 @@
-﻿/**
+/**
  * @file        rng.js
  * @module      logic（pure）
  * @summary     可重現的 seeded 亂數產生器（讓所有含隨機的純邏輯可注入、可測試）
  * @exports     createRng
  * @depends     （無）
  * @sourceOfTruth 開發鐵則 9：純邏輯內禁止直接呼叫 Math.random()，一律注入此 RNG
- * @version     v0.0.6.0
+ * @version     v0.0.12.0
  */
 
 // mulberry32：同一 seed → 同一序列，純函式可重現
@@ -25,3 +25,4 @@ export function createRng(seed = 1) {
     bernoulli: (p) => next() < p,           // p 機率回 true
   };
 }
+

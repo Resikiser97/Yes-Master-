@@ -1,11 +1,11 @@
-﻿/**
+/**
  * @file        cardEffect.js
  * @module      logic（pure）
  * @summary     套用卡片 effect 到 world 狀態（骨架；Codex-8A 填入各 handler 實作）
  * @exports     applyCardEffect
  * @depends     config/cards.js
  * @sourceOfTruth Docs/bosscard.md「卡片效果」
- * @version     v0.0.6.0
+ * @version     v0.0.12.0
  *
  * 呼叫方須在此函式之後呼叫 refreshCoreSnapshot(world, { applyHpMaxDelta: true })
  * 以把 cardBonuses 合入核心數值快照，並正確夾取 coreHp。
@@ -60,3 +60,4 @@ function _applyModifier(world, effect) {
     world.cardModifiers.push({ ...mod });
   }
 }
+

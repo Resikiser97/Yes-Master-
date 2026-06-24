@@ -4,7 +4,7 @@
  * @summary     手機版面輔助：動態 tilePx 計算、三欄觸控版面、觸控偵測、直向遮罩
  * @exports     computeTilePx, applyTilePx, computeThreeColumnLayout, applyThreeColumnLayout, isTouchDevice, isStandalone, getSavedInputMode, saveInputMode, setupOrientationGuard
  * @depends     （無）
- * @version     v0.0.9.0
+ * @version     v0.0.12.0
  *
  * 注意：baseViewCols/baseViewRows 在首次呼叫時快取，避免反覆 applyTilePx 後計算漂移。
  */
@@ -12,6 +12,13 @@
 let _baseViewCols = null;
 let _baseViewRows = null;
 let _baseViewportPx = null;
+
+const MOBILE_VIEWPORT_CROP_TILES = {
+  top: 9,
+  right: 8,
+  bottom: 3,
+  left: 8,
+};
 
 function ensureBase(cfg) {
   if (_baseViewCols === null) {
@@ -45,9 +52,20 @@ export function applyTilePx(cfg, tilePx, reserveBottomPx = 0) {
   };
 }
 
+export function computeMobileGameViewportPx(cfg) {
+  ensureBase(cfg);
+  const tilePx = GAME_CONFIG_TILEPX_FALLBACK(cfg);
+  const cropX = (MOBILE_VIEWPORT_CROP_TILES.left + MOBILE_VIEWPORT_CROP_TILES.right) * tilePx;
+  const cropY = (MOBILE_VIEWPORT_CROP_TILES.top + MOBILE_VIEWPORT_CROP_TILES.bottom) * tilePx;
+  return {
+    width: Math.max(tilePx * 6, _baseViewportPx.width - cropX),
+    height: Math.max(tilePx * 6, _baseViewportPx.height - cropY),
+  };
+}
+
 /**
  * 手機三欄 layout：左右固定操作區，中間保留桌面 canvas 比例等比縮小。
- * 不改 cfg.render.tilePx，避免觸控模式影響遊戲邏輯與 HUD 座標。
+ * 手機模式使用較小的遊戲內 viewport，讓 tile 在手機橫向畫面中更清楚。
  */
 export function computeThreeColumnLayout(cfg) {
   ensureBase(cfg);
@@ -58,15 +76,18 @@ export function computeThreeColumnLayout(cfg) {
   const preferredSide = Math.round(w * 0.22);
   const sideWidth = Math.max(sideMin, Math.min(sideMax, preferredSide));
   const centerWidth = Math.max(1, w - sideWidth * 2);
-  const scale = Math.min(centerWidth / _baseViewportPx.width, h / _baseViewportPx.height);
-  const canvasWidth = Math.floor(_baseViewportPx.width * scale);
-  const canvasHeight = Math.floor(_baseViewportPx.height * scale);
+  const gameViewportPx = computeMobileGameViewportPx(cfg);
+  const scale = Math.min(centerWidth / gameViewportPx.width, h / gameViewportPx.height);
+  const canvasWidth = Math.floor(gameViewportPx.width * scale);
+  const canvasHeight = Math.floor(gameViewportPx.height * scale);
 
   return {
     sideWidth,
     centerWidth,
     canvasWidth,
     canvasHeight,
+    gameViewportPx,
+    scale,
     stageLeft: sideWidth + Math.floor((centerWidth - canvasWidth) / 2),
     stageTop: Math.floor((h - canvasHeight) / 2),
   };
@@ -89,8 +110,21 @@ export function applyThreeColumnLayout(cfg, canvas) {
     stage.style.overflow = 'hidden';
   }
   if (canvas) {
-    canvas.style.width = `${layout.canvasWidth}px`;
-    canvas.style.height = `${layout.canvasHeight}px`;
+    const scale = layout.scale;
+    canvas.style.position = 'absolute';
+    canvas.style.zIndex = '0';
+    canvas.style.left = `${-MOBILE_VIEWPORT_CROP_TILES.left * cfg.render.tilePx * scale}px`;
+    canvas.style.top = `${-MOBILE_VIEWPORT_CROP_TILES.top * cfg.render.tilePx * scale}px`;
+    canvas.style.width = `${_baseViewportPx.width * scale}px`;
+    canvas.style.height = `${_baseViewportPx.height * scale}px`;
+  }
+  const modeBadge = document.getElementById('mode-badge');
+  if (modeBadge) {
+    modeBadge.style.zIndex = '2';
+  }
+  const version = document.getElementById('version');
+  if (version) {
+    version.style.zIndex = '2';
   }
   document.body.style.background = '#30343a';
   return layout;
@@ -152,3 +186,4 @@ export function setupOrientationGuard() {
   window.visualViewport?.addEventListener('resize', check);
   check();
 }
+

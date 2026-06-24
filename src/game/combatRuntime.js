@@ -5,7 +5,7 @@
  * @exports     spawnDebugEnemies, updateEnemies, updateCoreCombat
  * @depends     config/enemies.js、config/gameConfig.js、src/logic/combat.js、src/logic/connectivity.js
  * @sourceOfTruth Docs/game-design-plan.md「核心攻擊與防禦機制」
- * @version     v0.0.6.0
+ * @version     v0.0.12.0
  */
 
 import { ENEMIES } from '../../config/enemies.js';
@@ -118,6 +118,10 @@ export function updateCoreCombat(world, dt, cfg = GAME_CONFIG) {
     world.combat.lastHitTimer = Math.max(0, world.combat.lastHitTimer - dt);
     if (world.combat.lastHitTimer === 0) world.combat.lastHits = [];
   }
+  if (world.vfx?.timer > 0) {
+    world.vfx.timer = Math.max(0, world.vfx.timer - dt);
+    if (world.vfx.timer === 0) world.vfx.bolts = [];
+  }
   if (!world.enemies.length || world.phase === 'gameover') return world.combat;
 
   world.combat.attackCooldown = Math.max(0, world.combat.attackCooldown - dt);
@@ -140,7 +144,64 @@ export function updateCoreCombat(world, dt, cfg = GAME_CONFIG) {
     world.combat.lastHits.push({ id: target.id, damage });
   }
   world.combat.lastHitTimer = 0.45;
+  // VFX 快照：攻擊當下固定生成 zigzag 頂點，renderer 只讀取並繪製。
+  if (world.vfx) {
+    world.vfx.timer = 0.45;
+    world.vfx.bolts = buildAttackBolts(world, targets, world.combat.rng, cfg, anchors);
+  }
   pruneDeadEnemies(world);
   world.combat.attackCooldown = 1 / Math.max(0.001, stats.attackSpeed);
   return world.combat;
+}
+
+function buildAttackBolts(world, targets, rng, cfg = GAME_CONFIG, anchors = coreAttackAnchors(world)) {
+  const t = cfg.render.tilePx;
+  if (!anchors.length) return [];
+
+  return targets.map((target, chainIdx) => {
+    let best = anchors[0];
+    let bestD2 = Infinity;
+    for (const anchor of anchors) {
+      const d2 = dist2(target, anchor);
+      if (d2 < bestD2) {
+        bestD2 = d2;
+        best = anchor;
+      }
+    }
+
+    const start = { x: (best.x + 0.5) * t, y: (best.y + 0.5) * t };
+    const end = { x: (target.x + 0.5) * t, y: (target.y + 0.5) * t };
+    return { points: buildBoltPoints(start, end, rng, chainIdx === 0), chainIdx };
+  });
+}
+
+function buildBoltPoints(start, end, rng, isPrimary) {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const len = Math.hypot(dx, dy);
+  if (len < 2) return [start, end];
+
+  const perpX = -dy / len;
+  const perpY = dx / len;
+  const segments = 8;
+  const spread = Math.min(len * 0.22, isPrimary ? 34 : 20);
+  const points = [start];
+
+  for (let i = 1; i < segments; i++) {
+    const frac = i / segments;
+    const taper = 1 - Math.abs(0.5 - frac) * 1.4;
+    const offset = randomRange(rng, -spread, spread) * Math.max(0.25, taper);
+    points.push({
+      x: start.x + dx * frac + perpX * offset,
+      y: start.y + dy * frac + perpY * offset,
+    });
+  }
+
+  points.push(end);
+  return points;
+}
+
+function randomRange(rng, min, max) {
+  if (typeof rng?.pct === 'function') return rng.pct(min, max);
+  return min + (rng?.next?.() ?? 0.5) * (max - min);
 }

@@ -7,12 +7,18 @@ globalThis.window = {
   navigator: { standalone: false },
   matchMedia: () => ({ matches: false }),
 };
-const { computeThreeColumnLayout } = await import('../src/ui/mobileLayout.js');
+const { computeMobileGameViewportPx, computeThreeColumnLayout } = await import('../src/ui/mobileLayout.js');
 
 const baseCfg = {
   render: { tilePx: 16 },
   map: { viewportPx: { width: 800, height: 600 } },
 };
+
+{
+  const viewport = computeMobileGameViewportPx(baseCfg);
+  assert.deepEqual(viewport, { width: 544, height: 408 }, 'mobile game viewport should crop requested tiles');
+  assert.deepEqual(baseCfg.map.viewportPx, { width: 800, height: 600 }, 'desktop/base viewport should stay unchanged');
+}
 
 // Normal landscape dimensions
 {

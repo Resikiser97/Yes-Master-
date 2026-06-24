@@ -1,11 +1,11 @@
-﻿/**
+/**
  * @file        coreStats.js
  * @module      logic（pure）
  * @summary     由「已放置方塊計數」即時換算核心六大數值（純函式，config 驅動）
  * @exports     countPlacedBlocks, computeCoreStats
  * @depends     config/gameConfig.js、config/blocks.js
  * @sourceOfTruth Docs/game-design-plan.md「核心攻擊與防禦機制」
- * @version     v0.0.6.0
+ * @version     v0.0.12.0
  *
  * 不寫死任何加成倍率：倍率全部來自 BLOCKS[block].bonus（Magic Number 禁令）。
  */
@@ -72,3 +72,4 @@ export function computeCoreStats(blockCounts = {}, opts = {}) {
 
   return stats;
 }
+

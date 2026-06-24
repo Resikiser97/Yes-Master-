@@ -1,11 +1,11 @@
-﻿/**
+/**
  * @file        connectivity.js
  * @module      logic（pure）
  * @summary     背景泥土地基的連通性判定（BFS）與放置/拆除合法性（純函式）
  * @exports     key, computeConnected, canPlaceDirt, canRemoveDirt
  * @depends     （無）
  * @sourceOfTruth Docs/game-architecture-plan.md「核心地基系統」
- * @version     v0.0.6.0
+ * @version     v0.0.12.0
  *
  * 連通性只在「背景泥土平面」判定：4 方向相鄰（X 左右 + Y 上下，不含斜角），不穿透深度。
  * 泥土格表示為 Set<"x,y"> 字串；核心格為 [[x,y], ...]（2x2 共 4 格）。
@@ -71,3 +71,4 @@ export function canRemoveDirt(dirtCells, coreCells, x, y) {
   }
   return true;
 }
+

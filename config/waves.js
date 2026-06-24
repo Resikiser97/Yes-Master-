@@ -1,11 +1,11 @@
-﻿/**
+/**
  * @file        waves.js
  * @module      config
  * @summary     1-30 關單人基準波次組成、成長規則、Boss 門口攻擊、加時與 21-30 阻擋區
  * @exports     WAVES, GROWTH, BOSS_RULES, OVERTIME, BLOCKER_BAND
  * @depends     enemies.js（敵人 key）
  * @sourceOfTruth Docs/waveplan.md（唯一波次主檔）
- * @version     v0.0.6.0
+ * @version     v0.0.12.0
  */
 
 // 單人基準波次：每關各敵人數量。多人倍率由 waveGen 套（普通怪 xN、Boss N 隻）
@@ -79,3 +79,4 @@ export const BLOCKER_BAND = {
   minAttackPressureEvery2Stages: 1,      // 最低每 2 關至少等效 +1 攻擊壓力
   seed: 20260622,
 };
+

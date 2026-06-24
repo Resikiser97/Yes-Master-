@@ -1,11 +1,11 @@
-﻿/**
+/**
  * @file        phaseRuntime.js
  * @module      game（orchestration 層，非純邏輯）
  * @summary     晝夜階段狀態機：prep→night→overtime→gameover/waveClear；正式波次出怪與加時賽
  * @exports     initPhaseState, updatePhase
  * @depends     config/gameConfig.js、config/waves.js、src/logic/waveGen.js、src/logic/spawnPosition.js、src/logic/rng.js
  * @sourceOfTruth Docs/waveplan.md「晝夜節奏」「怪物生成安全規則」「夜晚加時賽/狂暴模式」
- * @version     v0.0.6.0
+ * @version     v0.0.12.0
  *
  * phase 轉換：
  *   prep（30s 或按 N）→ night（60s，分批出怪）
@@ -223,3 +223,4 @@ export function resolveCardOffer(world, chosenIndex, cfg = GAME_CONFIG) {
   world.phase      = 'prep';
   world.phaseTimer = cfg.phases.prepSeconds;
 }
+

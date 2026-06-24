@@ -5,12 +5,12 @@
  * @exports     GAME_CONFIG
  * @depends     （無）
  * @sourceOfTruth Docs/game-design-plan.md、Docs/game-architecture-plan.md、Docs/waveplan.md
- * @version     v0.0.11.0
+ * @version     v0.0.12.0
  */
 
 export const GAME_CONFIG = {
   // 版本同步點之一（見 .claude/instructions.md 版本號同步鐵則）
-  version: 'v0.0.11.0',
+  version: 'v0.0.12.0',
 
   // MVP 模式角標（單人 / 多人），方便錄影分辨測試版本
   mode: 'single', // 'single' | 'multi'
@@ -19,7 +19,7 @@ export const GAME_CONFIG = {
   debug: {
     seedDemoStructure: false, // 開局塞 demo 泥土/方塊（已接建造後關閉，避免右鍵拆 demo 退免費材料）
     enabled: true,
-    hotkeys: true,            // H 扣血、J 回血、K 補塔內測試資源
+    hotkeys: true,            // H/J/K/L/P/C/N/Q/X/T debug 操作（T=暫停/恢復）
     damageAmount: 10,
     healAmount: 10,
     resourceGrant: { dirt: 10, sand: 10, stone: 10 },

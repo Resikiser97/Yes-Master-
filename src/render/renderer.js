@@ -5,13 +5,15 @@
  * @exports     Renderer
  * @depends     config/gameConfig.js
  * @sourceOfTruth Docs/game-design-plan.md「建築維度」「遊戲內 UI 設計」
- * @version     v0.0.11.0
+ * @version     v0.0.12.0
  *
  * 渲染層只「讀」world 狀態畫圖，不寫任何遊戲規則（鐵則 9）。
  */
 
 import { GAME_CONFIG } from '../../config/gameConfig.js';
 import { BLOCKS } from '../../config/blocks.js';
+import { SPRITE_SHEETS, getFrameRect } from '../../config/sprites.js';
+import { coreAttackAnchors } from '../game/combatRuntime.js';
 import { inventoryWeight } from '../logic/inventory.js';
 import { durabilityToBreak } from '../logic/mining.js';
 
@@ -93,6 +95,16 @@ export class Renderer {
       canvas.style.imageRendering = 'pixelated';
     }
     this.ctx = canvas?.getContext?.('2d') ?? null;
+    // Sprite 圖示（由 main.js 非同步載入後注入）
+    this._sprites = null;
+    // 範圍圈 lazy cache（key = `${range}:${tilePx}`）
+    this._rangeCacheKey = '';
+    this._rangeCanvas = null;
+  }
+
+  /** 注入已載入的 sprites Map（main.js 在圖片 onload 後呼叫） */
+  setSprites(imgs) {
+    this._sprites = imgs;
   }
 
   /** 視窗縮放後由外部呼叫：cfg.render.tilePx 和 cfg.map.viewportPx 已由 applyTilePx 更新。 */
@@ -107,6 +119,8 @@ export class Renderer {
       this.canvas.style.height = `${this.viewport.height}px`;
     }
     this.ctx = this.canvas?.getContext?.('2d') ?? null;
+    this._rangeCacheKey = ''; // 縮放後強制重建範圍圈 cache
+    this._rangeCanvas = null;
   }
 
   render(world) {
@@ -137,9 +151,11 @@ export class Renderer {
     if (this.cfg.render.showGrid) this._drawGrid(x0, x1, y0, y1);
     this._drawMines(world);
     this._drawDirt(world);
+    this._drawRangeCircle(world);    // 攻擊範圍圈（泥土之上、前景方塊之下）
     this._drawFore(world);
     this._drawCore(world);
     this._drawEnemies(world);
+    this._drawVFX(world);            // 電擊 VFX（敵人之上，讀取攻擊時固定生成的路徑）
     this._drawPlayer(world);
     this._drawDrops(world);          // 掉落物（世界座標）
     this._drawBuildPreview(world);   // 放置預覽（世界座標）
@@ -151,6 +167,7 @@ export class Renderer {
     if (world.phase === 'gameover') this._drawGameOverOverlay(world);
     if (world.phase === 'cardOffer') this._drawCardOffer(world);
     if (world.firstGame && world.tutorialTimer > 0) this._drawTutorialHint(world);
+    if (world.debugPaused) this._drawPausedOverlay();
     if (world.showDebug) this._drawDebugOverlay(world);
   }
 
@@ -236,9 +253,12 @@ export class Renderer {
     const hitTotal = world.combat?.lastHits?.reduce((sum, hit) => sum + hit.damage, 0) ?? 0;
     const enemyLine = `敵人 ${world.enemies?.length ?? 0}　最近命中 ${fmt2(hitTotal)}`;
     const phaseLine = this._phaseLine(world);
-    const mode = world.selectedBlock
+    const modeText = world.selectedBlock
       ? `建造：${BLOCKS[world.selectedBlock]?.zh ?? world.selectedBlock}（剩 ${world.storage[world.selectedBlock] ?? 0}）　左鍵放置 / 右鍵拆除 / 再按取消`
       : '挖礦模式（左鍵長按挖最近）　按 1~7 選材料建造';
+    const modeLine = world.selectedBlock
+      ? { text: modeText, iconKey: world.selectedBlock }
+      : modeText;
     const leftLines = [
       coreLine,
       coreLine2,
@@ -248,7 +268,7 @@ export class Renderer {
     ].filter(Boolean);
     const rightLines = [
       phaseLine,
-      mode,
+      modeLine,
       fatigueLine,
       enemyLine,
     ].filter(Boolean);
@@ -273,8 +293,31 @@ export class Renderer {
     ctx.fillRect(8 + halfW, panelTop + 4, 1, panelH - 8);
     ctx.fillStyle = '#eee';
     leftLines.forEach((ln, i) => ctx.fillText(ln, 14, panelTop + padY + i * lineH));
-    rightLines.forEach((ln, i) => ctx.fillText(ln, 8 + halfW + 8, panelTop + padY + i * lineH));
+    rightLines.forEach((ln, i) => this._drawHudLine(ln, 8 + halfW + 8, panelTop + padY + i * lineH));
     ctx.restore();
+  }
+
+  _drawHudLine(line, x, y) {
+    if (typeof line === 'string') {
+      this.ctx.fillText(line, x, y);
+      return;
+    }
+
+    const iconDrawn = line.iconKey ? this._drawBlockIcon(line.iconKey, x, y - 1, 16) : false;
+    this.ctx.fillText(line.text ?? '', iconDrawn ? x + 20 : x, y);
+  }
+
+  _drawBlockIcon(blockKey, x, y, size) {
+    const img = this._sprites?.get('blocksNoFrame');
+    if (!img?.complete || !img.naturalWidth || !img.naturalHeight) return false;
+
+    const frame = getFrameRect(img, SPRITE_SHEETS.blocksNoFrame, blockKey);
+    if (!frame.sw || !frame.sh) return false;
+
+    const ctx = this.ctx;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(img, frame.sx, frame.sy, frame.sw, frame.sh, x, y, size, size);
+    return true;
   }
 
   _phaseLine(world) {
@@ -326,6 +369,25 @@ export class Renderer {
     ctx.restore();
   }
 
+  _drawPausedOverlay() {
+    const ctx = this.ctx;
+    const { width: vw } = this.viewport;
+    ctx.save();
+    ctx.fillStyle = 'rgba(10,16,24,0.82)';
+    ctx.strokeStyle = 'rgba(255,180,0,0.55)';
+    ctx.lineWidth = 1;
+    const w = 170, h = 30;
+    const x = Math.round((vw - w) / 2), y = 10;
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    ctx.fillStyle = '#f0b020';
+    ctx.font = 'bold 13px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('DEBUG PAUSED  T 恢復', vw / 2, y + h / 2);
+    ctx.restore();
+  }
+
   _drawDebugOverlay(world) {
     const ctx = this.ctx;
     const { width: vw } = this.viewport;
@@ -347,11 +409,13 @@ export class Renderer {
       'H 扣血　J 回血',
       'K 補建材　L 生 1 敵',
       'P 生 5 敵　C 抽卡',
+      'T 暫停/恢復',
       'N 夜晚　Q 重試',
       'X 重置存檔',
       '─────────────────',
       `tick: ${world.clock?.updateTick ?? 0}`,
       `phase: ${world.phase ?? '-'}`,
+      `paused: ${world.debugPaused ? 'YES' : '-'}`,
       `stage: ${(world.stage ?? 0) + 1}  test: ${world.testMode ? '✓' : '-'}`,
       `drops: ${world.drops?.length ?? 0}  enemies: ${world.enemies?.length ?? 0}`,
       `coreHp: ${fmt1(world.coreHp ?? cs?.hpMax ?? 0)}/${fmt1(cs?.hpMax ?? 0)}`,
@@ -579,5 +643,135 @@ export class Renderer {
       this.ctx.fillStyle = PALETTE.enemyHp;
       this.ctx.fillRect(x - barW / 2, y - t * 0.75, barW * pct, barH);
     }
+  }
+
+  // ── 攻擊範圍圈（正式攻擊 anchors 的範圍聯集，lazy cache）───────────────
+
+  _drawRangeCircle(world) {
+    if (!world.coreStats?.range) return;
+    const t   = this.t;
+    const range = world.coreStats.range;
+    const anchors = coreAttackAnchors(world);
+    if (!anchors.length) return;
+    const anchorKey = anchors.map((a) => `${a.x},${a.y}`).join('|');
+    const key = `${range}:${t}:${anchorKey}`;
+
+    if (this._rangeCacheKey !== key) {
+      this._rangeCacheKey = key;
+      const ppt     = this.cfg.map.pxPerTile;
+      const rangePx = (range / ppt) * t;
+      const pad     = 14;
+      const centers = anchors.map((a) => ({ x: a.x * t, y: a.y * t }));
+      const minX = Math.min(...centers.map((p) => p.x)) - rangePx - pad;
+      const minY = Math.min(...centers.map((p) => p.y)) - rangePx - pad;
+      const maxX = Math.max(...centers.map((p) => p.x)) + rangePx + pad;
+      const maxY = Math.max(...centers.map((p) => p.y)) + rangePx + pad;
+      const width = Math.ceil(maxX - minX);
+      const height = Math.ceil(maxY - minY);
+
+      try {
+        const oc    = new OffscreenCanvas(width, height);
+        const octx  = oc.getContext('2d');
+        const mask  = new OffscreenCanvas(width, height);
+        const mctx  = mask.getContext('2d');
+        mctx.translate(-minX, -minY);
+        mctx.fillStyle = '#fff';
+        for (const c of centers) {
+          mctx.beginPath();
+          mctx.arc(c.x, c.y, rangePx, 0, Math.PI * 2);
+          mctx.fill();
+        }
+
+        octx.save();
+        octx.globalAlpha = 0.75;
+        octx.shadowBlur = 14;
+        octx.shadowColor = '#00ccff';
+        octx.drawImage(mask, 0, 0);
+        octx.restore();
+        octx.globalCompositeOperation = 'source-in';
+        octx.fillStyle = 'rgba(0,205,255,0.18)';
+        octx.fillRect(0, 0, width, height);
+        octx.globalCompositeOperation = 'source-over';
+
+        octx.translate(-minX, -minY);
+        octx.fillStyle = 'rgba(120,245,255,0.8)';
+        for (const c of centers) {
+          octx.beginPath();
+          octx.arc(c.x, c.y, 2.2, 0, Math.PI * 2);
+          octx.fill();
+        }
+        this._rangeCanvas = { oc, x: minX, y: minY };
+      } catch (_) {
+        this._rangeCanvas = null; // OffscreenCanvas 不支援時 fallback
+      }
+    }
+
+    if (this._rangeCanvas) {
+      const { oc, x, y } = this._rangeCanvas;
+      this.ctx.drawImage(oc, x, y);
+    } else {
+      // Fallback：直接畫所有正式攻擊 anchor 的範圍圈。
+      const rangePx = (range / this.cfg.map.pxPerTile) * t;
+      this.ctx.save();
+      this.ctx.fillStyle = 'rgba(0,200,255,0.045)';
+      for (const a of anchors) {
+        this.ctx.beginPath();
+        this.ctx.arc(a.x * t, a.y * t, rangePx, 0, Math.PI * 2);
+        this.ctx.fill();
+      }
+      this.ctx.fillStyle = 'rgba(120,245,255,0.8)';
+      for (const a of anchors) {
+        this.ctx.beginPath();
+        this.ctx.arc(a.x * t, a.y * t, 2.2, 0, Math.PI * 2);
+        this.ctx.fill();
+      }
+      this.ctx.restore();
+    }
+  }
+
+  // ── 電擊 VFX（攻擊時固定生成 zigzag points，這裡只負責繪製）──────────────
+
+  _drawVFX(world) {
+    const vfx = world.vfx;
+    if (!vfx?.timer || vfx.timer <= 0 || !vfx.bolts?.length) return;
+
+    const alpha = Math.min(1, vfx.timer / 0.2); // 最後 0.2 s 淡出
+    const ctx   = this.ctx;
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+
+    for (const bolt of vfx.bolts) this._drawLightningBolt(ctx, bolt);
+
+    ctx.restore();
+  }
+
+  _drawLightningBolt(ctx, bolt) {
+    const pts = bolt.points ?? [];
+    if (pts.length < 2) return;
+    const isPrimary = bolt.chainIdx === 0;
+
+    // 外層光暈
+    ctx.shadowBlur  = isPrimary ? 18 : 10;
+    ctx.shadowColor = isPrimary ? '#00eeff' : '#88ccdd';
+    ctx.strokeStyle = isPrimary ? '#40e0ff' : '#55aacc';
+    ctx.lineWidth   = isPrimary ? 2.5 : 1.5;
+    ctx.lineCap     = 'round';
+    ctx.lineJoin    = 'round';
+    ctx.beginPath();
+    pts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+    ctx.stroke();
+
+    // 內層白色亮核
+    ctx.shadowBlur  = 4;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth   = isPrimary ? 1.2 : 0.7;
+    ctx.beginPath();
+    pts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+    ctx.stroke();
+
+    ctx.shadowBlur = 0;
+    ctx.lineCap    = 'butt';
+    ctx.lineJoin   = 'miter';
   }
 }

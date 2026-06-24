@@ -1,11 +1,11 @@
-﻿/**
+/**
  * @file        mining.js
  * @module      logic（pure）
  * @summary     挖礦：破塊所需敲擊數、每秒挖掘傷害、選離玩家最近的可挖礦格（純函式）
  * @exports     hitsToBreak, durabilityToBreak, miningDamagePerSecond, selectNearestMineCell
  * @depends     config/blocks.js
  * @sourceOfTruth Docs/game-design-plan.md「方塊系統」「操作輸入方式」
- * @version     v0.0.6.0
+ * @version     v0.0.12.0
  *
  * 挖掘能力 = 每下傷害；次數上限由輸入方式決定（點擊 10/s、長按 5/s）。
  * 例：沙/土/石 耐久 50、挖掘 10 → 5 下出塊。
@@ -57,3 +57,4 @@ export function selectNearestMineCell(player, mines, reach) {
   }
   return best;
 }
+

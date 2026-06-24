@@ -156,6 +156,76 @@
 
 ---
 
+## 1C. Codex 任務：Spritesheet 裁剪（Python PIL，v0.0.12.0）
+
+> Claude 已完成命名（assets/ 已整理）與程式碼整合（方塊 hotbar 圖示直接讀原始 sheet）。
+> Codex 已使用 Python + Pillow 完成裁剪，共輸出 52 張 PNG；方塊 sheet 仍由程式碼直接切幀。
+
+### 裁剪規則
+
+每個 spritesheet 以等寬等高格均分，行列從左上角開始。
+輸出路徑需 **創建目錄**（`os.makedirs(..., exist_ok=True)`）。
+
+### 任務清單
+
+#### ① 敵人 spritesheet（3 列 × 4 幀）- ✅ 已完成
+```
+輸入：assets/spritesheet_enemies_shield-muscle-leader_3row4col.png
+輸出目錄：assets/enemies/
+裁剪：3 列 × 4 幀，均等切割
+  row0 → shield_walk_f0.png ~ shield_walk_f3.png
+  row1 → muscle_walk_f0.png ~ muscle_walk_f3.png
+  row2 → leader_walk_f0.png ~ leader_walk_f3.png
+```
+
+#### ② 哥布林 spritesheet（3 列 × 4 幀）- ✅ 已完成
+```
+輸入：assets/spritesheet_goblin_3row4col_walk-walk-mine.png
+輸出目錄：assets/characters/goblin/
+裁剪：3 列 × 4 幀
+  row0 → goblin_walk_right_f0.png ~ goblin_walk_right_f3.png
+  row1 → goblin_walk_left_f0.png  ~ goblin_walk_left_f3.png
+  row2 → goblin_mine_f0.png       ~ goblin_mine_f3.png
+```
+
+#### ③ 核心球 spritesheet（3 列 × 4 幀）- ✅ 已完成
+```
+輸入：assets/spritesheet_core_orb_3row4col_normal-hit-lowhp.png
+輸出目錄：assets/core/
+裁剪：3 列 × 4 幀
+  row0 → core_normal_f0.png ~ core_normal_f3.png
+  row1 → core_hit_f0.png    ~ core_hit_f3.png
+  row2 → core_lowhp_f0.png  ~ core_lowhp_f3.png
+```
+
+#### ④ 平民敵人 spritesheet（2 列 × 2 行 = 4 幀）- ✅ 已完成
+```
+輸入：assets/spritesheet_enemy_civilian_2x2_walk.png
+輸出目錄：assets/enemies/
+裁剪：2 列 × 2 行，依橫向順序
+  → civilian_walk_f0.png ~ civilian_walk_f3.png
+```
+
+#### ⑤ UI 圖示 spritesheet（4 欄 × 3 列 = 12 圖示）- ✅ 已完成
+```
+輸入：assets/spritesheet_ui_icons_12pack_4x3grid.png
+輸出目錄：assets/ui/
+裁剪：4 欄 × 3 列，依橫向順序
+  row0: icon_gold-coin.png, icon_silver-coin.png, icon_diamond-gem.png, icon_ticket.png
+  row1: icon_settings-gear.png, icon_trophy.png, icon_handshake.png, icon_backpack.png
+  row2: icon_slot-empty.png, icon_slot-selected.png, icon_crown.png, icon_red-dot.png
+```
+
+> **注意**：方塊 spritesheet（`spritesheet_blocks_9tiles_noframe.png` / `_slotframe.png`）
+> **不需裁剪**，程式碼直接以 `drawImage + getFrameRect()` 讀原始 sheet。
+
+### 完成狀態
+
+1. 已在本節各任務後標注「✅ 已完成」
+2. 已更新 `assets/icon-status.md` 對應欄位狀態 🔲 → ✅
+
+---
+
 ## 3. 交接約定
 
 - Codex 改 `config/` 數值 **不需** 動 `src/`、不需動版本號。

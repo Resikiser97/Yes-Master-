@@ -1,8 +1,8 @@
 # QUICKREF.md — 每次啟動速查表
 
-> 版本：v0.0.11.0
+> 版本：v0.0.12.0
 > 類型：**代碼優先**（文件描述錯了，以代碼為準去改本檔）。
-> ⚠️ MVP 單機可動：移動/挖礦/背包/塔內資源/掉落物自動撿取/跟隨鏡頭/初版建造/核心數值回饋/核心 HP 與修復/debug 核心戰鬥/正式波次/晝夜/卡片選擇（hover+tier中文）/localStorage 存檔/新手教學提示/**debug 浮層（` 鍵）/測試難度 preset（1~30 關）/手機三欄觸控 UI（左 HUD+D-pad、中 canvas+1~0 快捷列、右 Debug Tool+動作鍵）/動態 canvas 縮放/**PWA manifest + iOS/Android 安裝引導畫面**/**手機 3×3 放置方向選擇器**已成完整循環。
+> ⚠️ MVP 單機可動：移動/挖礦/背包/塔內資源/掉落物自動撿取/跟隨鏡頭/初版建造/核心數值回饋/核心 HP 與修復/debug 核心戰鬥/正式波次/晝夜/卡片選擇（hover+tier中文）/localStorage 存檔/新手教學提示/**debug 浮層（` 鍵）/測試難度 preset（1~30 關）/手機三欄觸控 UI（左 HUD+D-pad、中 canvas+1~0 快捷列、右 Debug Tool+動作鍵）/動態 canvas 縮放/**PWA manifest + iOS/Android 安裝引導畫面**/**手機 3×3 放置方向選擇器**/**電擊攻擊 VFX + 範圍圈**/**快捷列方塊圖示（手機+鍵盤 HUD）**/**sprite 載入基礎設施 + 素材整理**已成完整循環。
 
 ---
 
@@ -30,7 +30,10 @@
 | `config/mines.js` | 礦山機率表 + 初始資源包 |
 | `src/logic/*`（純函式） | rng / damageDefense / coreStats / coreHealth / connectivity / building / combat / waveGen / cardOffer / migration / playerMovement / mineGen / inventory / mining / **drops**（掉落物撿取） |
 | `src/game/*` | world（狀態 + 鏡頭跟隨 updateCameraFollow）/ coreSnapshot（核心數值快照）/ combatRuntime（debug 敵人 + 核心攻擊）/ gameLoop（fixed timestep）/ actions（挖礦/卸貨/建造/掉落物 orchestration） |
-| `src/render` `src/input` `src/storage` `src/ui` | 渲染（只讀 world、插值 + 整數平移 + 建造預覽 + 掉落物 + 核心數值 HUD + 卡片面板 hover + 教學提示；手機模式可關閉 canvas HUD）/ 輸入（Controls 鍵盤/滑鼠 + **TouchControls 三欄手機 UI：左 HUD+D-pad、中 1~0 快捷列、右 Debug Tool+動作鍵**）/ 存檔層（saveLocal + saveManager）/ UI（splash 難度+輸入模式選擇、**mobileLayout** 動態 tilePx + 三欄 layout + 直向守衛 + isStandalone、**pwaTutorial** PWA 安裝引導畫面） |
+| `src/render` `src/input` `src/storage` `src/ui` | 渲染（只讀 world、插值 + 整數平移 + 建造預覽 + 掉落物 + 核心數值 HUD + 卡片面板 hover + 教學提示；手機模式可關閉 canvas HUD；**_drawRangeCircle 正式攻擊 anchors 的範圍聯集（lazy OffscreenCanvas）**；**_drawVFX 電擊閃電（讀取攻擊時固定生成的 bolt points）**；**debugPaused 暫停提示**；**setSprites 注入 sprite 圖示**）/ 輸入（Controls 鍵盤/滑鼠 + **TouchControls 三欄手機 UI：左 HUD+D-pad、中 1~0 快捷列（圖示+角標）、右 Debug Tool+動作鍵**）/ 存檔層（saveLocal + saveManager）/ UI（splash 難度+輸入模式選擇、**mobileLayout** 動態 tilePx + 三欄 layout + 直向守衛 + isStandalone、**pwaTutorial** PWA 安裝引導畫面） |
+| `src/render/imageLoader.js` | 非同步批量載入圖片：`loadImages(manifest)` → `Promise<Map<key, HTMLImageElement>>` |
+| `config/sprites.js` | Spritesheet 定義：`SPRITE_SHEETS`（blocksNoFrame 指向去背重打包 hotbar sheet / blocksSlotFrame）+ `getFrameRect(img, sheet, keyOrIndex)` 切幀工具 |
+| `assets/icon-status.md` | 素材裁剪/整合狀態追蹤表（✅已整合或已裁剪 / 🔲待裁剪 / ⏸暫緩 / ❌尚未製作） |
 | `manifest.json` | PWA 宣告（standalone/landscape/theme-color/#D4A017/icons） |
 | `tools/generate-icons.html` | 瀏覽器工具：產生並下載 icons/icon-192.png + icon-512.png |
 | `Docs/claude-codex-worklist.md` | Claude↔Codex 交接看板 |
@@ -85,7 +88,7 @@
 | 手機模式若直接改全域 `GAME_CONFIG.render.drawCanvasHud` 會污染桌面模式 | `main.js` 進 touch mode 時 clone cfg/render/map，再設 `drawCanvasHud=false`；桌面 renderer 仍照常畫 `_drawHud` |
 | **[部署前必修]** debug 功能預設開啟，全域暴露 app 狀態 | 正式 build 前必須：① `debug.enabled=false`、`debug.hotkeys=false`；② `window.__YES_MASTER__` 只在 `debug.enabled` 時掛載；③ 手機 debug panel（`_buildDebugPanel`）只在 debug 下建立。未來若導入 build pipeline 再做 build-time strip，目前開發期維持開啟 |
 
-> Debug hotkeys（`config/gameConfig.js debug.enabled && debug.hotkeys`）：H 扣核心血、J 回核心血、K 補塔內測試資源、L 生成 1 敵人、P 生成 5 敵人、C 直接開抽卡面板、X 清除 localStorage 存檔並重新整理（回新局）、**` 鍵切換 debug 浮層**（右上角疊加，顯示 tick/phase/drops/coreHp 等即時狀態）。手機模式另有右上 ⚙ Debug Tool，掛在右側灰欄，與 canvas debug overlay 可同時存在。
+> Debug hotkeys（`config/gameConfig.js debug.enabled && debug.hotkeys`）：H 扣核心血、J 回核心血、K 補塔內測試資源、L 生成 1 敵人、P 生成 5 敵人、C 直接開抽卡面板、T 暫停/恢復 gameplay update、X 清除 localStorage 存檔並重新整理（回新局）、**` 鍵切換 debug 浮層**（右上角疊加，顯示 tick/phase/drops/coreHp 等即時狀態）。手機模式另有右上 ⚙ Debug Tool，掛在右側灰欄，與 canvas debug overlay 可同時存在。
 
 > 已知的設計面注意點（可在開工時轉成具體陷阱）：
 > - 建築是三維度（背景泥土 = 地基；前景第二層蓋在泥土前方），連通性在背景平面判定。

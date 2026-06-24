@@ -1,8 +1,8 @@
 # MAIN.md — 函式級參考
 
-> 版本：v0.0.11.0
+> 版本：v0.0.12.0
 > 類型：**代碼優先**（文件描述錯了，以代碼為準去改本檔）。
-> ⚠️ MVP 單機可動：移動/挖礦/背包/塔內資源/掉落物自動撿取/跟隨鏡頭/初版建造/核心數值回饋/核心 HP 與修復/核心戰鬥/正式波次晝夜/卡片選擇（hover+tier中文）/localStorage 存檔/新手教學提示/**debug 浮層（` 鍵）**/**測試難度 preset（1~30 關）**/**手機觸控 UI + 動態 canvas 縮放**已成完整循環。
+> ⚠️ MVP 單機可動：移動/挖礦/背包/塔內資源/掉落物自動撿取/跟隨鏡頭/初版建造/核心數值回饋/核心 HP 與修復/核心戰鬥/正式波次晝夜/卡片選擇（hover+tier中文）/localStorage 存檔/新手教學提示/**debug 浮層（` 鍵）+ T 暫停**/**測試難度 preset（1~30 關）**/**手機觸控 UI + 動態 canvas 縮放**/**固定 bolt 電擊 VFX + 正式攻擊範圍可視化**/**快捷列圖示（手機 + 鍵盤 HUD）**/**sprite 基礎設施**已成完整循環。
 > 規則：新增 / 刪除函式必須同步本檔（見 `.claude/instructions.md` 開發鐵則）。
 >
 > 註：原本的「planning 進入點 / source map」已移至 `Docs/source-map.md`。
@@ -217,10 +217,16 @@ config/* 為靜態資料，被 logic 層 import。
 
 | 函式 | 職責 |
 |---|---|
-| `Renderer.render(world)` | 畫地面/網格/礦山方塊/兩層方塊/核心/玩家(插值位置)/敵人小血條/建造預覽/核心 HP/疲勞/核心數值 HUD；整數像素平移；同步 debug dataset；`firstGame && tutorialTimer > 0` 時疊加教學提示框；`showDebug` 時疊加 debug 浮層 |
-| `Renderer.resize(cfg)` | 視窗縮放後由外部呼叫；更新 `this.t / viewport`；重設 canvas.width/height/style |
+| `Renderer.render(world)` | 畫地面/網格/礦山方塊/兩層方塊/核心/玩家(插值位置)/敵人小血條/範圍圈/VFX 閃電/建造預覽/核心 HP/疲勞/核心數值 HUD；整數像素平移；同步 debug dataset；`firstGame && tutorialTimer > 0` 時疊加教學提示框；`showDebug` 時疊加 debug 浮層 |
+| `Renderer.resize(cfg)` | 視窗縮放後由外部呼叫；更新 `this.t / viewport`；重設 canvas.width/height/style；清除 `_rangeCacheKey` 強制重建範圍圈 cache |
+| `Renderer.setSprites(imgs)` | 注入 `Map<key, HTMLImageElement>`（由 main.js 非同步載入後呼叫） |
+| `Renderer._drawRangeCircle(world)` | 以 `${range}:${tilePx}:${anchors}` 為 cache key，讀 `coreAttackAnchors(world)` 畫正式攻擊範圍聯集；無 OffscreenCanvas 時 fallback 直接填色 |
+| `Renderer._drawVFX(world)` | 讀 `world.vfx.bolts`（攻擊時固定生成的 zigzag points）並繪製；主目標粗藍白，連鎖目標細淡藍；最後 0.2s 淡出 |
+| `Renderer._drawLightningBolt(ctx, x1, y1, x2, y2, isPrimary)` | 生成 zigzag 點並雙重描邊（外層光暈 + 內層白核） |
 | `Renderer._drawTutorialHint(world)` | 首次遊玩顯示黃色操作提示（prep/night 各顯不同文字，最後 1 秒依 tutorialTimer 淡出） |
 | `Renderer._drawDebugOverlay(world)` | 半透明金邊浮層疊在畫布右上角；顯示 debug hotkeys + 即時狀態（tick/phase/stage/testMode/drops/enemies/coreHp）；` 鍵關閉 |
+| `loadImages(manifest)` (imageLoader.js) | 非同步批量載入圖片；回傳 `Promise<Map<key, HTMLImageElement>>`；失敗只警告不中斷 |
+| `getFrameRect(img, sheet, keyOrIndex)` (sprites.js) | 從 spritesheet 取單幀 `{sx,sy,sw,sh}`，等寬等高均分切割 |
 | `Controls.attach/detach` | 綁/解 WASD/方向鍵、滑鼠長按挖礦、快捷列選材、左鍵放置、右鍵拆除、R 修復、debug hotkeys；canvas 自動 focus |
 | `Controls.getMoveVector()` / `Controls.isMining()` / `Controls.getSelectedSlot()` / `Controls.isRepairing()` | 回傳移動向量 / 是否長按挖礦中 / 目前快捷列 / 是否長按修復 |
 | `TouchControls.attach/detach` | 建立/移除 HTML overlay（D-pad + 動作鍵 + 快捷列 + HTML debug 面板）；canvas touchstart 監聽卡片選擇 |

@@ -1,11 +1,11 @@
-﻿/**
+/**
  * @file        cards.js
  * @module      config
  * @summary     第 10 關 18 張 MVP 卡池、強度分層、出卡固定槽位規則
  * @exports     CARDS, CARD_OFFER_RULES
  * @depends     （無）
  * @sourceOfTruth Docs/bosscard.md（唯一卡片主檔）
- * @version     v0.0.6.0
+ * @version     v0.0.12.0
  *
  * tier：'weak'（偏弱/功能）| 'standard'（標準）| 'strong'（偏強）
  * type：'resource' | 'ability' | 'core' | 'archetype'
@@ -78,3 +78,4 @@ export const CARD_OFFER_RULES = {
   // 第 20/30 關沿用同槽位規則，價值點 150/200（見 bosscard.md）
   valueByBossStage: { 10: 100, 20: 150, 30: 200 },
 };
+

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { GAME_CONFIG } from '../config/gameConfig.js';
 import { createWorld } from '../src/game/world.js';
 import { updatePhase } from '../src/game/phaseRuntime.js';
-import { updateEnemies } from '../src/game/combatRuntime.js';
+import { updateEnemies, updateCoreCombat } from '../src/game/combatRuntime.js';
 import { applyDebugAction } from '../src/game/actions.js';
 import { spawnPositions } from '../src/logic/spawnPosition.js';
 import './cardEffect.test.js';
@@ -117,6 +117,9 @@ function testRestartStageClearsCombatPhase() {
   world.combat.overtimeMultiplier = 8;
   world.combat.attackCooldown = 1;
   world.combat.lastHits = [{ id: 'enemy', damage: 1 }];
+  world.vfx.timer = 0.25;
+  world.vfx.bolts = [{ points: [{ x: 0, y: 0 }, { x: 1, y: 1 }], chainIdx: 0 }];
+  world.debugPaused = true;
 
   const out = applyDebugAction(world, 'restartStage', GAME_CONFIG);
   assert.equal(out.ok, true);
@@ -128,6 +131,58 @@ function testRestartStageClearsCombatPhase() {
   assert.equal(world.combat.overtimeMultiplier, 1);
   assert.equal(world.combat.attackCooldown, 0);
   assert.deepEqual(world.combat.lastHits, []);
+  assert.equal(world.vfx.timer, 0);
+  assert.deepEqual(world.vfx.bolts, []);
+  assert.equal(world.debugPaused, false);
+}
+
+function testDebugTogglePause() {
+  const world = createWorld(GAME_CONFIG);
+  assert.equal(world.debugPaused, false);
+
+  const pauseOut = applyDebugAction(world, 'togglePause', GAME_CONFIG);
+  assert.equal(pauseOut.ok, true);
+  assert.equal(pauseOut.paused, true);
+  assert.equal(world.debugPaused, true);
+
+  const resumeOut = applyDebugAction(world, 'togglePause', GAME_CONFIG);
+  assert.equal(resumeOut.ok, true);
+  assert.equal(resumeOut.paused, false);
+  assert.equal(world.debugPaused, false);
+}
+
+function testCoreCombatCreatesFixedVfxBolts() {
+  const world = createWorld(GAME_CONFIG);
+  world.phase = 'night';
+  world.combat.attackCooldown = 0;
+  world.enemies.push({
+    id: 'test-vfx-1',
+    key: 'civilian',
+    x: world.coreCenter.x + 2,
+    y: world.coreCenter.y,
+    hp: 30,
+    hpMax: 30,
+    attack: 1,
+    defense: 0,
+    moveSpeed: 0,
+    attackRange: 1,
+    attackCooldown: 0,
+  });
+
+  updateCoreCombat(world, 0, GAME_CONFIG);
+  assert.equal(world.vfx.timer, 0.45);
+  assert.equal(world.vfx.bolts.length, 1);
+  assert.equal(world.vfx.bolts[0].chainIdx, 0);
+  assert.ok(world.vfx.bolts[0].points.length > 2);
+  assert.ok(world.vfx.bolts[0].points.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y)));
+
+  const attackCooldown = world.combat.attackCooldown;
+  world.combat.lastHitTimer = 0;
+  world.enemies = [];
+  updateCoreCombat(world, 0.45, GAME_CONFIG);
+  assert.equal(world.vfx.timer, 0);
+  assert.deepEqual(world.vfx.bolts, []);
+  assert.equal(world.combat.attackCooldown, attackCooldown);
 }
 
 testSpawnPositionAvoidsMines();
@@ -135,5 +190,7 @@ testPhaseStartsNightAndSpawnsFirstBatch();
 testSpawnedWaveEnemyWalksToCoreAndAttacks();
 testEnemiesDamageCoreAndCanGameOver();
 testRestartStageClearsCombatPhase();
+testDebugTogglePause();
+testCoreCombatCreatesFixedVfxBolts();
 
-console.log('All tests passed (v0.0.11.0)');
+console.log('All tests passed (v0.0.12.0)');

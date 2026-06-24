@@ -6,7 +6,7 @@
  * @exports     TEST_PRESET_SAVE_KEY, buildTestConfig
  * @depends     config/gameConfig.js
  * @sourceOfTruth Docs/claude-codex-worklist.md「Step 11C」
- * @version     v0.0.8.0
+ * @version     v0.0.12.0
  */
 
 export const TEST_PRESET_SAVE_KEY = 'yesmaster.save.test.v1';
@@ -36,3 +36,4 @@ export function buildTestConfig(base) {
     _testInit: TEST_OVERRIDES._testInit,
   };
 }
+

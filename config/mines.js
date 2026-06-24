@@ -1,11 +1,11 @@
-﻿/**
+/**
  * @file        mines.js
  * @module      config
  * @summary     左右礦山補位機率表（每 30 塊）與第 0 關初始資源包
  * @exports     MINES, INITIAL_RESOURCE_PACK, MINE_SEED
  * @depends     （無）
  * @sourceOfTruth Docs/game-design-plan.md「礦山系統」「第 0 關初始資源包」
- * @version     v0.0.6.0
+ * @version     v0.0.12.0
  */
 
 // 礦山補位隨機序列固定 seed（每場可重現；Loading 時預生成 Queue 的概念）
@@ -31,3 +31,4 @@ export const INITIAL_RESOURCE_PACK = {
   scaleByPlayers: false,
   items: { dirt: 5, sand: 5, stone: 5, iron: 1, gold: 1, diamond: 1 },
 };
+

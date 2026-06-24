@@ -1,11 +1,11 @@
-﻿/**
+/**
  * @file        actions.js
  * @module      game（狀態/orchestration 層，非純邏輯、非渲染）
  * @summary     挖礦/卸貨/建造放置/拆除/核心修復/debug；呼叫純邏輯、改 world 狀態
  * @exports     updateMining, collectDrops, tryDeposit, tryPlace, tryRemove, computeBuildPreview, updateRepair, damageCore, healCore, applyDebugAction
  * @depends     config/gameConfig.js、config/blocks.js、src/game/coreSnapshot.js、src/game/combatRuntime.js、src/logic/mining.js、src/logic/mineGen.js、src/logic/inventory.js、src/logic/connectivity.js、src/logic/building.js、src/logic/coreHealth.js、src/logic/drops.js
  * @sourceOfTruth Docs/game-design-plan.md「操作輸入方式」「方塊系統」「遊戲內 UI 設計」
- * @version     v0.0.11.0
+ * @version     v0.0.12.0
  */
 
 import { GAME_CONFIG } from '../../config/gameConfig.js';
@@ -220,6 +220,10 @@ export function applyDebugAction(world, action, cfg = GAME_CONFIG) {
   if (!cfg.debug?.enabled || !cfg.debug?.hotkeys) return { ok: false, reason: 'debug_disabled' };
   if (action === 'damageCore') return damageCore(world, cfg.debug.damageAmount);
   if (action === 'healCore') return healCore(world, cfg.debug.healAmount);
+  if (action === 'togglePause') {
+    world.debugPaused = !world.debugPaused;
+    return { ok: true, paused: world.debugPaused };
+  }
   if (action === 'grantResources') {
     for (const [blockKey, qty] of Object.entries(cfg.debug.resourceGrant ?? {})) {
       world.storage = addItem(world.storage, blockKey, qty);
@@ -248,14 +252,20 @@ export function applyDebugAction(world, action, cfg = GAME_CONFIG) {
     world.enemies = [];
     world.phase   = 'prep';
     world.phaseTimer        = cfg.phases.prepSeconds;
+    world.debugPaused       = false;
     world.pendingSpawns     = [];
     world.nightElapsed      = 0;
     world.combat.overtimeMultiplier = 1;
     world.combat.attackCooldown     = 0;
     world.combat.lastHits           = [];
+    if (world.vfx) {
+      world.vfx.timer = 0;
+      world.vfx.bolts = [];
+    }
     // 恢復核心 HP（不恢復的話下一幀 updatePhase 看到 coreHp<=0 → 立刻重觸 gameover）
     world.coreHp = world.coreStats?.hpMax ?? cfg.core.base.hp;
     return { ok: true };
   }
   return { ok: false, reason: 'unknown_debug_action' };
 }
+

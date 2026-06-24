@@ -7,7 +7,7 @@
  *              src/render/renderer.js、src/input/controls.js、src/input/touchControls.js、
  *              src/ui/mobileLayout.js
  * @sourceOfTruth Docs/game-architecture-plan.md「MVP 開發範圍」
- * @version     v0.0.11.0
+ * @version     v0.0.12.0
  *
  * renderer、controls は splash 後に inputMode が確定してから生成。
  * 手機模式：TouchControls + setupOrientationGuard + 動態 tilePx resize。
@@ -30,6 +30,8 @@ import { clearSave } from './storage/saveLocal.js';
 import { refreshCoreSnapshot } from './game/coreSnapshot.js';
 import { showSplashScreen } from './ui/splash.js';
 import { applyThreeColumnLayout, setupOrientationGuard } from './ui/mobileLayout.js';
+import { loadImages } from './render/imageLoader.js';
+import { SPRITE_SHEETS } from '../config/sprites.js';
 
 export function boot() {
   const versionEl = document.getElementById('version');
@@ -48,9 +50,9 @@ export function boot() {
       };
     }
 
-    // 2. Renderer（手機三欄只縮放 CSS 呈現；遊戲內部仍保留桌面 viewport）
-    const renderer = new Renderer(canvas, cfg);
+    // 2. Renderer（手機三欄保留原始 viewport，再由 CSS 裁切放大呈現）
     let touchLayout = null;
+    const renderer = new Renderer(canvas, cfg);
     if (inputMode === 'touch') {
       touchLayout = applyThreeColumnLayout(cfg, canvas);
     }
@@ -95,6 +97,15 @@ export function boot() {
     controls.attach();
     if (inputMode === 'touch') controls.updateLayout?.(touchLayout);
 
+    // 非同步載入 sprite 圖示（不阻塞遊戲啟動，載入完成後注入）
+    loadImages({
+      blocksNoFrame:   SPRITE_SHEETS.blocksNoFrame.src,
+      blocksSlotFrame: SPRITE_SHEETS.blocksSlotFrame.src,
+    }).then((imgs) => {
+      renderer.setSprites(imgs);
+      if (inputMode === 'touch') controls.setSprites?.(imgs);
+    }).catch((err) => console.warn('[sprites] 圖示載入失敗', err));
+
     // 9. ⚙ Debug 按鈕（keyboard 和 touch 都顯示）
     if (cfg.debug?.hotkeys) {
       const debugBtn = document.createElement('button');
@@ -132,8 +143,23 @@ export function boot() {
     let lastRenderMs = 0;
     let prevPhase = world.phase;
 
+    const consumeDebugActions = () => {
+      for (const action of controls.consumeDebugActions()) {
+        if (action === 'resetSave') {
+          clearSave(cfg.save.storageKey);
+          window.location.reload();
+          return false;
+        }
+        applyDebugAction(world, action, cfg);
+      }
+      return true;
+    };
+
     const loop = startGameLoop({
       update: (dt) => {
+        if (!consumeDebugActions()) return;
+        if (world.debugPaused) return;
+
         world.clock.elapsedSeconds += dt;
         world.clock.updateTick += 1;
         const prevX = world.player.x, prevY = world.player.y;
@@ -166,14 +192,6 @@ export function boot() {
 
         if (controls.consumePlace() && selectedBlock) tryPlace(world, selectedBlock, tileX, tileY, cfg);
         if (controls.consumeRemove()) tryRemove(world, tileX, tileY, cfg);
-        for (const action of controls.consumeDebugActions()) {
-          if (action === 'resetSave') {
-            clearSave(cfg.save.storageKey);
-            window.location.reload();
-            return;
-          }
-          applyDebugAction(world, action, cfg);
-        }
         if (selectedBlock && !(world.storage[selectedBlock] > 0)) controls.setSelectedSlot(null);
 
         controls.cardOfferMode = (world.phase === 'cardOffer');

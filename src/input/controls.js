@@ -1,11 +1,11 @@
-﻿/**
+/**
  * @file        controls.js
  * @module      input（輸入層，非純邏輯）
  * @summary     把玩家操作（WASD 移動、滑鼠長按挖礦、數字選材料、左鍵放置、右鍵拆除、修復/debug）轉成資料
  * @exports     Controls
  * @depends     （無；僅綁瀏覽器事件，不 import 其他模組）
  * @sourceOfTruth Docs/game-design-plan.md「操作輸入方式」
- * @version     v0.0.6.0
+ * @version     v0.0.12.0
  *
  * 輸入層只把操作「轉成資料」丟給上層，不在此做規則判定（鐵則 9）。
  * 模式：未選材料 = 挖礦模式（左鍵長按挖最近）；按快捷列數字選材料 = 建造模式（左鍵放置）。
@@ -154,8 +154,22 @@ function keyToDebugAction(event) {
     case 'KeyL': return 'spawnEnemy';
     case 'KeyP': return 'spawnEnemyPack';
     case 'KeyC': return 'showCardOffer'; // 直接打開抽卡面板
+    case 'KeyT': return 'togglePause';   // debug 暫停 / 恢復 gameplay update
     case 'KeyN': return 'startNight';    // 立即開始夜晚（prep 中有效）
     case 'KeyQ': return 'restartStage';  // 清除敵人並重設為 prep 狀態
+    default: break;
+  }
+
+  switch ((event.key ?? '').toLowerCase()) {
+    case 'h': return 'damageCore';
+    case 'j': return 'healCore';
+    case 'k': return 'grantResources';
+    case 'l': return 'spawnEnemy';
+    case 'p': return 'spawnEnemyPack';
+    case 'c': return 'showCardOffer';
+    case 't': return 'togglePause';
+    case 'n': return 'startNight';
+    case 'q': return 'restartStage';
     default: return null;
   }
 }
@@ -203,3 +217,4 @@ function keyToDirection(event) {
       return null;
   }
 }
+

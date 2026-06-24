@@ -1,8 +1,41 @@
 # CHANGELOG.md — 版本歷史
 
-> 版本：v0.0.11.0
+> 版本：v0.0.12.0
 > 類型：**只增不改**（歷史紀錄，永遠往上加，最新在最上方，不回頭改舊條目）。
 > 條目格式：`## vX.Y.Z.W - YYYY-MM-DD`，下分「新增 / 修復 / 調整」。
+
+---
+
+## v0.0.12.0 - 2026-06-24
+
+### 新增
+- **Debug 暫停鍵**：
+  - 新增 `T` debug 鍵與觸控 debug 面板按鈕：切換 `world.debugPaused`，暫停 gameplay update、保留 render/input 以便再次恢復。
+  - 暫停時畫面顯示 `DEBUG PAUSED` 提示；`restartStage` 會解除暫停。
+- **電擊攻擊 VFX**：
+  - `src/game/world.js`：新增 `vfx: { timer, bolts }` 狀態欄位（攻擊時固定生成的閃電路徑快照）。
+  - `src/game/combatRuntime.js`：攻擊觸發時填入 `world.vfx.bolts`（每條 bolt 含固定 zigzag points + chainIdx）；每幀遞減 `vfx.timer`，歸零時清空 bolts。
+  - `src/render/renderer.js`：新增 `_drawVFX()` + `_drawLightningBolt()`；只讀取已生成的 bolt points 並繪製；主目標：粗藍白閃電；連鎖目標：細淡藍閃電；最後 0.2s 淡出。
+- **攻擊範圍圈（lazy offscreen cache）**：
+  - `src/render/renderer.js`：新增 `_drawRangeCircle()`；cache key 為 `${range}:${tilePx}:${anchors}`，range、縮放或正式攻擊 anchor 改變才重建 OffscreenCanvas；畫面內顯示正式攻擊範圍聯集；無 OffscreenCanvas 支援時自動 fallback 為直接填色。
+- **素材整理**：
+  - `assets/` 下 13 張 ChatGPT 生成 PNG 全部重新命名（依內容：spritesheet_*/bg_*/ui_screen_*），原始 `ChatGPT Image...` 命名全部消除。
+  - 新增 `assets/icon-status.md`：追蹤每張素材的裁剪/整合狀態（✅ / 🔲 / ⏸ / ❌）。
+- **Sprite 圖示基礎設施**：
+  - 新增 `src/render/imageLoader.js`：`loadImages(manifest)` 非同步批量載入圖片，回傳 `Map<key, HTMLImageElement>`，載入失敗不中斷遊戲。
+  - 新增 `config/sprites.js`：`SPRITE_SHEETS`（blocksNoFrame / blocksSlotFrame 定義）+ `getFrameRect(img, sheet, keyOrIndex)` 切幀工具。
+  - `src/main.js`：splash callback 內非同步載入 blocksNoFrame + blocksSlotFrame；完成後注入 `renderer.setSprites()` 和 `controls.setSprites?.()`。
+  - 新增 `assets/spritesheet_blocks_9tiles_hotbar.png`：由原始 noframe sheet 去背、去除假透明棋盤格、重打包為 9 格正方形，供手機 hotbar 與鍵盤 HUD 使用。
+- **快捷列方塊圖示（手機觸控模式）**：
+  - `src/input/touchControls.js`：`_buildHotbar()` 改為每個 slot 包含 `<canvas>`（方塊圖示）+ `<span>`（熱鍵角標，右下角小字）；新增 `setSprites(imgs)` 方法（sprites 注入後呼叫）；新增 `_paintHotbarIcons()` 以 `drawImage + getFrameRect` 從 sprite sheet 切幀繪製；無 sprites 時 fallback 為半透明色塊。
+  - 7 個啟用 slot 分別對應 sand/dirt/stone/iron/gold/glass/diamond，與 `config/gameConfig.js hotbar` 順序一致。
+  - `src/render/renderer.js`：鍵盤模式 HUD 在選中建材時繪製 16×16 方塊小圖示；sprites 未載入時維持純文字。
+- **Codex 任務交接**：
+  - `Docs/claude-codex-worklist.md`：新增 1C 節「Spritesheet 裁剪」任務，指定 Python PIL 裁剪敵人/哥布林/核心/平民/UI 圖示 5 張 spritesheet 的詳細規格。
+
+### 調整
+- `src/render/renderer.js`：`render()` 中 `_drawDirt()` 後插入 `_drawRangeCircle()`、`_drawEnemies()` 後插入 `_drawVFX()`；`resize()` 重設 `_rangeCacheKey`。
+- `src/render/renderer.js`：constructor 加入 `_sprites`、`_rangeCacheKey`、`_rangeCanvas` 欄位；新增 `setSprites(imgs)` 方法。
 
 ---
 

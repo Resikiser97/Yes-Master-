@@ -1,11 +1,11 @@
-﻿/**
+/**
  * @file        spawnPosition.js
  * @module      logic（pure）
  * @summary     計算每批出怪座標（核心 Hitbox 外 10~20 格，不進礦山，不出地圖邊界），純函式
  * @exports     spawnPositions
  * @depends     src/logic/building.js（buildHalfWidth）
  * @sourceOfTruth Docs/waveplan.md「怪物生成安全規則」「建造範圍與生成安全區」
- * @version     v0.0.6.0
+ * @version     v0.0.12.0
  *
  * 生成原則（waveplan.md）：
  *   - x = 核心中心 ± (當關 halfWidth + 10~20 格隨機偏移)
@@ -58,3 +58,4 @@ export function spawnPositions(count, world, cfg, rng) {
   }
   return positions;
 }
+

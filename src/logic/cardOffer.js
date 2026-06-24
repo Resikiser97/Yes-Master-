@@ -1,11 +1,11 @@
-﻿/**
+/**
  * @file        cardOffer.js
  * @module      logic（pure）
  * @summary     王關固定 3 槽位出卡（含類型保護、偏強上限、同名去重，隨機注入）
  * @exports     generateOffer
  * @depends     config/cards.js
  * @sourceOfTruth Docs/bosscard.md「出卡規則」
- * @version     v0.0.6.0
+ * @version     v0.0.12.0
  */
 
 import { CARDS, CARD_OFFER_RULES } from '../../config/cards.js';
@@ -73,3 +73,4 @@ export function generateOffer(rng, bossStage = 10, pool = CARDS) {
   const value = rules.valueByBossStage[bossStage] ?? rules.valueByBossStage[10];
   return chosen.map((key) => ({ key, value, ...pool[key] }));
 }
+

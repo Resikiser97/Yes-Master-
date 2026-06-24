@@ -4,7 +4,7 @@
  * @summary     手機觸控輸入：8方向D-pad、動作按鍵（挖礦/修復/放置/拆除）、快捷列；介面與 Controls 完全相容
  * @exports     TouchControls
  * @depends     config/blocks.js、src/logic/inventory.js
- * @version     v0.0.11.0
+ * @version     v0.0.12.0
  *
  * 鐵則 9：只把操作「轉成資料」丟給上層，不在此做規則判定。
  * 介面與 Controls 完全相容，main.js 的 game loop 不需判斷輸入類型。
@@ -12,6 +12,7 @@
 
 import { BLOCKS } from '../../config/blocks.js';
 import { inventoryWeight } from '../logic/inventory.js';
+import { SPRITE_SHEETS, getFrameRect } from '../../config/sprites.js';
 
 const BTN_BASE = [
   'background:rgba(0,0,0,0.6)',
@@ -82,6 +83,10 @@ export class TouchControls {
 
     // 放置方向偏移（3×3 selector，tile 單位）
     this.placeOffset = { dx: 0, dy: 0 };
+
+    // Sprite 圖示（由 main.js 非同步注入）
+    this._sprites = null;
+    this._hotbarIconCanvases = [];
 
     // DOM 參考
     this._overlay = null;
@@ -498,13 +503,36 @@ export class TouchControls {
     ].join(';') + ';';
 
     this._hotbarEls = [];
+    this._hotbarIconCanvases = [];
     const labels = ['1','2','3','4','5','6','7','8','9','0'];
     for (let i = 0; i < HOTBAR_DISPLAY_SLOTS; i++) {
       const btn = document.createElement('button');
-      btn.textContent = labels[i];
+      btn.style.cssText = `position:relative;width:36px;height:40px;padding:2px;box-sizing:border-box;${BTN_BASE};`;
       const enabled = i < this.hotbarSlots;
       btn.disabled = !enabled;
-      btn.style.cssText = `width:34px;height:38px;font-size:13px;${BTN_BASE};`;
+
+      // 圖示 canvas（有 sprite 時顯示方塊圖示；無 sprite 時顯示色塊）
+      const icvs = document.createElement('canvas');
+      icvs.width  = 30;
+      icvs.height = 30;
+      icvs.style.cssText = 'display:block;width:30px;height:30px;image-rendering:pixelated;margin:0 auto;';
+      btn.appendChild(icvs);
+      this._hotbarIconCanvases.push(icvs);
+
+      // 熱鍵角標（右下，顏色繼承 button 以便 _refreshHotbar 統一控制）
+      const badge = document.createElement('span');
+      badge.textContent = labels[i];
+      badge.style.cssText = [
+        'position:absolute',
+        'bottom:1px',
+        'right:3px',
+        'font-size:9px',
+        'font-weight:bold',
+        'line-height:1',
+        'pointer-events:none',
+      ].join(';') + ';';
+      btn.appendChild(badge);
+
       const idx = i;
       btn.addEventListener('pointerdown', (e) => {
         e.preventDefault();
@@ -516,6 +544,38 @@ export class TouchControls {
     }
     this._centerPanel.appendChild(wrap);
     this._refreshHotbar();
+    this._paintHotbarIcons(); // 若 sprites 已提前注入則立即繪製
+  }
+
+  /** main.js 在圖片載入後呼叫，注入 sprites 並重繪所有 hotbar icon */
+  setSprites(imgs) {
+    this._sprites = imgs;
+    this._paintHotbarIcons();
+  }
+
+  /** 將方塊 sprite 繪製到各 hotbar slot 的 icon canvas */
+  _paintHotbarIcons() {
+    if (!this._sprites || !this._hotbarIconCanvases.length) return;
+    const img = this._sprites.get('blocksNoFrame');
+    if (!img?.complete) return;
+    const sheet  = SPRITE_SHEETS.blocksNoFrame;
+    const hotbar = this.cfg.hotbar ?? [];
+
+    this._hotbarIconCanvases.forEach((icvs, i) => {
+      const ctx2 = icvs.getContext('2d');
+      ctx2.clearRect(0, 0, icvs.width, icvs.height);
+      const blockKey = hotbar[i];
+      if (!blockKey) {
+        // 停用 slot：畫半透明佔位色塊
+        ctx2.fillStyle = 'rgba(255,255,255,0.08)';
+        ctx2.fillRect(2, 2, icvs.width - 4, icvs.height - 4);
+        return;
+      }
+      const frame = getFrameRect(img, sheet, blockKey);
+      if (!frame.sw) return;
+      ctx2.imageSmoothingEnabled = false;
+      ctx2.drawImage(img, frame.sx, frame.sy, frame.sw, frame.sh, 0, 0, icvs.width, icvs.height);
+    });
   }
 
   _refreshHotbar() {
@@ -575,6 +635,7 @@ export class TouchControls {
       ['L — 生 1 敵',  'spawnEnemy'],
       ['P — 生 5 敵',  'spawnEnemyPack'],
       ['C — 抽卡',     'showCardOffer'],
+      ['T — 暫停/恢復', 'togglePause'],
       ['N — 夜晚',     'startNight'],
       ['Q — 重試',     'restartStage'],
     ];

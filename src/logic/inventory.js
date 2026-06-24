@@ -1,11 +1,11 @@
-﻿/**
+/**
  * @file        inventory.js
  * @module      logic（pure）
  * @summary     背包承重/格數規則、加入/扣除、以及存入塔內共享資源欄（純函式）
  * @exports     blockWeight, inventoryWeight, distinctCount, canAdd, addItem, removeItem, depositAll
  * @depends     config/blocks.js
  * @sourceOfTruth Docs/game-design-plan.md「遊戲內 UI 設計」（背包/塔內資源欄）
- * @version     v0.0.6.0
+ * @version     v0.0.12.0
  *
  * inventory / storage 皆為 { blockKey: qty } 物件。背包受「承重(carry)」與「格數(slots)」雙重限制。
  */
@@ -55,3 +55,4 @@ export function depositAll(inv, storage) {
   }
   return { inventory: {}, storage: merged };
 }
+

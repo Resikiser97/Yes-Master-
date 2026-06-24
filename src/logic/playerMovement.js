@@ -1,11 +1,11 @@
-﻿/**
+/**
  * @file        playerMovement.js
  * @module      logic（pure）
  * @summary     玩家移動能力值換算與固定 timestep 位移
  * @exports     moveSpeedToTilesPerSecond, normalizeMoveInput, movePlayer
  * @depends     config/gameConfig.js
  * @sourceOfTruth Docs/game-design-plan.md「哥布林角色數值」「操作輸入方式」
- * @version     v0.0.6.0
+ * @version     v0.0.12.0
  */
 
 import { GAME_CONFIG } from '../../config/gameConfig.js';
@@ -35,3 +35,4 @@ export function movePlayer(player, input, dt, bounds, cfg = GAME_CONFIG) {
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
+

@@ -1,11 +1,11 @@
-﻿/**
+/**
  * @file        saveLocal.js
  * @module      storage（IO 層，非純邏輯）
  * @summary     MVP localStorage 存檔讀寫；讀取時跑 schema migration
  * @exports     loadSave, writeSave, clearSave
  * @depends     config/gameConfig.js、src/logic/migration.js
  * @sourceOfTruth Docs/game-architecture-plan.md「Schema Versioning」「Save File 資料結構」
- * @version     v0.0.7.0
+ * @version     v0.0.12.0
  *
  * 本檔屬 IO 層（碰 localStorage）。規則運算一律委派純邏輯，不在此寫遊戲規則。
  * storageKey 可由呼叫端傳入（測試模式用不同 key），預設沿用 GAME_CONFIG.save.storageKey。
@@ -44,3 +44,4 @@ export function writeSave(data, storageKey = DEFAULT_KEY) {
 export function clearSave(storageKey = DEFAULT_KEY) {
   store()?.removeItem(storageKey);
 }
+

@@ -1,11 +1,11 @@
-﻿/**
+/**
  * @file        coreHealth.js
  * @module      logic（pure）
  * @summary     核心目前血量、受傷、修復與 hpMax 變化的純計算
  * @exports     clampCoreHp, applyHpMaxDelta, damageCoreHp, repairCoreHp, repairPerSecond
  * @depends     （無）
  * @sourceOfTruth Docs/game-design-plan.md「修復能力細節」、Docs/game-design-plan.md「方塊屬性加成」
- * @version     v0.0.6.0
+ * @version     v0.0.12.0
  */
 
 export function clampCoreHp(current, hpMax) {
@@ -41,3 +41,4 @@ export function repairCoreHp(current, hpMax, fatigue, dt, repairPower) {
     fatigueUsed,
   };
 }
+
