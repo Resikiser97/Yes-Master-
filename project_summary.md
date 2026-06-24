@@ -1,6 +1,6 @@
 # project_summary.md — 專案現況快照
 
-> 版本：v0.0.8.0
+> 版本：v0.0.9.0
 > 類型：**代碼優先**（隨專案現況更新）。
 > ⚠️ 與 `Docs/project_summary.md`（原始設計草稿）不同：本檔是**版本化的現況快照**。
 
@@ -12,7 +12,7 @@
 - **副標 / 世界觀名**：哥布林的信仰（只能作為 subtitle / lore，不是主遊戲標題；英文名不要寫成 Goblin's Faith）。
 - **這是什麼**：Yes, Master! — 1–4 人合作塔防瀏覽器遊戲（哥布林守核心、人族來襲）。
 - **現在版本**：v0.0.8.0
-- **當前狀態**：MVP 單機可動。移動 / 挖礦 / 背包 / 塔內資源 / 掉落物自動撿取 / 跟隨鏡頭 / 初版建造 / 核心數值回饋 / 核心 HP 與修復 / 核心戰鬥 / 正式波次晝夜 / 卡片選擇（hover + tier 中文化）/ localStorage 存檔 / 新手教學提示 / debug 浮層（` 鍵）/ 測試難度 preset（1~30 關強化開局）/ **動態 canvas 縮放（動態 tilePx）** / **手機三欄觸控 UI（左 HUD+D-pad、中 canvas+1~0 快捷列、右 Debug Tool+動作鍵）** / **⚙ debug 按鈕（鍵盤+觸控皆有）** 已成完整循環。
+- **當前狀態**：MVP 單機可動。移動 / 挖礦 / 背包 / 塔內資源 / 掉落物自動撿取 / 跟隨鏡頭 / 初版建造 / 核心數值回饋 / 核心 HP 與修復 / 核心戰鬥 / 正式波次晝夜 / 卡片選擇（hover + tier 中文化）/ localStorage 存檔 / 新手教學提示 / debug 浮層（` 鍵）/ 測試難度 preset（1~30 關強化開局）/ **動態 canvas 縮放（動態 tilePx）** / **手機三欄觸控 UI（左 HUD+D-pad、中 canvas+1~0 快捷列、右 Debug Tool+動作鍵）** / **⚙ debug 按鈕（鍵盤+觸控皆有）** / **PWA manifest + iOS/Android 安裝引導畫面** 已成完整循環。
 - **下一步（最多 4 條）**：
   1. 怪物職能擴充（Must Solve 2）。
   2. 建築策略格子化模擬驗證（Must Solve 3）。
@@ -51,6 +51,7 @@
 - v0.0.3.0 Step 6A 核心 HP / 修復基礎：新增 `coreHealth` 純邏輯；world 持有 `coreHp` 與玩家目前疲勞；建土/拆土同步調整 current/max HP，拆到會讓核心歸零則禁止；R 長按站核心或連通泥土地基消耗疲勞修復；H/J/K debug hotkeys 便於測試。
 - v0.0.3.0 Step 6B debug 核心戰鬥：新增 `combatRuntime`，L/P 生成 debug 敵人；敵人直線追逐玩家但暫不攻擊；核心用 `combat.js` 的普攻/連鎖/傷害打範圍內敵人；renderer 顯示敵人與小血條、HUD 顯示敵人數與最近命中。
 - v0.0.8.0 手機 UX 調整：手機橫向改成三欄 layout；左側灰欄顯示核心/關卡/HUD 資訊並保留 D-pad，右側灰欄放 Debug Tool 與動作鍵，中間 canvas 保持桌面比例等比縮放並保留 1~0 快捷列；手機模式關閉 canvas 底部 HUD，避免虛擬按鈕遮擋遊戲/debug 文字。
+- v0.0.9.0 PWA 支援：新增 manifest.json（standalone/landscape）+ 6 條 iOS/Android PWA meta tag；新增 `src/ui/pwaTutorial.js` 安裝引導畫面（iOS/Android 分頁切換、Android install prompt 攔截、跳過計數 ≤3 次）；mobileLayout.js 新增 `isStandalone()` 偵測；splash 整合：觸控裝置且非 standalone 時先顯示教學再進 splash；tools/generate-icons.html 圖示產生工具。
 
 ### 已知問題
 - 🔴 緊急：（無）

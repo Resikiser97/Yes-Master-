@@ -1,10 +1,21 @@
 # CHANGELOG.md — 版本歷史
 
-> 版本：v0.0.8.0
+> 版本：v0.0.9.0
 > 類型：**只增不改**（歷史紀錄，永遠往上加，最新在最上方，不回頭改舊條目）。
 > 條目格式：`## vX.Y.Z.W - YYYY-MM-DD`，下分「新增 / 修復 / 調整」。
 
 ---
+
+## v0.0.9.0 - 2026-06-24
+
+### 新增
+- **PWA 安裝引導畫面**（iOS/Android 玩家教學）：
+  - `manifest.json`（根目錄）：PWA 宣告（standalone、landscape、theme-color #D4A017、圖示 192/512）。
+  - `src/ui/pwaTutorial.js`（新檔）：`showPwaTutorial(onDone)` / `shouldShowPwaTutorial()`；全螢幕引導覆蓋層（z-index 9998）；iOS/Android 分頁切換，自動偵測平台；Android `beforeinstallprompt` 攔截，可一鍵觸發原生安裝 prompt；跳過計數（`yesmaster.pwaSkip`，最多 3 次後不再顯示）；淡入/淡出 0.4s 動畫。
+  - `src/ui/mobileLayout.js`：新增 `isStandalone()` export（`window.navigator.standalone` + `matchMedia display-mode:standalone` 雙檢）。
+  - `src/ui/splash.js`：整合教學判斷——`isTouchDevice() && !isStandalone() && shouldShowPwaTutorial()` 成立時先顯示教學再進 splash；現有 splash DOM 建立邏輯抽成 `_buildSplashDOM(onStart)` 私有函式。
+  - `index.html`：加入 6 條 PWA meta/link tag（manifest、theme-color、apple-mobile-web-app-capable/status-bar-style/title、apple-touch-icon）；修正版本角標初始值 v0.0.3.0 → v0.0.9.0。
+  - `tools/generate-icons.html`（新檔）：瀏覽器工具，開啟後自動產生並下載 icon-192.png / icon-512.png（金色背景 + YM 文字），需放入 `icons/` 目錄。
 
 ## v0.0.8.0 - 2026-06-24
 

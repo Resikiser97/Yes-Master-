@@ -1,19 +1,29 @@
 /**
  * @file        splash.js
  * @module      ui
- * @summary     開場 Splash Screen；第一排選難度，第二排選輸入模式，呼叫 onStart(diffMode, inputMode)
+ * @summary     開場 Splash Screen；觸控裝置首先顯示 PWA 安裝引導，再選難度/輸入模式，呼叫 onStart(diffMode, inputMode)
  * @exports     showSplashScreen
- * @depends     src/ui/mobileLayout.js（isTouchDevice, getSavedInputMode, saveInputMode）
- * @version     v0.0.8.0
+ * @depends     src/ui/mobileLayout.js（isTouchDevice, isStandalone, getSavedInputMode, saveInputMode）
+ *              src/ui/pwaTutorial.js（showPwaTutorial, shouldShowPwaTutorial）
+ * @version     v0.0.9.0
  *
  * diffMode:  'normal' = 正式難度；'test' = 測試難度 1~30 關
  * inputMode: 'keyboard' = 電腦鍵盤；'touch' = 手機觸控
  * 輸入模式存 yesmaster.inputMode，不進遊戲存檔。
  */
 
-import { isTouchDevice, getSavedInputMode, saveInputMode } from './mobileLayout.js';
+import { isTouchDevice, isStandalone, getSavedInputMode, saveInputMode } from './mobileLayout.js';
+import { showPwaTutorial, shouldShowPwaTutorial } from './pwaTutorial.js';
 
 export function showSplashScreen(onStart) {
+  if (isTouchDevice() && !isStandalone() && shouldShowPwaTutorial()) {
+    showPwaTutorial(() => _buildSplashDOM(onStart));
+    return;
+  }
+  _buildSplashDOM(onStart);
+}
+
+function _buildSplashDOM(onStart) {
   const splash = document.createElement('div');
   splash.id = 'splash-screen';
   splash.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:9999;transition:opacity 0.8s ease;user-select:none;';

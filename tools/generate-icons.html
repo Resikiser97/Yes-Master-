@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>Yes Master — 產生 PWA 圖示</title>
+  <style>
+    body { background: #111; color: #eee; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 40px; gap: 20px; }
+    canvas { border: 1px solid #444; }
+    button { padding: 10px 24px; background: rgba(212,160,23,0.2); border: 1px solid #D4A017; color: #D4A017; font-size: 14px; cursor: pointer; }
+    p { color: #aaa; font-size: 13px; text-align: center; }
+  </style>
+</head>
+<body>
+  <h2 style="color:#D4A017;">Yes Master — PWA 圖示產生工具</h2>
+  <p>開啟此頁後，點下方按鈕即可下載兩張 PNG 圖示。<br>
+     將下載的檔案放入專案根目錄的 <code>icons/</code> 資料夾。</p>
+  <canvas id="c" width="512" height="512"></canvas>
+  <button onclick="generate()">產生並下載圖示</button>
+  <p id="status"></p>
+
+  <script>
+    function drawIcon(ctx, size) {
+      const s = size;
+      // 背景：深色
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(0, 0, s, s);
+      // 金色圓角矩形
+      const pad = s * 0.08;
+      const r = s * 0.18;
+      ctx.fillStyle = '#D4A017';
+      roundRect(ctx, pad, pad, s - pad * 2, s - pad * 2, r);
+      ctx.fill();
+      // 深色內框
+      const inner = s * 0.14;
+      ctx.fillStyle = '#1a1a1a';
+      roundRect(ctx, inner, inner, s - inner * 2, s - inner * 2, r * 0.7);
+      ctx.fill();
+      // 哥布林耳朵（左右三角）
+      const cx = s / 2;
+      const cy = s / 2;
+      const ew = s * 0.12, eh = s * 0.14;
+      ctx.fillStyle = '#D4A017';
+      // 左耳
+      ctx.beginPath(); ctx.moveTo(inner, cy - eh); ctx.lineTo(inner - ew, cy - eh * 1.5); ctx.lineTo(inner, cy + eh * 0.2); ctx.closePath(); ctx.fill();
+      // 右耳
+      ctx.beginPath(); ctx.moveTo(s - inner, cy - eh); ctx.lineTo(s - inner + ew, cy - eh * 1.5); ctx.lineTo(s - inner, cy + eh * 0.2); ctx.closePath(); ctx.fill();
+      // 文字 "YM"
+      ctx.fillStyle = '#D4A017';
+      ctx.font = `bold ${Math.round(s * 0.32)}px Georgia,serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('YM', cx, cy);
+      // 副文字
+      ctx.fillStyle = 'rgba(212,160,23,0.55)';
+      ctx.font = `${Math.round(s * 0.07)}px Georgia,serif`;
+      ctx.letterSpacing = `${s * 0.012}px`;
+      ctx.fillText('YES, MASTER!', cx, cy + s * 0.26);
+    }
+
+    function roundRect(ctx, x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+    }
+
+    function downloadCanvas(canvas, filename) {
+      const a = document.createElement('a');
+      a.download = filename;
+      a.href = canvas.toDataURL('image/png');
+      a.click();
+    }
+
+    function generate() {
+      const c512 = document.getElementById('c');
+      c512.width = 512; c512.height = 512;
+      drawIcon(c512.getContext('2d'), 512);
+
+      const c192 = document.createElement('canvas');
+      c192.width = 192; c192.height = 192;
+      drawIcon(c192.getContext('2d'), 192);
+
+      setTimeout(() => downloadCanvas(c512, 'icon-512.png'), 100);
+      setTimeout(() => downloadCanvas(c192, 'icon-192.png'), 400);
+      document.getElementById('status').textContent = '✅ 下載完成！請將兩個 PNG 放入 icons/ 資料夾。';
+    }
+
+    // 預覽 512 版
+    const c = document.getElementById('c');
+    drawIcon(c.getContext('2d'), 512);
+  </script>
+</body>
+</html>
