@@ -7,7 +7,7 @@
  *              src/render/renderer.js、src/input/controls.js、src/input/touchControls.js、
  *              src/ui/mobileLayout.js
  * @sourceOfTruth Docs/game-architecture-plan.md「MVP 開發範圍」
- * @version     v0.0.9.0
+ * @version     v0.0.10.0
  *
  * renderer、controls は splash 後に inputMode が確定してから生成。
  * 手機模式：TouchControls + setupOrientationGuard + 動態 tilePx resize。
@@ -148,10 +148,11 @@ export function boot() {
 
         const t = cfg.render.tilePx;
 
-        // 手機模式：mouse 跟著玩家，供 build preview 定位
+        // 手機模式：mouse 跟著玩家 + placeOffset，供 build preview / 放置 / 拆除定位
         if (inputMode === 'touch') {
-          controls.mouse.x = world.player.x * t - world.camera.x;
-          controls.mouse.y = world.player.y * t - world.camera.y;
+          const off = controls.placeOffset ?? { dx: 0, dy: 0 };
+          controls.mouse.x = (world.player.x + off.dx) * t - world.camera.x;
+          controls.mouse.y = (world.player.y + off.dy) * t - world.camera.y;
           controls.updateStatus?.(world);
         }
 

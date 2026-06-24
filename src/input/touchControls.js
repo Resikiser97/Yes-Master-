@@ -4,7 +4,7 @@
  * @summary     手機觸控輸入：8方向D-pad、動作按鍵（挖礦/修復/放置/拆除）、快捷列；介面與 Controls 完全相容
  * @exports     TouchControls
  * @depends     src/game/actions.js（applyDebugAction）、src/storage/saveLocal.js（clearSave）
- * @version     v0.0.8.0
+ * @version     v0.0.10.0
  *
  * 鐵則 9：只把操作「轉成資料」丟給上層，不在此做規則判定。
  * 介面與 Controls 完全相容，main.js 的 game loop 不需判斷輸入類型。
@@ -82,6 +82,9 @@ export class TouchControls {
     this.cardOfferMode = false;
     this.cardOfferRects = null;
 
+    // 放置方向偏移（3×3 selector，tile 單位）
+    this.placeOffset = { dx: 0, dy: 0 };
+
     // DOM 參考
     this._overlay = null;
     this._leftPanel = null;
@@ -89,6 +92,7 @@ export class TouchControls {
     this._centerPanel = null;
     this._statusPanel = null;
     this._hotbarEls = [];
+    this._selectorBtns = [];
     this._debugPanel = null;
 
     // 綁定的 canvas 事件
@@ -143,6 +147,7 @@ export class TouchControls {
     this._buildStatusPanel();
     this._buildDpad();
     this._buildActions();
+    this._buildPlacingSelector();
     this._buildHotbar();
     this._buildDebugPanel();
 
@@ -164,6 +169,7 @@ export class TouchControls {
       this._debugPanel.remove();
       this._debugPanel = null;
     }
+    this._selectorBtns = [];
     this.canvas?.removeEventListener('touchstart', this._onCanvasTouch);
     this._mining = false;
     this._repairing = false;
@@ -410,6 +416,72 @@ export class TouchControls {
     ));
 
     this._rightPanel.appendChild(wrap);
+  }
+
+  // ── 放置方向選擇器（3×3）────────────────────────────────────────────────
+
+  _buildPlacingSelector() {
+    const CELLS = [
+      ['↖',-1,-1],['↑', 0,-1],['↗',+1,-1],
+      ['←',-1, 0],['●', 0, 0],['→',+1, 0],
+      ['↙',-1,+1],['↓', 0,+1],['↘',+1,+1],
+    ];
+
+    const wrap = document.createElement('div');
+    wrap.style.cssText = [
+      'position:absolute',
+      'bottom:116px',
+      'left:50%',
+      'transform:translateX(-50%)',
+      'pointer-events:all',
+      'display:flex',
+      'flex-direction:column',
+      'align-items:center',
+      'gap:2px',
+    ].join(';') + ';';
+
+    const label = document.createElement('div');
+    label.textContent = '放置方向';
+    label.style.cssText = 'font-size:10px;color:rgba(240,176,32,0.45);letter-spacing:1px;';
+    wrap.appendChild(label);
+
+    const grid = document.createElement('div');
+    grid.style.cssText = [
+      'display:grid',
+      'grid-template-columns:repeat(3,40px)',
+      'grid-template-rows:repeat(3,40px)',
+      'gap:3px',
+    ].join(';') + ';';
+
+    this._selectorBtns = [];
+    for (const [text, dx, dy] of CELLS) {
+      const btn = document.createElement('button');
+      btn.textContent = text;
+      btn.dataset.dx = String(dx);
+      btn.dataset.dy = String(dy);
+      btn.style.cssText = `width:40px;height:40px;font-size:16px;${BTN_BASE};`;
+      btn.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        this.placeOffset = { dx, dy };
+        this._refreshSelector();
+      });
+      this._selectorBtns.push(btn);
+      grid.appendChild(btn);
+    }
+
+    wrap.appendChild(grid);
+    this._rightPanel.appendChild(wrap);
+    this._refreshSelector();
+  }
+
+  _refreshSelector() {
+    const { dx: cx, dy: cy } = this.placeOffset;
+    for (const btn of this._selectorBtns) {
+      const sel = parseInt(btn.dataset.dx, 10) === cx && parseInt(btn.dataset.dy, 10) === cy;
+      btn.style.background  = sel ? 'rgba(212,160,23,0.3)'   : 'rgba(0,0,0,0.6)';
+      btn.style.borderColor = sel ? '#D4A017' : 'rgba(255,180,0,0.4)';
+      btn.style.color       = sel ? '#D4A017' : '#f0b020';
+    }
   }
 
   // ── 快捷列 ───────────────────────────────────────────────────────────────

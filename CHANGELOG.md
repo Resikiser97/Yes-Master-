@@ -1,10 +1,17 @@
 # CHANGELOG.md — 版本歷史
 
-> 版本：v0.0.9.0
+> 版本：v0.0.10.0
 > 類型：**只增不改**（歷史紀錄，永遠往上加，最新在最上方，不回頭改舊條目）。
 > 條目格式：`## vX.Y.Z.W - YYYY-MM-DD`，下分「新增 / 修復 / 調整」。
 
 ---
+
+## v0.0.10.0 - 2026-06-24
+
+### 新增
+- **手機觸控放置方向選擇器（3×3 Placing Selector）**：
+  - `src/input/touchControls.js`：新增 `this.placeOffset = { dx, dy }`（預設中心 {0,0}）；新增 `_buildPlacingSelector()` 在右側欄 Debug Tool 下方、動作鍵上方插入 3×3 方向 grid（每格 40×40px，金色高亮選中格）；新增 `_refreshSelector()` 更新按鈕高亮；選擇持續保留，不因移動重置。
+  - `src/main.js`：touch 模式 mouse 同步時加入 `controls.placeOffset` 偏移（`(player.x + off.dx) * t`、`(player.y + off.dy) * t`）；build preview、tryPlace、tryRemove 全部自動跟著偏移，桌面端行為完全不變。
 
 ## v0.0.9.0 - 2026-06-24
 
