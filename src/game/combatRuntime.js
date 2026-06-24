@@ -12,6 +12,7 @@ import { ENEMIES } from '../../config/enemies.js';
 import { GAME_CONFIG } from '../../config/gameConfig.js';
 import { computeHit, selectPrimaryTarget, chainHitCount, selectChainTargets, dist2 } from '../logic/combat.js';
 import { computeConnected } from '../logic/connectivity.js';
+import { damageCoreHp } from '../logic/coreHealth.js';
 
 function nextEnemyId(world, enemyKey) {
   world.combat.nextEnemyId += 1;
@@ -31,6 +32,7 @@ function createEnemy(world, enemyKey, x, y) {
     defense: def.defense,
     moveSpeed: def.moveSpeed,
     attackRange: def.attackRange,
+    attackCooldown: 0,
   };
 }
 
@@ -47,15 +49,50 @@ export function spawnDebugEnemies(world, count = 1, enemyKey = 'civilian', cfg =
 }
 
 export function updateEnemies(world, dt) {
+  if (world.phase === 'gameover') return;
+
   for (const enemy of world.enemies) {
-    const dx = world.player.x - enemy.x;
-    const dy = world.player.y - enemy.y;
+    const target = nearestCoreCell(world, enemy);
+    if (!target) continue;
+
+    const dx = target.x - enemy.x;
+    const dy = target.y - enemy.y;
     const d = Math.hypot(dx, dy);
+    const range = enemy.attackRange ?? 1;
+
+    if (d <= range) {
+      enemy.attackCooldown = (enemy.attackCooldown ?? 0) - dt;
+      if (enemy.attackCooldown <= 0) {
+        _applyCoreDamage(world, (enemy.attack ?? 0) * (world.combat?.overtimeMultiplier ?? 1));
+        enemy.attackCooldown = 2;
+      }
+      continue;
+    }
+
     if (d < 0.001) continue;
     const step = Math.min(enemy.moveSpeed * dt, d);
     enemy.x += (dx / d) * step;
     enemy.y += (dy / d) * step;
   }
+}
+
+function nearestCoreCell(world, enemy) {
+  let best = null;
+  let bestD2 = Infinity;
+  for (const [x, y] of world.core ?? []) {
+    const d2 = dist2(enemy, { x, y });
+    if (d2 < bestD2) {
+      bestD2 = d2;
+      best = { x, y };
+    }
+  }
+  return best;
+}
+
+function _applyCoreDamage(world, amount) {
+  const current = world.coreHp ?? world.coreStats?.hpMax ?? 0;
+  world.coreHp = damageCoreHp(current, amount);
+  if (world.coreHp <= 0) world.phase = 'gameover';
 }
 
 export function coreAttackAnchors(world) {

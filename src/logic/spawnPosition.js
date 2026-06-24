@@ -41,13 +41,11 @@ export function spawnPositions(count, world, cfg, rng) {
 
     let x = cx + side * (half + jitter);
 
-    // TODO(Codex-7A-③) 礦山避讓
-    // 若 x 落在任一 mineZone [min, max] 內，往外推到 min-1 或 max+1：
-    //   for (const [zMin, zMax] of mineZones) {
-    //     if (x >= zMin && x <= zMax) {
-    //       x = side > 0 ? zMax + 1 : zMin - 1;
-    //     }
-    //   }
+    for (const [zMin, zMax] of mineZones) {
+      if (x >= zMin && x <= zMax) {
+        x = side > 0 ? zMax + 1 : zMin - 1;
+      }
+    }
 
     // 夾在地圖邊界內
     x = Math.max(0, Math.min(world.cols - 1, x));

@@ -71,13 +71,13 @@ function _startNight(world, cfg) {
   // buildWave 產生有 hp/attack/moveSpeed 的敵人實例（純邏輯）
   const waveRng   = createRng(WAVE_RNG_SEED + world.stage * 1000);
   const spawnRng  = createRng(WAVE_RNG_SEED + world.stage * 1000 + 500);
-  const wave      = buildWave(world.stage || 1, 1 /* playerCount：MVP 單人固定 1 */, waveRng);
+  const wave      = buildWave(world.stage + 1, 1 /* playerCount：MVP 單人固定 1 */, waveRng);
 
   world.pendingSpawns = _buildPendingSpawns(wave, world, cfg, spawnRng);
 }
 
 /**
- * TODO(Codex-7A-①) _buildPendingSpawns
+ * Codex-7A-① _buildPendingSpawns
  *
  * 將 buildWave 回傳的 { enemies, schedule } 拆成分批出怪佇列。
  *
@@ -103,30 +103,50 @@ function _startNight(world, cfg) {
  * @returns {Array}
  */
 function _buildPendingSpawns(wave, world, cfg, rng) {
-  // TODO(Codex-7A-①)
-  return [];
+  const pending = [];
+  let cursor = 0;
+
+  for (const item of wave.schedule ?? []) {
+    const count = Math.max(0, item.count ?? 0);
+    const defs = (wave.enemies ?? []).slice(cursor, cursor + count);
+    cursor += count;
+    if (defs.length === 0) continue;
+
+    const positions = spawnPositions(defs.length, world, cfg, rng);
+    pending.push({
+      atSecond: item.second ?? 0,
+      defs: defs.map((enemy, i) => ({ ...enemy, ...positions[i] })),
+    });
+  }
+
+  return pending;
 }
 
 function _updateNight(world, dt, cfg) {
   world.phaseTimer   = Math.max(0, world.phaseTimer - dt);
   world.nightElapsed += dt;
 
-  // TODO(Codex-7A-②) 分批出怪
-  // 每幀從 world.pendingSpawns 取出 atSecond <= nightElapsed 的批次、push 到 world.enemies。
-  // push 的格式同 combatRuntime createEnemy 的回傳（含 id / key / hp / hpMax / attackCooldown 等）。
-  // 取出後從 world.pendingSpawns 刪除該批次（splice 或 filter）。
-  //
-  // 範例（偽碼）：
-  //   while (world.pendingSpawns.length && world.pendingSpawns[0].atSecond <= world.nightElapsed) {
-  //     const batch = world.pendingSpawns.shift();
-  //     for (const def of batch.defs) {
-  //       world.enemies.push({ id: def.id, key: def.key, zh: ENEMIES[def.key]?.zh ?? def.key,
-  //         x: def.x, y: def.y, hp: def.hp, hpMax: def.hp,
-  //         attack: def.attack, defense: def.defense ?? 0,
-  //         moveSpeed: def.moveSpeed, attackRange: def.attackRange ?? 1,
-  //         attackCooldown: 0 });
-  //     }
-  //   }
+  while (world.pendingSpawns.length && world.pendingSpawns[0].atSecond <= world.nightElapsed) {
+    const batch = world.pendingSpawns.shift();
+    for (const def of batch.defs) {
+      const base = ENEMIES[def.key] ?? {};
+      world.enemies.push({
+        id: def.id,
+        key: def.key,
+        zh: base.zh ?? def.key,
+        isBoss: !!def.isBoss,
+        x: def.x,
+        y: def.y,
+        hp: def.hp,
+        hpMax: def.hp,
+        attack: def.attack,
+        defense: def.defense ?? base.defense ?? 0,
+        moveSpeed: def.moveSpeed ?? base.moveSpeed ?? 0,
+        attackRange: def.attackRange ?? base.attackRange ?? 1,
+        attackCooldown: 0,
+      });
+    }
+  }
 
   // 夜晚計時到 + 還有怪 → overtime
   if (world.phaseTimer <= 0 && world.enemies.length > 0) {

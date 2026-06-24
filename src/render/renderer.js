@@ -98,6 +98,7 @@ export class Renderer {
     ctx.restore();
 
     this._drawHud(world); // 螢幕座標 HUD（不受鏡頭位移）
+    if (world.phase === 'gameover') this._drawGameOverOverlay(world);
   }
 
   _drawBuildPreview(world) {
@@ -126,10 +127,12 @@ export class Renderer {
     const blockLine = `已放置 ${fmtItems(world.blockCounts ?? {})}`;
     const hitTotal = world.combat?.lastHits?.reduce((sum, hit) => sum + hit.damage, 0) ?? 0;
     const enemyLine = `敵人 ${world.enemies?.length ?? 0}　最近命中 ${fmt2(hitTotal)}`;
+    const phaseLine = this._phaseLine(world);
     const mode = world.selectedBlock
       ? `建造：${BLOCKS[world.selectedBlock]?.zh ?? world.selectedBlock}（剩 ${world.storage[world.selectedBlock] ?? 0}）　左鍵放置 / 右鍵拆除 / 再按取消`
       : '挖礦模式（左鍵長按挖最近）　按 1~7 選材料建造';
     const lines = [
+      phaseLine,
       mode,
       coreLine,
       coreLine2,
@@ -156,6 +159,41 @@ export class Renderer {
     ctx.fillRect(8, panelTop, vw - 16, panelH);
     ctx.fillStyle = '#eee';
     lines.forEach((ln, i) => ctx.fillText(ln, 14, panelTop + padY + i * lineH));
+    ctx.restore();
+  }
+
+  _phaseLine(world) {
+    // stage 是「已清關數」（0-based），顯示用加 1 = 當前/下一波關卡號
+    const waveNum = (world.stage ?? 0) + 1;
+    if (world.phase === 'prep') {
+      return `第 ${waveNum} 關　準備中（${fmt1(world.phaseTimer)} s）　N 鍵開始夜晚　Q 鍵重試`;
+    }
+    if (world.phase === 'night') {
+      return `第 ${waveNum} 關　夜晚 ${fmt1(world.nightElapsed)} s　敵人剩 ${world.enemies?.length ?? 0} 隻`;
+    }
+    if (world.phase === 'overtime') {
+      const elapsed = this.cfg.phases.overtimeSeconds - (world.phaseTimer ?? 0);
+      return `第 ${waveNum} 關　加時 ${fmt1(elapsed)} s　攻擊 x${fmt1(world.combat?.overtimeMultiplier ?? 1)} 倍　敵人剩 ${world.enemies?.length ?? 0} 隻`;
+    }
+    if (world.phase === 'gameover') {
+      return `GAME OVER　第 ${waveNum} 關　按 Q 重試`;
+    }
+    return `第 ${waveNum} 關　${world.phase ?? '未知階段'}`;
+  }
+
+  _drawGameOverOverlay(world) {
+    const ctx = this.ctx;
+    const { width: vw, height: vh } = this.viewport;
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.72)';
+    ctx.fillRect(0, 0, vw, vh);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#f2f2f2';
+    ctx.font = 'bold 48px sans-serif';
+    ctx.fillText('GAME OVER', vw / 2, vh / 2 - 18);
+    ctx.font = '18px sans-serif';
+    ctx.fillText(`第 ${(world.stage ?? 0) + 1} 關　按 Q 重試`, vw / 2, vh / 2 + 28);
     ctx.restore();
   }
 
