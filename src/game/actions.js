@@ -25,16 +25,32 @@ import { createRng } from '../logic/rng.js';
 const DEBUG_CARD_OFFER_SEED = 20260624 + 8888;
 
 // 挖礦：長按時鎖定最近礦格，依「挖掘能力 × 每秒敲擊數 × dt」累積傷害，達耐久即出塊進背包
+// 進度持久化：停手或換格時把 m.damage 存入 world.mineProgress[tk]；
+// 切回同一格時恢復進度，讓玩家可以分多次完成一個方塊。
 export function updateMining(world, isMining, dt, cfg = GAME_CONFIG) {
   const m = world.mining;
-  if (!isMining) { m.targetKey = null; m.damage = 0; m.full = false; return; }
+  const prog = world.mineProgress ?? (world.mineProgress = {});
+
+  // 停手或找不到目標：儲存當前進度，清空活動狀態
+  const _saveAndClear = () => {
+    if (m.targetKey && m.damage > 0) prog[m.targetKey] = m.damage;
+    m.targetKey = null; m.damage = 0; m.full = false;
+  };
+
+  if (!isMining) { _saveAndClear(); return; }
 
   const reach = cfg.buildLimits.placeReachTiles;
   const target = selectNearestMineCell(world.player, world.mines, reach);
-  if (!target) { m.targetKey = null; m.damage = 0; m.full = false; return; }
+  if (!target) { _saveAndClear(); return; }
 
   const tk = `${target.mineId},${target.col},${target.row},${target.blockKey}`;
-  if (tk !== m.targetKey) { m.targetKey = tk; m.damage = 0; m.full = false; }
+  if (tk !== m.targetKey) {
+    // 換目標：存舊進度，讀新目標的舊進度（0 代表全新）
+    if (m.targetKey && m.damage > 0) prog[m.targetKey] = m.damage;
+    m.targetKey = tk;
+    m.damage = prog[tk] ?? 0;
+    m.full = false;
+  }
 
   const hitsPerSec = cfg.player.mineClicksPerSec.hold;
   m.damage += miningDamagePerSecond(cfg.player.mining, hitsPerSec) * dt;
@@ -55,7 +71,9 @@ export function updateMining(world, isMining, dt, cfg = GAME_CONFIG) {
       m.full = true; // 保留 full 旗標讓 HUD 顯示提示
     }
   }
-  m.damage -= need;
+  // 方塊已破：清除此格進度，不累積到下一塊
+  delete prog[tk];
+  m.damage = 0;
   m.targetKey = null;
 }
 

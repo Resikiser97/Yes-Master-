@@ -1,8 +1,8 @@
 # MAIN.md — 函式級參考
 
-> 版本：v0.0.6.0
+> 版本：v0.0.8.0
 > 類型：**代碼優先**（文件描述錯了，以代碼為準去改本檔）。
-> ⚠️ MVP 單機可動：移動/挖礦/背包/塔內資源/掉落物自動撿取/跟隨鏡頭/初版建造/核心數值回饋/核心 HP 與修復/核心戰鬥/正式波次晝夜/卡片選擇（hover+tier中文）/localStorage 存檔/新手教學提示已成完整循環。
+> ⚠️ MVP 單機可動：移動/挖礦/背包/塔內資源/掉落物自動撿取/跟隨鏡頭/初版建造/核心數值回饋/核心 HP 與修復/核心戰鬥/正式波次晝夜/卡片選擇（hover+tier中文）/localStorage 存檔/新手教學提示/**debug 浮層（` 鍵）**/**測試難度 preset（1~30 關）**/**手機觸控 UI + 動態 canvas 縮放**已成完整循環。
 > 規則：新增 / 刪除函式必須同步本檔（見 `.claude/instructions.md` 開發鐵則）。
 >
 > 註：原本的「planning 進入點 / source map」已移至 `Docs/source-map.md`。
@@ -202,21 +202,33 @@ config/* 為靜態資料，被 logic 層 import。
 
 | 函式 | 職責 |
 |---|---|
-| `loadSave()` / `writeSave(data)` / `clearSave()` | localStorage 讀寫；讀取跑 migration |
+| `loadSave(storageKey?)` | localStorage 讀取；預設 GAME_CONFIG.save.storageKey，可傳入測試 key；跑 migration |
+| `writeSave(data, storageKey?)` | localStorage 寫入；key 可覆蓋 |
+| `clearSave(storageKey?)` | 清除指定 key 的存檔 |
 
 ### `src/storage/saveManager.js`（IO 層）
 
 | 函式 | 職責 |
 |---|---|
-| `saveWorld(world)` | 序列化 world（stage/storage/dirt/fore/player/coreHp/cardBonuses/cardModifiers/mines）並呼叫 writeSave；只在 phase=prep 時呼叫 |
-| `loadWorld(cfg?)` | 呼叫 loadSave → migration → deserializeWorld；失敗或無存檔回傳 null |
+| `saveWorld(world, cfg?)` | 序列化 world 並呼叫 writeSave；透過 `cfg.save?.storageKey` 選正式或測試 key |
+| `loadWorld(cfg?)` | 呼叫 loadSave（傳 cfg key）→ migration → deserializeWorld；失敗或無存檔回傳 null |
 
-### `src/render/renderer.js` `src/input/controls.js` `src/main.js`
+### `src/render/renderer.js` `src/input/controls.js` `src/input/touchControls.js` `src/ui/mobileLayout.js` `src/main.js`
 
 | 函式 | 職責 |
 |---|---|
-| `Renderer.render(world)` | 畫地面/網格/礦山方塊/兩層方塊/核心/玩家(插值位置)/敵人小血條/建造預覽/核心 HP/疲勞/核心數值 HUD；整數像素平移；同步 debug dataset；`firstGame && tutorialTimer > 0` 時疊加教學提示框 |
+| `Renderer.render(world)` | 畫地面/網格/礦山方塊/兩層方塊/核心/玩家(插值位置)/敵人小血條/建造預覽/核心 HP/疲勞/核心數值 HUD；整數像素平移；同步 debug dataset；`firstGame && tutorialTimer > 0` 時疊加教學提示框；`showDebug` 時疊加 debug 浮層 |
+| `Renderer.resize(cfg)` | 視窗縮放後由外部呼叫；更新 `this.t / viewport`；重設 canvas.width/height/style |
 | `Renderer._drawTutorialHint(world)` | 首次遊玩顯示黃色操作提示（prep/night 各顯不同文字，最後 1 秒依 tutorialTimer 淡出） |
+| `Renderer._drawDebugOverlay(world)` | 半透明金邊浮層疊在畫布右上角；顯示 debug hotkeys + 即時狀態（tick/phase/stage/testMode/drops/enemies/coreHp）；` 鍵關閉 |
 | `Controls.attach/detach` | 綁/解 WASD/方向鍵、滑鼠長按挖礦、快捷列選材、左鍵放置、右鍵拆除、R 修復、debug hotkeys；canvas 自動 focus |
 | `Controls.getMoveVector()` / `Controls.isMining()` / `Controls.getSelectedSlot()` / `Controls.isRepairing()` | 回傳移動向量 / 是否長按挖礦中 / 目前快捷列 / 是否長按修復 |
-| `boot()` | 入口：掛角標/版本；loadWorld 優先，失敗 fallback createWorld；無存檔首次遊玩設 firstGame/tutorialTimer；初始化 render/input；啟動 fixed timestep loop；update 接移動/建造/debug/挖礦/修復/敵人追逐/核心戰鬥/卸貨/phase 轉 prep 自動存檔/tutorialTimer 遞減；render 前跑 updateCameraFollow |
+| `TouchControls.attach/detach` | 建立/移除 HTML overlay（D-pad + 動作鍵 + 快捷列 + HTML debug 面板）；canvas touchstart 監聽卡片選擇 |
+| `TouchControls.*`（public 介面） | 與 `Controls` 完全相容：`getMoveVector / isMining / isRepairing / getSelectedSlot / setSelectedSlot / consumePlace / consumeRemove / consumeDebugActions / consumeCardChoice` |
+| `computeTilePx(cfg, reserveBottomPx?)` | 根據 `window.innerWidth/Height` 和可見格數（首次快取）算出最佳 tilePx；最小 4 |
+| `applyTilePx(cfg, tilePx)` | 把 tilePx 寫入 cfg.render.tilePx 並更新 cfg.map.viewportPx（by reference） |
+| `isTouchDevice()` | 偵測觸控裝置（ontouchstart / maxTouchPoints） |
+| `getSavedInputMode()` / `saveInputMode(mode)` | 讀/寫 `yesmaster.inputMode` localStorage key |
+| `setupOrientationGuard()` | 直向時顯示「請轉橫向遊玩」全螢幕遮罩；只在 touch 模式呼叫 |
+| `showSplashScreen(onStart)` | 顯示 GOBLIN NEST splash；兩排按鈕：難度（正式/測試）+ 輸入模式（鍵盤/觸控）；callback `onStart(diffMode, inputMode)` |
+| `boot()` | 入口：掛版本號；showSplashScreen(diffMode, inputMode) 後：applyTilePx → new Renderer → 選 Controls/TouchControls → touch 才 setupOrientationGuard → resize 監聽 → 建 world → 掛 ⚙ debug 按鈕 → 啟動 fixed timestep loop；touch 模式每幀把 controls.mouse 同步玩家位置 |

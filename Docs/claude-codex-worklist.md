@@ -148,6 +148,10 @@
 | 9. 教學/localStorage 存檔 | ✅ saveManager / 新手教學提示 / GOBLIN NEST splash 完成（v0.0.5.0） |
 | 10A. 掉落物系統（Claude） | ✅ drops.js 純函式 / collectDrops / updateMining 掉落邏輯 / renderer _drawDrops / saveManager 序列化（v0.0.6.0） |
 | 10B. 卡片 UI polish（Codex） | ✅ _drawCardPanel hover glow + tier 中文化（稀有/普通/基礎）+ 版面精調（v0.0.6.0） |
+| 11A. HUD 底部左右分欄（Codex） | ✅ `_drawHud` 左欄（核心/背包/資源/已放置）+ 右欄（phase/操作/疲勞/敵人/狀態），高度縮至 ~86px，中間細分隔線（v0.0.7.1） |
+| 11B. Debug 浮層（Claude） | ✅ ` 鍵切換 showDebug → `_drawDebugOverlay` 右上角疊加；hotkeys + 即時狀態（v0.0.7.0） |
+| 11C. 測試難度 preset（Claude） | ✅ `config/testPreset.js` + splash 兩按鈕 + saveLocal/saveManager key 參數化 + _testInit 強化注入（v0.0.7.0） |
+| 12. 手機操作 UI | 🔲 待討論（新 Chat）：虛擬搖桿/按鈕、觸控事件接入；需詳細 Prompt 先討論再交 CC |
 
 ---
 

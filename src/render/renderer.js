@@ -5,7 +5,7 @@
  * @exports     Renderer
  * @depends     config/gameConfig.js
  * @sourceOfTruth Docs/game-design-plan.md「建築維度」「遊戲內 UI 設計」
- * @version     v0.0.6.0
+ * @version     v0.0.8.0
  *
  * 渲染層只「讀」world 狀態畫圖，不寫任何遊戲規則（鐵則 9）。
  */
@@ -95,6 +95,20 @@ export class Renderer {
     this.ctx = canvas?.getContext?.('2d') ?? null;
   }
 
+  /** 視窗縮放後由外部呼叫：cfg.render.tilePx 和 cfg.map.viewportPx 已由 applyTilePx 更新。 */
+  resize(cfg) {
+    this.cfg = cfg;
+    this.t = cfg.render.tilePx;
+    this.viewport = cfg.map.viewportPx;
+    if (this.canvas) {
+      this.canvas.width  = this.viewport.width;
+      this.canvas.height = this.viewport.height;
+      this.canvas.style.width  = `${this.viewport.width}px`;
+      this.canvas.style.height = `${this.viewport.height}px`;
+    }
+    this.ctx = this.canvas?.getContext?.('2d') ?? null;
+  }
+
   render(world) {
     const ctx = this.ctx;
     if (!ctx) return;
@@ -137,6 +151,7 @@ export class Renderer {
     if (world.phase === 'gameover') this._drawGameOverOverlay(world);
     if (world.phase === 'cardOffer') this._drawCardOffer(world);
     if (world.firstGame && world.tutorialTimer > 0) this._drawTutorialHint(world);
+    if (world.showDebug) this._drawDebugOverlay(world);
   }
 
   _drawMiningProgress(world) {
@@ -218,34 +233,40 @@ export class Renderer {
     const mode = world.selectedBlock
       ? `建造：${BLOCKS[world.selectedBlock]?.zh ?? world.selectedBlock}（剩 ${world.storage[world.selectedBlock] ?? 0}）　左鍵放置 / 右鍵拆除 / 再按取消`
       : '挖礦模式（左鍵長按挖最近）　按 1~7 選材料建造';
-    const lines = [
-      phaseLine,
-      mode,
+    const leftLines = [
       coreLine,
       coreLine2,
-      fatigueLine,
-      blockLine,
-      enemyLine,
       `背包 ${inventoryWeight(inv)}/${world.player.capacity}　${fmtItems(inv)}`,
       `塔內 ${fmtItems(world.storage)}`,
+      blockLine,
     ].filter(Boolean);
-    if (world.mining?.full) lines.push('⚠ 背包已滿，靠近核心可自動卸貨');
-    if (world.repair?.active) lines.push('修復中');
-    else if (world.repair?.reason === 'not_on_foundation') lines.push('修復需要站在核心或連通泥土地基上');
-    else if (world.repair?.reason === 'no_fatigue') lines.push('疲勞不足，無法修復');
-    if (this.cfg.debug?.enabled && this.cfg.debug?.hotkeys) lines.push('DEBUG H扣血 J回血 K補建材 L敵人 P敵群 C抽卡');
+    const rightLines = [
+      phaseLine,
+      mode,
+      fatigueLine,
+      enemyLine,
+    ].filter(Boolean);
+    if (world.mining?.full) rightLines.push('⚠ 背包已滿');
+    else if (world.repair?.active) rightLines.push('修復中');
+    else if (world.repair?.reason === 'not_on_foundation') rightLines.push('需站在核心或連通地基上');
+    else if (world.repair?.reason === 'no_fatigue') rightLines.push('疲勞不足');
 
-    const lineH = 16;
-    const padY = 6;
-    const panelH = padY * 2 + lines.length * lineH;
+    const lineH = 14;
+    const padY = 8;
+    const rows = Math.max(leftLines.length, rightLines.length);
+    const panelH = padY * 2 + rows * lineH;
     const panelTop = vh - panelH - 8;
+    const halfW = Math.floor((vw - 16) / 2);
     ctx.save();
     ctx.font = '12px sans-serif';
     ctx.textBaseline = 'top';
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
     ctx.fillRect(8, panelTop, vw - 16, panelH);
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.fillRect(8 + halfW, panelTop + 4, 1, panelH - 8);
     ctx.fillStyle = '#eee';
-    lines.forEach((ln, i) => ctx.fillText(ln, 14, panelTop + padY + i * lineH));
+    leftLines.forEach((ln, i) => ctx.fillText(ln, 14, panelTop + padY + i * lineH));
+    rightLines.forEach((ln, i) => ctx.fillText(ln, 8 + halfW + 8, panelTop + padY + i * lineH));
     ctx.restore();
   }
 
@@ -295,6 +316,56 @@ export class Renderer {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(text, vw / 2, y + h / 2);
+    ctx.restore();
+  }
+
+  _drawDebugOverlay(world) {
+    const ctx = this.ctx;
+    const { width: vw } = this.viewport;
+    const cs = world.coreStats;
+    const mPwr   = this.cfg.player?.mining ?? 0;
+    const mRate  = this.cfg.player?.mineClicksPerSec?.hold ?? 5;
+    const mDps   = mPwr * mRate;
+    const tk     = world.mining?.targetKey;
+    const bKey   = tk ? tk.split(',')[3] : null;
+    const need   = bKey ? durabilityToBreak(bKey) : 0;
+    const saved  = tk ? (world.mineProgress?.[tk] ?? 0) : 0;
+    const active = world.mining?.damage ?? 0;
+    const mineStr = tk
+      ? `${fmt1(active)}/${need}  (記憶 ${fmt1(saved)})`
+      : `- (記憶格: ${Object.keys(world.mineProgress ?? {}).length})`;
+    const lines = [
+      'DEBUG  ` 鍵關閉',
+      '─────────────────',
+      'H 扣血　J 回血',
+      'K 補建材　L 生 1 敵',
+      'P 生 5 敵　C 抽卡',
+      'N 夜晚　Q 重試',
+      'X 重置存檔',
+      '─────────────────',
+      `tick: ${world.clock?.updateTick ?? 0}`,
+      `phase: ${world.phase ?? '-'}`,
+      `stage: ${(world.stage ?? 0) + 1}  test: ${world.testMode ? '✓' : '-'}`,
+      `drops: ${world.drops?.length ?? 0}  enemies: ${world.enemies?.length ?? 0}`,
+      `coreHp: ${fmt1(world.coreHp ?? cs?.hpMax ?? 0)}/${fmt1(cs?.hpMax ?? 0)}`,
+      `挖礦: ${mPwr}pwr × ${mRate}/s = ${mDps}dps`,
+      `礦格: ${mineStr}`,
+    ];
+    const lineH = 16, padX = 12, padY = 8;
+    const panelW = 210;
+    const panelH = padY * 2 + lines.length * lineH;
+    const px = vw - panelW - 8;
+    const py = 8;
+    ctx.save();
+    ctx.font = '12px monospace';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = 'rgba(10,16,24,0.82)';
+    ctx.fillRect(px, py, panelW, panelH);
+    ctx.strokeStyle = 'rgba(255,180,0,0.4)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(px + 0.5, py + 0.5, panelW - 1, panelH - 1);
+    ctx.fillStyle = '#f0b020';
+    lines.forEach((ln, i) => ctx.fillText(ln, px + padX, py + padY + i * lineH));
     ctx.restore();
   }
 

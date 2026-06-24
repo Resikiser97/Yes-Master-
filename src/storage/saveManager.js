@@ -5,7 +5,7 @@
  * @exports     saveWorld, loadWorld
  * @depends     config/gameConfig.js、src/storage/saveLocal.js、src/game/world.js、src/game/coreSnapshot.js
  * @sourceOfTruth Docs/game-architecture-plan.md「Save File 資料結構」
- * @version     v0.0.6.0
+ * @version     v0.0.7.0
  *
  * 只在 phase=prep 時呼叫 saveWorld（wave clear 後）。
  * 存檔不包含：enemies / pendingSpawns / mining / repair / combat / camera / clock（皆為暫態或可重算）。
@@ -36,6 +36,7 @@ function serializeWorld(world) {
       B: { columns: world.mines.B.mine.columns.map(col => [...col]) },
     },
     drops: [...(world.drops ?? [])],
+    mineProgress: { ...(world.mineProgress ?? {}) },
   };
 }
 
@@ -62,6 +63,7 @@ function deserializeWorld(data, cfg = GAME_CONFIG) {
   world.cardBonuses = { ...(data.cardBonuses ?? {}) };
   world.cardModifiers = [...(data.cardModifiers ?? [])];
   world.drops = [...(data.drops ?? [])];
+  world.mineProgress = { ...(data.mineProgress ?? {}) };
 
   if (data.mines?.A?.columns) {
     world.mines.A.mine.columns = data.mines.A.columns.map(col => [...col]);
@@ -76,13 +78,13 @@ function deserializeWorld(data, cfg = GAME_CONFIG) {
 }
 
 // 儲存 world（只在 phase=prep 時由 main.js 呼叫）
-export function saveWorld(world) {
-  writeSave(serializeWorld(world));
+export function saveWorld(world, cfg = GAME_CONFIG) {
+  writeSave(serializeWorld(world), cfg.save?.storageKey);
 }
 
 // 讀取存檔並回傳 world；無存檔或資料損毀 → null
 export function loadWorld(cfg = GAME_CONFIG) {
-  const result = loadSave();
+  const result = loadSave(cfg.save?.storageKey);
   if (!result.ok) return null;
   try {
     return deserializeWorld(result.data, cfg);

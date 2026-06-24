@@ -2,12 +2,13 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Yes, Master! — MVP</title>
   <style>
-    body { margin: 0; background: #1a1a1a; color: #eee; font-family: sans-serif; }
-    #stage { position: relative; width: 800px; height: 600px; margin: 16px auto; background: #222; }
-    #game { display: block; width: 800px; height: 600px; image-rendering: pixelated; }
+    body { margin: 0; background: #1a1a1a; color: #eee; font-family: sans-serif; overflow: hidden; }
+    /* #stage / #game の寸法は renderer.js が JS で制御（動態 tilePx）。CSS で固定しない。 */
+    #stage { position: relative; background: #222; display: block; }
+    #game { display: block; image-rendering: pixelated; }
     #mode-badge { position: absolute; top: 8px; left: 8px; padding: 2px 8px;
       background: #2d6; color: #000; font-size: 12px; border-radius: 4px; }
     #version { position: absolute; bottom: 8px; right: 8px; font-size: 11px; opacity: 0.6; }
@@ -16,7 +17,7 @@
 <body>
   <div id="stage">
     <span id="mode-badge">單人模式</span>
-    <canvas id="game" width="800" height="600"></canvas>
+    <canvas id="game"></canvas>
     <span id="version">v0.0.3.0</span>
   </div>
   <!-- 全模組化：ES Module 入口（鐵則 7） -->
