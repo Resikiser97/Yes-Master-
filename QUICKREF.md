@@ -2,7 +2,7 @@
 
 > 版本：v0.0.8.0
 > 類型：**代碼優先**（文件描述錯了，以代碼為準去改本檔）。
-> ⚠️ MVP 單機可動：移動/挖礦/背包/塔內資源/掉落物自動撿取/跟隨鏡頭/初版建造/核心數值回饋/核心 HP 與修復/debug 核心戰鬥/正式波次/晝夜/卡片選擇（hover+tier中文）/localStorage 存檔/新手教學提示/**debug 浮層（` 鍵）/測試難度 preset（1~30 關）/手機觸控 UI（D-pad+動作鍵+快捷列）/動態 canvas 縮放**已成完整循環。
+> ⚠️ MVP 單機可動：移動/挖礦/背包/塔內資源/掉落物自動撿取/跟隨鏡頭/初版建造/核心數值回饋/核心 HP 與修復/debug 核心戰鬥/正式波次/晝夜/卡片選擇（hover+tier中文）/localStorage 存檔/新手教學提示/**debug 浮層（` 鍵）/測試難度 preset（1~30 關）/手機三欄觸控 UI（左 HUD+D-pad、中 canvas+1~0 快捷列、右 Debug Tool+動作鍵）/動態 canvas 縮放**已成完整循環。
 
 ---
 
@@ -30,7 +30,7 @@
 | `config/mines.js` | 礦山機率表 + 初始資源包 |
 | `src/logic/*`（純函式） | rng / damageDefense / coreStats / coreHealth / connectivity / building / combat / waveGen / cardOffer / migration / playerMovement / mineGen / inventory / mining / **drops**（掉落物撿取） |
 | `src/game/*` | world（狀態 + 鏡頭跟隨 updateCameraFollow）/ coreSnapshot（核心數值快照）/ combatRuntime（debug 敵人 + 核心攻擊）/ gameLoop（fixed timestep）/ actions（挖礦/卸貨/建造/掉落物 orchestration） |
-| `src/render` `src/input` `src/storage` `src/ui` | 渲染（只讀 world、插值 + 整數平移 + 建造預覽 + 掉落物 + 核心數值 HUD + 卡片面板 hover + 教學提示）/ 輸入（Controls 鍵盤/滑鼠 + **TouchControls 8方向D-pad+動作鍵+快捷列**）/ 存檔層（saveLocal + saveManager）/ UI（splash 難度+輸入模式選擇、**mobileLayout** 動態 tilePx + 直向守衛） |
+| `src/render` `src/input` `src/storage` `src/ui` | 渲染（只讀 world、插值 + 整數平移 + 建造預覽 + 掉落物 + 核心數值 HUD + 卡片面板 hover + 教學提示；手機模式可關閉 canvas HUD）/ 輸入（Controls 鍵盤/滑鼠 + **TouchControls 三欄手機 UI：左 HUD+D-pad、中 1~0 快捷列、右 Debug Tool+動作鍵**）/ 存檔層（saveLocal + saveManager）/ UI（splash 難度+輸入模式選擇、**mobileLayout** 動態 tilePx + 三欄 layout + 直向守衛） |
 | `Docs/claude-codex-worklist.md` | Claude↔Codex 交接看板 |
 
 > 函式級細節見 `MAIN.md`。
@@ -78,8 +78,10 @@
 | 拆土同步扣 current/max HP 時可能把自己拆死 | `tryRemove` 必須先檢查拆除後 `coreHp > 0`，否則回傳 `would_destroy_core` 禁止拆除 |
 | 修復如果不檢查站位會變成免費遠端回血 | R 修復必須站在核心或 connected dirt 上，且每秒消耗 1 fatigue |
 | `computeConnected()` 返回 Set 不含核心格，判斷「站在地基上」若只用 `connected.has()` 會漏掉核心 | 凡對連通泥土生效的功能（卸貨/修復/…）一律用 `isOnFoundation()`；規則見 `Docs/design-patterns.md` |
+| 手機虛擬按鈕蓋在 canvas 上會遮擋 HUD/debug，且 iOS/Android 可能叫出原生 tap highlight | 手機橫向使用三欄 layout：左右灰色操作區放 HUD/D-pad/Debug Tool/動作鍵，中間只放 canvas 與快捷列；所有 touch button 要加 `preventDefault()`、`touch-action:none`、`-webkit-tap-highlight-color:transparent` |
+| 手機模式若直接改全域 `GAME_CONFIG.render.drawCanvasHud` 會污染桌面模式 | `main.js` 進 touch mode 時 clone cfg/render/map，再設 `drawCanvasHud=false`；桌面 renderer 仍照常畫 `_drawHud` |
 
-> Debug hotkeys（`config/gameConfig.js debug.enabled && debug.hotkeys`）：H 扣核心血、J 回核心血、K 補塔內測試資源、L 生成 1 敵人、P 生成 5 敵人、C 直接開抽卡面板、X 清除 localStorage 存檔並重新整理（回新局）、**` 鍵切換 debug 浮層**（右上角疊加，顯示 tick/phase/drops/coreHp 等即時狀態）。
+> Debug hotkeys（`config/gameConfig.js debug.enabled && debug.hotkeys`）：H 扣核心血、J 回核心血、K 補塔內測試資源、L 生成 1 敵人、P 生成 5 敵人、C 直接開抽卡面板、X 清除 localStorage 存檔並重新整理（回新局）、**` 鍵切換 debug 浮層**（右上角疊加，顯示 tick/phase/drops/coreHp 等即時狀態）。手機模式另有右上 ⚙ Debug Tool，掛在右側灰欄，與 canvas debug overlay 可同時存在。
 
 > 已知的設計面注意點（可在開工時轉成具體陷阱）：
 > - 建築是三維度（背景泥土 = 地基；前景第二層蓋在泥土前方），連通性在背景平面判定。

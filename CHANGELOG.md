@@ -22,6 +22,14 @@
 - **Splash 輸入模式選擇**（`src/ui/splash.js`）：第二排按鈕「⌨ 電腦鍵盤 / 📱 手機觸控」；auto-detect 預設；選中金色高亮；callback 改為 `onStart(diffMode, inputMode)`；儲存至 `localStorage yesmaster.inputMode`（不進遊戲存檔）。
 - **index.html 響應式**：移除 `width:800px; height:600px` 硬碼；canvas 尺寸全交 JS 控制；viewport 增 `maximum-scale=1, user-scalable=no`；body 加 `overflow:hidden`。
 
+### 調整
+- **手機三欄觸控 UI 精修**：
+  - `src/ui/mobileLayout.js`：新增三欄 layout 計算；手機橫向時左右保留灰色操作區，中間 canvas 以桌面比例等比縮小置中；手機模式不再用 bottom reserve 壓縮 canvas。
+  - `src/input/touchControls.js`：overlay 改為左/中/右三欄容器；左欄上方顯示核心/關卡/HUD 狀態、左下固定 D-pad；右欄上方放 Debug Tool、右下固定挖礦/修復/放置/拆除；按鈕加入 `-webkit-tap-highlight-color: transparent`、`user-select: none`、`touch-action: none`，降低手機原生 highlight 干擾。
+  - `src/render/renderer.js` / `src/main.js`：手機模式設定 `cfg.render.drawCanvasHud = false`，桌面仍照常畫 canvas 底部 HUD；canvas debug overlay 保留。
+  - 手機快捷列固定顯示 `1 2 3 4 5 6 7 8 9 0`；目前 `1-7` 對應 `config.hotbar` 可用，`8-0` 顯示 disabled，未來 hotbar 擴到 10 格可直接啟用。
+  - Debug Tool 修正 pointer events 與 scroll 區域，讓手機右欄面板按鈕與 scrollbar 可點擊/拖動。
+
 ## v0.0.7.2 - 2026-06-24
 
 ### 新增

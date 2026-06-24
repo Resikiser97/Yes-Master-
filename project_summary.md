@@ -12,12 +12,12 @@
 - **副標 / 世界觀名**：哥布林的信仰（只能作為 subtitle / lore，不是主遊戲標題；英文名不要寫成 Goblin's Faith）。
 - **這是什麼**：Yes, Master! — 1–4 人合作塔防瀏覽器遊戲（哥布林守核心、人族來襲）。
 - **現在版本**：v0.0.8.0
-- **當前狀態**：MVP 單機可動。移動 / 挖礦 / 背包 / 塔內資源 / 掉落物自動撿取 / 跟隨鏡頭 / 初版建造 / 核心數值回饋 / 核心 HP 與修復 / 核心戰鬥 / 正式波次晝夜 / 卡片選擇（hover + tier 中文化）/ localStorage 存檔 / 新手教學提示 / debug 浮層（` 鍵）/ 測試難度 preset（1~30 關強化開局）/ **動態 canvas 縮放（動態 tilePx）** / **手機觸控 UI（D-pad + 動作鍵 + 快捷列）** / **⚙ debug 按鈕（鍵盤+觸控皆有）** 已成完整循環。
+- **當前狀態**：MVP 單機可動。移動 / 挖礦 / 背包 / 塔內資源 / 掉落物自動撿取 / 跟隨鏡頭 / 初版建造 / 核心數值回饋 / 核心 HP 與修復 / 核心戰鬥 / 正式波次晝夜 / 卡片選擇（hover + tier 中文化）/ localStorage 存檔 / 新手教學提示 / debug 浮層（` 鍵）/ 測試難度 preset（1~30 關強化開局）/ **動態 canvas 縮放（動態 tilePx）** / **手機三欄觸控 UI（左 HUD+D-pad、中 canvas+1~0 快捷列、右 Debug Tool+動作鍵）** / **⚙ debug 按鈕（鍵盤+觸控皆有）** 已成完整循環。
 - **下一步（最多 4 條）**：
   1. 怪物職能擴充（Must Solve 2）。
   2. 建築策略格子化模擬驗證（Must Solve 3）。
   3. 多人連線骨架（PeerJS Star 拓撲）。
-  4. 進一步手機 UX 優化（tilePx 調整 UI、熱鍵提示改 touch 友善文字）。
+  4. PWA / 加入主畫面支援（manifest、icon、iOS meta、Android install prompt）。
 
 ---
 
@@ -50,11 +50,12 @@
 - v0.0.3.0 Step 5 核心數值回饋：`countPlacedBlocks` 統計背景泥土與前景方塊，`refreshCoreSnapshot` 刷新 `world.blockCounts/world.coreStats`；放置/拆除後 HUD 即時顯示核心 HP 上限、攻擊、防禦、攻速、範圍、魔法、連鎖與方塊數。
 - v0.0.3.0 Step 6A 核心 HP / 修復基礎：新增 `coreHealth` 純邏輯；world 持有 `coreHp` 與玩家目前疲勞；建土/拆土同步調整 current/max HP，拆到會讓核心歸零則禁止；R 長按站核心或連通泥土地基消耗疲勞修復；H/J/K debug hotkeys 便於測試。
 - v0.0.3.0 Step 6B debug 核心戰鬥：新增 `combatRuntime`，L/P 生成 debug 敵人；敵人直線追逐玩家但暫不攻擊；核心用 `combat.js` 的普攻/連鎖/傷害打範圍內敵人；renderer 顯示敵人與小血條、HUD 顯示敵人數與最近命中。
+- v0.0.8.0 手機 UX 調整：手機橫向改成三欄 layout；左側灰欄顯示核心/關卡/HUD 資訊並保留 D-pad，右側灰欄放 Debug Tool 與動作鍵，中間 canvas 保持桌面比例等比縮放並保留 1~0 快捷列；手機模式關閉 canvas 底部 HUD，避免虛擬按鈕遮擋遊戲/debug 文字。
 
 ### 已知問題
 - 🔴 緊急：（無）
 - 🟡 待修：（無重大待修）
-- 🟡 待測：建造手感與核心數值 HUD 呈現尚未實機校準。
+- 🟡 待測：手機三欄 layout 實機手感、快捷列 1~0 尺寸與左右灰欄資訊密度仍需 iOS/Android 橫向實測校準。
 - 🟡 未來風險：目前核心血量用 `world.dirt.size` 計算，依賴建造流程保證泥土全連通；接存檔/debug/migration 外部載入時，要改成只統計 `computeConnected(world.dirt, world.core)`。
 - 🔵 觀察中：怪物移速、敵人職能手感、建築策略生存率差異等待 MVP 實玩校準（見 mustsolve.md）。
 
