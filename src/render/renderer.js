@@ -649,7 +649,7 @@ export class Renderer {
 
   _drawRangeCircle(world) {
     if (!world.coreStats?.range) return;
-    const t   = this.t;
+    const t     = this.t;
     const range = world.coreStats.range;
     const anchors = coreAttackAnchors(world);
     if (!anchors.length) return;
@@ -660,70 +660,80 @@ export class Renderer {
       this._rangeCacheKey = key;
       const ppt     = this.cfg.map.pxPerTile;
       const rangePx = (range / ppt) * t;
-      const pad     = 14;
-      const centers = anchors.map((a) => ({ x: a.x * t, y: a.y * t }));
+      const glowW   = 10;   // 外光暈寬（px，兩側各半）
+      const sharpW  = 2.5;  // 主線寬（px）
+      const glowPad = 20;   // shadow blit 留白
+      const pad     = Math.ceil(glowW / 2) + glowPad;
+      const centers = anchors.map((a) => ({ x: a.x * t + t / 2, y: a.y * t + t / 2 }));
       const minX = Math.min(...centers.map((p) => p.x)) - rangePx - pad;
       const minY = Math.min(...centers.map((p) => p.y)) - rangePx - pad;
       const maxX = Math.max(...centers.map((p) => p.x)) + rangePx + pad;
       const maxY = Math.max(...centers.map((p) => p.y)) + rangePx + pad;
-      const width = Math.ceil(maxX - minX);
+      const width  = Math.ceil(maxX - minX);
       const height = Math.ceil(maxY - minY);
 
-      try {
-        const oc    = new OffscreenCanvas(width, height);
-        const octx  = oc.getContext('2d');
-        const mask  = new OffscreenCanvas(width, height);
-        const mctx  = mask.getContext('2d');
-        mctx.translate(-minX, -minY);
-        mctx.fillStyle = '#fff';
-        for (const c of centers) {
-          mctx.beginPath();
-          mctx.arc(c.x, c.y, rangePx, 0, Math.PI * 2);
-          mctx.fill();
-        }
-
-        octx.save();
-        octx.globalAlpha = 0.75;
-        octx.shadowBlur = 14;
-        octx.shadowColor = '#00ccff';
-        octx.drawImage(mask, 0, 0);
-        octx.restore();
-        octx.globalCompositeOperation = 'source-in';
-        octx.fillStyle = 'rgba(0,205,255,0.18)';
-        octx.fillRect(0, 0, width, height);
-        octx.globalCompositeOperation = 'source-over';
-
+      // 建一個 union ring offscreen canvas，以 ringWidth 為參數
+      const makeRing = (rW, color) => {
+        const oc   = new OffscreenCanvas(width, height);
+        const octx = oc.getContext('2d');
         octx.translate(-minX, -minY);
-        octx.fillStyle = 'rgba(120,245,255,0.8)';
+        // 外輪廓 union fill
+        octx.fillStyle = '#fff';
         for (const c of centers) {
           octx.beginPath();
-          octx.arc(c.x, c.y, 2.2, 0, Math.PI * 2);
+          octx.arc(c.x, c.y, rangePx + rW / 2, 0, Math.PI * 2);
           octx.fill();
         }
-        this._rangeCanvas = { oc, x: minX, y: minY };
+        // punch 內部
+        octx.globalCompositeOperation = 'destination-out';
+        octx.fillStyle = '#fff';
+        for (const c of centers) {
+          octx.beginPath();
+          octx.arc(c.x, c.y, Math.max(0, rangePx - rW / 2), 0, Math.PI * 2);
+          octx.fill();
+        }
+        // 上色：reset transform 才能讓 fillRect 覆蓋整個 offscreen canvas
+        octx.setTransform(1, 0, 0, 1, 0, 0);
+        octx.globalCompositeOperation = 'source-in';
+        octx.fillStyle = color;
+        octx.fillRect(0, 0, width, height);
+        return oc;
+      };
+
+      try {
+        const glowRing  = makeRing(glowW,  'rgba(0, 200, 255, 0.30)'); // 外光暈：寬、淡
+        const sharpRing = makeRing(sharpW, 'rgba(80, 230, 255, 0.95)'); // 主線：窄、亮
+        this._rangeCanvas = { glowRing, sharpRing, x: minX, y: minY };
       } catch (_) {
-        this._rangeCanvas = null; // OffscreenCanvas 不支援時 fallback
+        this._rangeCanvas = null;
       }
     }
 
     if (this._rangeCanvas) {
-      const { oc, x, y } = this._rangeCanvas;
-      this.ctx.drawImage(oc, x, y);
+      const { glowRing, sharpRing, x, y } = this._rangeCanvas;
+      const ctx = this.ctx;
+      ctx.save();
+      // 外光暈：先畫，加強 shadow blur 讓它暈染
+      ctx.shadowBlur  = 18;
+      ctx.shadowColor = 'rgba(0, 200, 255, 0.75)';
+      ctx.drawImage(glowRing, x, y);
+      // 主線：覆蓋在上，輕微 shadow 保持發亮感
+      ctx.shadowBlur  = 8;
+      ctx.shadowColor = 'rgba(120, 240, 255, 0.9)';
+      ctx.drawImage(sharpRing, x, y);
+      ctx.restore();
     } else {
-      // Fallback：直接畫所有正式攻擊 anchor 的範圍圈。
+      // Fallback：個別弧線描邊（不做 union，但至少無填色）
       const rangePx = (range / this.cfg.map.pxPerTile) * t;
       this.ctx.save();
-      this.ctx.fillStyle = 'rgba(0,200,255,0.045)';
+      this.ctx.shadowBlur  = 14;
+      this.ctx.shadowColor = 'rgba(0, 210, 255, 0.7)';
+      this.ctx.strokeStyle = 'rgba(80, 230, 255, 0.9)';
+      this.ctx.lineWidth   = 2;
       for (const a of anchors) {
         this.ctx.beginPath();
-        this.ctx.arc(a.x * t, a.y * t, rangePx, 0, Math.PI * 2);
-        this.ctx.fill();
-      }
-      this.ctx.fillStyle = 'rgba(120,245,255,0.8)';
-      for (const a of anchors) {
-        this.ctx.beginPath();
-        this.ctx.arc(a.x * t, a.y * t, 2.2, 0, Math.PI * 2);
-        this.ctx.fill();
+        this.ctx.arc(a.x * t + t / 2, a.y * t + t / 2, rangePx, 0, Math.PI * 2);
+        this.ctx.stroke();
       }
       this.ctx.restore();
     }

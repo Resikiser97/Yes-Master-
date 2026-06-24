@@ -147,29 +147,20 @@ export function updateCoreCombat(world, dt, cfg = GAME_CONFIG) {
   // VFX 快照：攻擊當下固定生成 zigzag 頂點，renderer 只讀取並繪製。
   if (world.vfx) {
     world.vfx.timer = 0.45;
-    world.vfx.bolts = buildAttackBolts(world, targets, world.combat.rng, cfg, anchors);
+    world.vfx.bolts = buildAttackBolts(world, targets, world.combat.rng, cfg);
   }
   pruneDeadEnemies(world);
   world.combat.attackCooldown = 1 / Math.max(0.001, stats.attackSpeed);
   return world.combat;
 }
 
-function buildAttackBolts(world, targets, rng, cfg = GAME_CONFIG, anchors = coreAttackAnchors(world)) {
+function buildAttackBolts(world, targets, rng, cfg = GAME_CONFIG) {
   const t = cfg.render.tilePx;
-  if (!anchors.length) return [];
+  // 所有閃電固定從核心正中心出發
+  const cc = world.coreCenter;
+  const start = { x: (cc.x + 0.5) * t, y: (cc.y + 0.5) * t };
 
   return targets.map((target, chainIdx) => {
-    let best = anchors[0];
-    let bestD2 = Infinity;
-    for (const anchor of anchors) {
-      const d2 = dist2(target, anchor);
-      if (d2 < bestD2) {
-        bestD2 = d2;
-        best = anchor;
-      }
-    }
-
-    const start = { x: (best.x + 0.5) * t, y: (best.y + 0.5) * t };
     const end = { x: (target.x + 0.5) * t, y: (target.y + 0.5) * t };
     return { points: buildBoltPoints(start, end, rng, chainIdx === 0), chainIdx };
   });
