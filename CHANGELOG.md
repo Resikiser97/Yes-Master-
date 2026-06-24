@@ -1,10 +1,25 @@
 # CHANGELOG.md — 版本歷史
 
-> 版本：v0.0.4.0
+> 版本：v0.0.5.0
 > 類型：**只增不改**（歷史紀錄，永遠往上加，最新在最上方，不回頭改舊條目）。
 > 條目格式：`## vX.Y.Z.W - YYYY-MM-DD`，下分「新增 / 修復 / 調整」。
 
 ---
+
+## v0.0.5.0 - 2026-06-24
+
+### 新增
+- **Step 9A localStorage 存檔接入**：
+  - `src/storage/saveManager.js`（新檔）：`serializeWorld` / `deserializeWorld` / `saveWorld` / `loadWorld`；序列化 stage/storage/dirt/fore/player/coreHp/cardBonuses/cardModifiers/mines，還原時透過 `createWorld` 基礎設施 + patch 存檔值 + `refreshCoreSnapshot`。
+  - `src/main.js`：開機優先 `loadWorld()`，失敗才 `createWorld()`；wave clear 進入 prep 時自動 `saveWorld()`；debug X 鍵清除 localStorage 並重新整理回新局。
+- **Step 9B 新手教學提示**：
+  - `src/game/world.js`：`createWorld` 新增 `firstGame / tutorialTimer` 欄位。
+  - `src/main.js`：無存檔首次啟動設旗標與計時器；phase 切入 night 時重置計時器；每幀遞減。
+  - `src/render/renderer.js`：新增 `_drawTutorialHint`，prep/night 各顯示對應黃色提示框，最後 1 秒淡出；僅首次遊玩顯示。
+- Debug hotkey `X`：清除存檔並 reload。
+
+### 修復
+- `config/gameConfig.js`：版本號誤寫為 `v0.0.3.0`，修正為 `v0.0.4.0`（本次 sync 升為 v0.0.5.0）。
 
 ## v0.0.4.0 - 2026-06-24
 

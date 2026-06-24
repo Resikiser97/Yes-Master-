@@ -1,11 +1,11 @@
-/**
+﻿/**
  * @file        actions.js
  * @module      game（狀態/orchestration 層，非純邏輯、非渲染）
  * @summary     挖礦/卸貨/建造放置/拆除/核心修復/debug；呼叫純邏輯、改 world 狀態
  * @exports     updateMining, tryDeposit, tryPlace, tryRemove, computeBuildPreview, updateRepair, damageCore, healCore, applyDebugAction
  * @depends     config/gameConfig.js、config/blocks.js、src/game/coreSnapshot.js、src/game/combatRuntime.js、src/logic/mining.js、src/logic/mineGen.js、src/logic/inventory.js、src/logic/connectivity.js、src/logic/building.js、src/logic/coreHealth.js
  * @sourceOfTruth Docs/game-design-plan.md「操作輸入方式」「方塊系統」「遊戲內 UI 設計」
- * @version     v0.0.4.0
+ * @version     v0.0.5.0
  */
 
 import { GAME_CONFIG } from '../../config/gameConfig.js';

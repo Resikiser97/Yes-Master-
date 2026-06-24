@@ -1,11 +1,11 @@
-/**
+﻿/**
  * @file        world.js
  * @module      game（狀態/orchestration 層，非純邏輯、非渲染）
  * @summary     建立並持有 MVP 世界狀態（地圖/核心/兩深度層/核心數值/鏡頭/玩家），供渲染層讀取
  * @exports     createWorld, coreCenterTile, focusCamera
  * @depends     config/gameConfig.js、config/mines.js、src/game/coreSnapshot.js、src/logic/connectivity.js、src/logic/rng.js、src/logic/mineGen.js
  * @sourceOfTruth Docs/game-architecture-plan.md「核心地基系統」、game-design-plan.md「建築維度」
- * @version     v0.0.4.0
+ * @version     v0.0.5.0
  *
  * 座標：tile (col x, row y)。x 0..widthTiles-1（左→右）；y 0..heightTiles-1（0=上、大=下）。
  * 兩深度層（Z）：dirt = 背景泥土地基（Set<"x,y">）；fore = 前景第二層方塊（Map<"x,y", blockKey>）。
@@ -84,6 +84,8 @@ export function createWorld(cfg = GAME_CONFIG) {
     cardModifiers: [],       // 流派型修飾器列表 [{ stat, pct?, add? }]
     phase: 'prep', // prep | night | overtime | gameover | cardOffer
     stage: 0,
+    firstGame: false,  // 無存檔首次遊玩 → 顯示新手提示
+    tutorialTimer: 0,  // 提示剩餘秒數（> 0 時顯示）
   };
 
   // 第 0 關初始資源包：直接入塔內共享資源欄（shared、不依人數放大、只給一次）

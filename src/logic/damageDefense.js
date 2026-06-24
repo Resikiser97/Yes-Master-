@@ -1,11 +1,11 @@
-/**
+﻿/**
  * @file        damageDefense.js
  * @module      logic（pure）
  * @summary     防禦減傷與「物理+魔法」傷害合算（純函式）
  * @exports     defenseReduction, computeDamage
  * @depends     config/gameConfig.js（防禦係數 defenseK）
  * @sourceOfTruth Docs/game-design-plan.md「核心攻擊與防禦機制」
- * @version     v0.0.4.0
+ * @version     v0.0.5.0
  */
 
 import { GAME_CONFIG } from '../../config/gameConfig.js';

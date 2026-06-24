@@ -1,11 +1,11 @@
-/**
+﻿/**
  * @file        combatRuntime.js
  * @module      game（狀態/orchestration 層，非渲染）
  * @summary     Step 6B：debug 敵人、追逐玩家、核心普攻/連鎖接入 world
  * @exports     spawnDebugEnemies, updateEnemies, updateCoreCombat
  * @depends     config/enemies.js、config/gameConfig.js、src/logic/combat.js、src/logic/connectivity.js
  * @sourceOfTruth Docs/game-design-plan.md「核心攻擊與防禦機制」
- * @version     v0.0.4.0
+ * @version     v0.0.5.0
  */
 
 import { ENEMIES } from '../../config/enemies.js';

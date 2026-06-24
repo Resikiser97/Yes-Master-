@@ -1,11 +1,11 @@
-/**
+﻿/**
  * @file        renderer.js
  * @module      render（渲染層，非純邏輯）
  * @summary     將世界狀態畫到 canvas：鏡頭捲動 + 地底/網格/礦山/背景泥土/前景方塊/核心/玩家/HUD
  * @exports     Renderer
  * @depends     config/gameConfig.js
  * @sourceOfTruth Docs/game-design-plan.md「建築維度」「遊戲內 UI 設計」
- * @version     v0.0.4.0
+ * @version     v0.0.5.0
  *
  * 渲染層只「讀」world 狀態畫圖，不寫任何遊戲規則（鐵則 9）。
  */
@@ -135,6 +135,7 @@ export class Renderer {
     this._drawHud(world); // 螢幕座標 HUD（不受鏡頭位移）
     if (world.phase === 'gameover') this._drawGameOverOverlay(world);
     if (world.phase === 'cardOffer') this._drawCardOffer(world);
+    if (world.firstGame && world.tutorialTimer > 0) this._drawTutorialHint(world);
   }
 
   _drawMiningProgress(world) {
@@ -249,6 +250,33 @@ export class Renderer {
       return `第 ${waveNum} 關清關！　選擇一張卡片繼續`;
     }
     return `第 ${waveNum} 關　${world.phase ?? '未知階段'}`;
+  }
+
+  _drawTutorialHint(world) {
+    const HINTS = {
+      prep:  '按 WASD 移動　長按滑鼠左鍵挖礦　按 N 開始夜晚',
+      night: '守護核心！怪物會攻擊核心　HP 歸零即失敗',
+    };
+    const text = HINTS[world.phase];
+    if (!text) return;
+    const ctx = this.ctx;
+    const { width: vw } = this.viewport;
+    const alpha = Math.min(1, world.tutorialTimer); // 最後 1 秒淡出
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    const pad = 14, fh = 20;
+    const w = vw * 0.7, h = fh + pad * 2;
+    const x = (vw - w) / 2, y = 54;
+    ctx.beginPath();
+    ctx.roundRect?.(x, y, w, h, 6) ?? ctx.fillRect(x, y, w, h);
+    ctx.fill();
+    ctx.fillStyle = '#f0e88a';
+    ctx.font = '14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, vw / 2, y + h / 2);
+    ctx.restore();
   }
 
   _drawGameOverOverlay(world) {

@@ -1,8 +1,8 @@
 # MAIN.md — 函式級參考
 
-> 版本：v0.0.4.0
+> 版本：v0.0.5.0
 > 類型：**代碼優先**（文件描述錯了，以代碼為準去改本檔）。
-> ⚠️ MVP 單機可動：移動/挖礦/背包/塔內資源/跟隨鏡頭/初版建造/核心數值回饋/核心 HP 與修復/核心戰鬥/正式波次晝夜/卡片選擇已成完整循環。
+> ⚠️ MVP 單機可動：移動/挖礦/背包/塔內資源/跟隨鏡頭/初版建造/核心數值回饋/核心 HP 與修復/核心戰鬥/正式波次晝夜/卡片選擇/localStorage 存檔/新手教學提示已成完整循環。
 > 規則：新增 / 刪除函式必須同步本檔（見 `.claude/instructions.md` 開發鐵則）。
 >
 > 註：原本的「planning 進入點 / source map」已移至 `Docs/source-map.md`。
@@ -196,11 +196,19 @@ config/* 為靜態資料，被 logic 層 import。
 |---|---|
 | `loadSave()` / `writeSave(data)` / `clearSave()` | localStorage 讀寫；讀取跑 migration |
 
+### `src/storage/saveManager.js`（IO 層）
+
+| 函式 | 職責 |
+|---|---|
+| `saveWorld(world)` | 序列化 world（stage/storage/dirt/fore/player/coreHp/cardBonuses/cardModifiers/mines）並呼叫 writeSave；只在 phase=prep 時呼叫 |
+| `loadWorld(cfg?)` | 呼叫 loadSave → migration → deserializeWorld；失敗或無存檔回傳 null |
+
 ### `src/render/renderer.js` `src/input/controls.js` `src/main.js`
 
 | 函式 | 職責 |
 |---|---|
-| `Renderer.render(world)` | 畫地面/網格/礦山方塊/兩層方塊/核心/玩家(插值位置)/敵人小血條/建造預覽/核心 HP/疲勞/核心數值 HUD；整數像素平移；同步 debug dataset |
+| `Renderer.render(world)` | 畫地面/網格/礦山方塊/兩層方塊/核心/玩家(插值位置)/敵人小血條/建造預覽/核心 HP/疲勞/核心數值 HUD；整數像素平移；同步 debug dataset；`firstGame && tutorialTimer > 0` 時疊加教學提示框 |
+| `Renderer._drawTutorialHint(world)` | 首次遊玩顯示黃色操作提示（prep/night 各顯不同文字，最後 1 秒依 tutorialTimer 淡出） |
 | `Controls.attach/detach` | 綁/解 WASD/方向鍵、滑鼠長按挖礦、快捷列選材、左鍵放置、右鍵拆除、R 修復、debug hotkeys；canvas 自動 focus |
 | `Controls.getMoveVector()` / `Controls.isMining()` / `Controls.getSelectedSlot()` / `Controls.isRepairing()` | 回傳移動向量 / 是否長按挖礦中 / 目前快捷列 / 是否長按修復 |
-| `boot()` | 入口：掛角標/版本、建 world、初始化 render/input、啟動 fixed timestep loop；update 接移動/建造/debug/挖礦/修復/敵人追逐/核心戰鬥/卸貨，render 前跑 updateCameraFollow |
+| `boot()` | 入口：掛角標/版本；loadWorld 優先，失敗 fallback createWorld；無存檔首次遊玩設 firstGame/tutorialTimer；初始化 render/input；啟動 fixed timestep loop；update 接移動/建造/debug/挖礦/修復/敵人追逐/核心戰鬥/卸貨/phase 轉 prep 自動存檔/tutorialTimer 遞減；render 前跑 updateCameraFollow |

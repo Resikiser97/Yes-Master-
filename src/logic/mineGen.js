@@ -1,11 +1,11 @@
-/**
+﻿/**
  * @file        mineGen.js
  * @module      logic（pure）
  * @summary     礦山可見 10x3 方塊生成與挖空後的重力補位（依機率表，隨機注入）
  * @exports     weightedSample, createMine, digMineCell
  * @depends     config/mines.js
  * @sourceOfTruth Docs/game-design-plan.md「礦山系統」
- * @version     v0.0.4.0
+ * @version     v0.0.5.0
  *
  * columns[col] = [row0, row1, ...]（row0 = 最上層）。挖掉某格 → 上方往下掉、最上層補新塊。
  * 隨機一律注入 rng（rng.next() ∈ [0,1)），可重現、可單測。

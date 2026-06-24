@@ -1,11 +1,11 @@
-/**
+﻿/**
  * @file        playerMovement.js
  * @module      logic（pure）
  * @summary     玩家移動能力值換算與固定 timestep 位移
  * @exports     moveSpeedToTilesPerSecond, normalizeMoveInput, movePlayer
  * @depends     config/gameConfig.js
  * @sourceOfTruth Docs/game-design-plan.md「哥布林角色數值」「操作輸入方式」
- * @version     v0.0.4.0
+ * @version     v0.0.5.0
  */
 
 import { GAME_CONFIG } from '../../config/gameConfig.js';

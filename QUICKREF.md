@@ -1,8 +1,8 @@
 # QUICKREF.md — 每次啟動速查表
 
-> 版本：v0.0.4.0
+> 版本：v0.0.5.0
 > 類型：**代碼優先**（文件描述錯了，以代碼為準去改本檔）。
-> ⚠️ MVP 單機可動：移動/挖礦/背包/塔內資源/跟隨鏡頭/初版建造/核心數值回饋/核心 HP 與修復/debug 核心戰鬥/正式波次/晝夜/卡片選擇已成循環。
+> ⚠️ MVP 單機可動：移動/挖礦/背包/塔內資源/跟隨鏡頭/初版建造/核心數值回饋/核心 HP 與修復/debug 核心戰鬥/正式波次/晝夜/卡片選擇/localStorage 存檔/新手教學提示已成完整循環。
 
 ---
 
@@ -29,7 +29,7 @@
 | `config/mines.js` | 礦山機率表 + 初始資源包 |
 | `src/logic/*`（純函式） | rng / damageDefense / coreStats / coreHealth / connectivity / building / combat / waveGen / cardOffer / migration / playerMovement / mineGen / inventory / mining |
 | `src/game/*` | world（狀態 + 鏡頭跟隨 updateCameraFollow）/ coreSnapshot（核心數值快照）/ combatRuntime（debug 敵人 + 核心攻擊）/ gameLoop（fixed timestep）/ actions（挖礦/卸貨/建造 orchestration） |
-| `src/render` `src/input` `src/storage` | 渲染（只讀 world、插值 + 整數平移 + 建造預覽 + 核心數值 HUD）/ 輸入（WASD + 滑鼠長按挖礦 + 快捷列建造/拆除）/ 存檔層 |
+| `src/render` `src/input` `src/storage` | 渲染（只讀 world、插值 + 整數平移 + 建造預覽 + 核心數值 HUD + 教學提示）/ 輸入（WASD + 滑鼠長按挖礦 + 快捷列建造/拆除）/ 存檔層（saveLocal + saveManager） |
 | `Docs/claude-codex-worklist.md` | Claude↔Codex 交接看板 |
 
 > 函式級細節見 `MAIN.md`。
@@ -76,7 +76,7 @@
 | 修復如果不檢查站位會變成免費遠端回血 | R 修復必須站在核心或 connected dirt 上，且每秒消耗 1 fatigue |
 | `computeConnected()` 返回 Set 不含核心格，判斷「站在地基上」若只用 `connected.has()` 會漏掉核心 | 凡對連通泥土生效的功能（卸貨/修復/…）一律用 `isOnFoundation()`；規則見 `Docs/design-patterns.md` |
 
-> Debug hotkeys（`config/gameConfig.js debug.enabled && debug.hotkeys`）：H 扣核心血、J 回核心血、K 補塔內測試資源、L 生成 1 敵人、P 生成 5 敵人、C 直接開抽卡面板。
+> Debug hotkeys（`config/gameConfig.js debug.enabled && debug.hotkeys`）：H 扣核心血、J 回核心血、K 補塔內測試資源、L 生成 1 敵人、P 生成 5 敵人、C 直接開抽卡面板、X 清除 localStorage 存檔並重新整理（回新局）。
 
 > 已知的設計面注意點（可在開工時轉成具體陷阱）：
 > - 建築是三維度（背景泥土 = 地基；前景第二層蓋在泥土前方），連通性在背景平面判定。

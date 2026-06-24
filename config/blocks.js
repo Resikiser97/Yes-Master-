@@ -1,11 +1,11 @@
-/**
+﻿/**
  * @file        blocks.js
  * @module      config
  * @summary     方塊耐久/重量與「堆疊到核心」的屬性加成（單一數值來源）
  * @exports     BLOCKS, BLOCK_KEYS
  * @depends     （無）
  * @sourceOfTruth Docs/game-design-plan.md「方塊系統」
- * @version     v0.0.4.0
+ * @version     v0.0.5.0
  */
 
 // layer：'background' = 第一層地基（只有泥土）；'foreground' = 第二層（蓋在泥土前方）
