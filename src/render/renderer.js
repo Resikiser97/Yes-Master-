@@ -1220,13 +1220,23 @@ export class Renderer {
 
   _drawPlayer(world) {
     const t = this.t;
-    // 插值後的繪製位置（#1）：移動 smooth，不 judder
-    const x = world.player.renderX ?? world.player.x;
-    const y = world.player.renderY ?? world.player.y;
-    this.ctx.fillStyle = PALETTE.player;
-    this.ctx.beginPath();
-    this.ctx.arc(x * t + t / 2, y * t + t / 2, t * 0.4, 0, Math.PI * 2);
-    this.ctx.fill();
+    const players = [...(world.players?.values?.() ?? [world.player])];
+    for (const player of players) {
+      if (!player || player.online === false) continue;
+      // 插值後的繪製位置（#1）：移動 smooth，不 judder
+      const x = player.renderX ?? player.x;
+      const y = player.renderY ?? player.y;
+      const isLocal = player.id === world.localPlayerId;
+      this.ctx.fillStyle = isLocal ? PALETTE.player : '#4aa3df';
+      this.ctx.beginPath();
+      this.ctx.arc(x * t + t / 2, y * t + t / 2, t * 0.4, 0, Math.PI * 2);
+      this.ctx.fill();
+      if (!isLocal) {
+        this.ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+        this.ctx.lineWidth = 1;
+        this.ctx.stroke();
+      }
+    }
   }
 
   _drawEnemies(world) {

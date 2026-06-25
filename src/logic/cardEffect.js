@@ -46,7 +46,10 @@ function _applyCoreStat(world, effect) {
 }
 
 function _applyPlayerStat(world, effect) {
-  world.player[effect.stat] = (world.player[effect.stat] ?? 0) + effect.add;
+  const players = world.players?.values?.() ?? [world.player];
+  for (const player of players) {
+    player[effect.stat] = (player[effect.stat] ?? 0) + effect.add;
+  }
 }
 
 function _applyResource(world, effect) {
@@ -60,4 +63,3 @@ function _applyModifier(world, effect) {
     world.cardModifiers.push({ ...mod });
   }
 }
-

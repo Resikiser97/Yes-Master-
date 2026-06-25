@@ -38,11 +38,12 @@ function createEnemy(world, enemyKey, x, y) {
 
 export function spawnDebugEnemies(world, count = 1, enemyKey = 'civilian', cfg = GAME_CONFIG) {
   const spawnDistance = cfg.debug?.enemySpawnDistanceTiles ?? 8;
-  const row = Math.max(0, Math.min(world.groundY - 1, Math.round(world.player.y)));
+  const anchor = world.player ?? world.coreCenter;
+  const row = Math.max(0, Math.min(world.groundY - 1, Math.round(anchor.y)));
   for (let i = 0; i < count; i++) {
     const side = i % 2 === 0 ? 1 : -1;
     const offset = spawnDistance + Math.floor(i / 2);
-    const x = Math.max(0, Math.min(world.cols - 1, world.player.x + side * offset));
+    const x = Math.max(0, Math.min(world.cols - 1, anchor.x + side * offset));
     world.enemies.push(createEnemy(world, enemyKey, x, row));
   }
   return { ok: true, count };
@@ -52,7 +53,7 @@ export function updateEnemies(world, dt) {
   if (world.phase === 'gameover') return;
 
   for (const enemy of world.enemies) {
-    const target = nearestCoreCell(world, enemy);
+    const target = world.cfg?.mode === 'multi' ? nearestAttackTarget(world, enemy) : nearestCoreCell(world, enemy);
     if (!target) continue;
 
     const dx = target.x - enemy.x;
@@ -63,7 +64,9 @@ export function updateEnemies(world, dt) {
     if (d <= range) {
       enemy.attackCooldown = (enemy.attackCooldown ?? 0) - dt;
       if (enemy.attackCooldown <= 0) {
-        _applyCoreDamage(world, (enemy.attack ?? 0) * (world.combat?.overtimeMultiplier ?? 1));
+        const amount = (enemy.attack ?? 0) * (world.combat?.overtimeMultiplier ?? 1);
+        if (target.kind === 'player') _applyPlayerPressure(target.player, amount);
+        else _applyCoreDamage(world, amount);
         enemy.attackCooldown = 2;
       }
       continue;
@@ -74,6 +77,26 @@ export function updateEnemies(world, dt) {
     enemy.x += (dx / d) * step;
     enemy.y += (dy / d) * step;
   }
+}
+
+function nearestAttackTarget(world, enemy) {
+  const candidates = [];
+  for (const player of world.players?.values?.() ?? []) {
+    if (player.online === false) continue;
+    candidates.push({ kind: 'player', player, x: player.x, y: player.y });
+  }
+  const core = nearestCoreCell(world, enemy);
+  if (core) candidates.push({ kind: 'core', ...core });
+  let best = null;
+  let bestD2 = Infinity;
+  for (const candidate of candidates) {
+    const d2 = dist2(enemy, candidate);
+    if (d2 < bestD2) {
+      bestD2 = d2;
+      best = candidate;
+    }
+  }
+  return best;
 }
 
 function nearestCoreCell(world, enemy) {
@@ -93,6 +116,10 @@ function _applyCoreDamage(world, amount) {
   const current = world.coreHp ?? world.coreStats?.hpMax ?? 0;
   world.coreHp = damageCoreHp(current, amount);
   if (world.coreHp <= 0) world.phase = 'gameover';
+}
+
+function _applyPlayerPressure(player, amount) {
+  player.fatigue = Math.max(0, (player.fatigue ?? 0) - amount);
 }
 
 export function coreAttackAnchors(world) {

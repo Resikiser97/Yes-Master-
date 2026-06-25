@@ -13,15 +13,20 @@
 
 import { GAME_CONFIG } from '../../config/gameConfig.js';
 import { loadSave, writeSave } from './saveLocal.js';
-import { createWorld, focusCamera } from '../game/world.js';
+import { createWorld, focusCamera, attachPlayerAlias, createPlayerState } from '../game/world.js';
 import { refreshCoreSnapshot } from '../game/coreSnapshot.js';
 
-function serializeWorld(world) {
+export function serializeWorld(world) {
   return {
     stage: world.stage,
     storage: { ...world.storage },
     dirt: [...world.dirt],
     fore: [...world.fore],
+    localPlayerId: world.localPlayerId,
+    players: [...(world.players ?? new Map()).entries()].map(([id, player]) => [id, {
+      ...player,
+      inventory: { ...(player.inventory ?? {}) },
+    }]),
     player: {
       x: world.player.x,
       y: world.player.y,
@@ -40,7 +45,7 @@ function serializeWorld(world) {
   };
 }
 
-function deserializeWorld(data, cfg = GAME_CONFIG) {
+export function deserializeWorld(data, cfg = GAME_CONFIG) {
   // 建立含所有基礎設施的乾淨 world（初始資源包會被下方 storage 覆蓋）
   const world = createWorld(cfg);
 
@@ -49,15 +54,26 @@ function deserializeWorld(data, cfg = GAME_CONFIG) {
   world.dirt = new Set(data.dirt ?? []);
   world.fore = new Map(data.fore ?? []);
 
-  const sp = data.player ?? {};
-  world.player.x = sp.x ?? world.player.x;
-  world.player.y = sp.y ?? world.player.y;
-  world.player.prevX = world.player.x;
-  world.player.prevY = world.player.y;
-  world.player.renderX = world.player.x;
-  world.player.renderY = world.player.y;
-  world.player.inventory = { ...(sp.inventory ?? {}) };
-  world.player.fatigue = sp.fatigue ?? world.player.fatigue;
+  if (data.players?.length) {
+    world.players = new Map(data.players.map(([id, player]) => [id, {
+      ...createPlayerState(id, cfg),
+      ...player,
+      id,
+      inventory: { ...(player.inventory ?? {}) },
+    }]));
+    world.localPlayerId = data.localPlayerId ?? world.players.keys().next().value ?? world.localPlayerId;
+    attachPlayerAlias(world);
+  } else {
+    const sp = data.player ?? {};
+    world.player.x = sp.x ?? world.player.x;
+    world.player.y = sp.y ?? world.player.y;
+    world.player.prevX = world.player.x;
+    world.player.prevY = world.player.y;
+    world.player.renderX = world.player.x;
+    world.player.renderY = world.player.y;
+    world.player.inventory = { ...(sp.inventory ?? {}) };
+    world.player.fatigue = sp.fatigue ?? world.player.fatigue;
+  }
 
   world.coreHp = data.coreHp ?? null;
   world.cardBonuses = { ...(data.cardBonuses ?? {}) };
@@ -79,12 +95,12 @@ function deserializeWorld(data, cfg = GAME_CONFIG) {
 
 // 儲存 world（只在 phase=prep 時由 main.js 呼叫）
 export function saveWorld(world, cfg = GAME_CONFIG) {
-  writeSave(serializeWorld(world), cfg.save?.storageKey);
+  writeSave(serializeWorld(world), saveKey(cfg, world));
 }
 
 // 讀取存檔並回傳 world；無存檔或資料損毀 → null
 export function loadWorld(cfg = GAME_CONFIG) {
-  const result = loadSave(cfg.save?.storageKey);
+  const result = loadSave(saveKey(cfg));
   if (!result.ok) return null;
   try {
     return deserializeWorld(result.data, cfg);
@@ -93,3 +109,8 @@ export function loadWorld(cfg = GAME_CONFIG) {
   }
 }
 
+function saveKey(cfg, world = null) {
+  const base = cfg.save?.storageKey;
+  const roomId = cfg.mode === 'multi' ? (world?.roomId ?? cfg.net?.roomId) : null;
+  return roomId ? `${base}.${roomId}` : base;
+}

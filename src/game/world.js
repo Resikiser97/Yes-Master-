@@ -18,6 +18,8 @@ import { createRng } from '../logic/rng.js';
 import { createMine } from '../logic/mineGen.js';
 import { refreshCoreSnapshot } from './coreSnapshot.js';
 
+export const DEFAULT_PLAYER_ID = 'p1';
+
 // 核心 2x2 佔的格：水平置中、底部貼地面（groundY 的上方兩列）
 export function coreCells(cfg = GAME_CONFIG) {
   const cx = Math.floor(cfg.map.widthTiles / 2); // 160 → 80，核心佔 79,80
@@ -35,11 +37,65 @@ export function coreCenterTile(cfg = GAME_CONFIG) {
   return { x: cx, y: cfg.map.groundY - 1 };
 }
 
+export function createPlayerState(id = DEFAULT_PLAYER_ID, cfg = GAME_CONFIG, pos = null) {
+  const center = coreCenterTile(cfg);
+  const x = pos?.x ?? center.x + 2;
+  const y = pos?.y ?? cfg.map.groundY - 1;
+  return {
+    id,
+    x, y, moveSpeed: cfg.player.moveSpeed,
+    prevX: x, prevY: y,
+    renderX: x, renderY: y,
+    inventory: {},
+    capacity: cfg.player.carry,
+    slots: cfg.player.backpackSlots,
+    fatigue: cfg.player.fatigue,
+    online: true,
+  };
+}
+
+export function attachPlayerAlias(world) {
+  if (!world || Object.getOwnPropertyDescriptor(world, 'player')?.get) return world;
+  Object.defineProperty(world, 'player', {
+    enumerable: true,
+    configurable: true,
+    get() {
+      return this.players?.get(this.localPlayerId) ?? this.players?.values?.().next?.().value ?? null;
+    },
+    set(nextPlayer) {
+      const id = nextPlayer?.id ?? this.localPlayerId ?? DEFAULT_PLAYER_ID;
+      this.localPlayerId = id;
+      if (!this.players) this.players = new Map();
+      this.players.set(id, { ...nextPlayer, id });
+    },
+  });
+  return world;
+}
+
+export function ensurePlayer(world, playerId = world?.localPlayerId ?? DEFAULT_PLAYER_ID, cfg = GAME_CONFIG) {
+  if (!world.players) world.players = new Map();
+  if (!world.players.has(playerId)) {
+    const offset = Math.min(6, world.players.size * 2);
+    world.players.set(playerId, createPlayerState(playerId, cfg, {
+      x: world.coreCenter.x + 2 + offset,
+      y: world.groundY - 1,
+    }));
+  }
+  attachPlayerAlias(world);
+  return world.players.get(playerId);
+}
+
+export function playerCount(world) {
+  return Math.max(1, world?.players?.size ?? 1);
+}
+
 export function createWorld(cfg = GAME_CONFIG) {
   const core = coreCells(cfg);
   const center = coreCenterTile(cfg);
   const mineRng = createRng(MINE_SEED);
   const gy = cfg.map.groundY;
+  const localPlayerId = DEFAULT_PLAYER_ID;
+  const players = new Map([[localPlayerId, createPlayerState(localPlayerId, cfg)]]);
 
   const world = {
     cfg,
@@ -55,15 +111,9 @@ export function createWorld(cfg = GAME_CONFIG) {
       A: { cols: [15, 24], rows: [gy - 3, gy - 1], mine: createMine(MINES.A, mineRng) },
       B: { cols: [135, 144], rows: [gy - 3, gy - 1], mine: createMine(MINES.B, mineRng) },
     },
-    player: {
-      x: center.x + 2, y: gy - 1, moveSpeed: cfg.player.moveSpeed,
-      prevX: center.x + 2, prevY: gy - 1,  // 上一固定步位置（渲染插值用）
-      renderX: center.x + 2, renderY: gy - 1, // 插值後的繪製位置（render 讀）
-      inventory: {},                       // 背包：{ blockKey: qty }
-      capacity: cfg.player.carry,          // 承重上限
-      slots: cfg.player.backpackSlots,     // 格數上限
-      fatigue: cfg.player.fatigue,         // 目前疲勞值；上限固定 fatigueMax
-    },
+    localPlayerId,
+    players,
+    playerRuntime: {},
     storage: {},             // 塔內共享資源欄：{ blockKey: qty }
     blockCounts: {},         // 已放置方塊數量快照：{ dirt, sand, ... }
     coreStats: null,         // 核心當前數值快照（由 coreStats.js 計算）
@@ -80,6 +130,7 @@ export function createWorld(cfg = GAME_CONFIG) {
     mineRng,                 // 續用同一隨機流做補位（可重現）
     camera: { x: 0, y: 0 },
     clock: { elapsedSeconds: 0, fixedStepSeconds: cfg.time.fixedStepSeconds, updateTick: 0 },
+    syncTick: 0,
     pendingCardOffer: null,  // generateOffer() 結果（phase='cardOffer' 時非 null）
     cardBonuses: {},         // 累積卡片 coreStat 加值 → computeCoreStats opts.cardAdd
     cardModifiers: [],       // 流派型修飾器列表 [{ stat, pct?, add? }]
@@ -103,6 +154,7 @@ export function createWorld(cfg = GAME_CONFIG) {
     },
     uiHitRects: [],
   };
+  attachPlayerAlias(world);
 
   // 第 0 關初始資源包：直接入塔內共享資源欄（shared、不依人數放大、只給一次）
   for (const [k, qty] of Object.entries(INITIAL_RESOURCE_PACK.items)) {
@@ -124,12 +176,15 @@ export function updateCameraFollow(world, alpha = 1, dt = 0) {
   const cc = cfg.camera;
   const cam = world.camera;
   const p = world.player;
+  if (!p) return;
 
   // 插值後的玩家繪製位置（render 讀）
-  const px = p.prevX ?? p.x;
-  const py = p.prevY ?? p.y;
-  p.renderX = px + (p.x - px) * alpha;
-  p.renderY = py + (p.y - py) * alpha;
+  for (const player of world.players?.values?.() ?? [p]) {
+    const px = player.prevX ?? player.x;
+    const py = player.prevY ?? player.y;
+    player.renderX = px + (player.x - px) * alpha;
+    player.renderY = py + (player.y - py) * alpha;
+  }
 
   // deadzone：玩家在畫面中央 deadzone 框內移動時鏡頭不追，超出才推 target
   const playerPxX = p.renderX * t + t / 2;

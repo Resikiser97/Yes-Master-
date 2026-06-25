@@ -33,6 +33,9 @@ import { showSplashScreen } from './ui/splash.js';
 import { applyThreeColumnLayout, setupOrientationGuard } from './ui/mobileLayout.js';
 import { loadImages } from './render/imageLoader.js';
 import { SPRITE_SHEETS } from '../config/sprites.js';
+import { parseNetLaunch, createNetSession } from './net/netSession.js';
+import { createInputBuffer, serializeControls } from './net/inputBuffer.js';
+import { createHostSyncScheduler, createClientSyncApplier } from './net/syncScheduler.js';
 
 export function boot() {
   const versionEl = document.getElementById('version');
@@ -43,6 +46,14 @@ export function boot() {
   showSplashScreen((diffMode, inputMode) => {
     // 1. 確定 cfg
     let cfg = diffMode === 'test' ? buildTestConfig(GAME_CONFIG) : GAME_CONFIG;
+    const netLaunch = parseNetLaunch();
+    if (netLaunch.mode === 'multi') {
+      cfg = {
+        ...cfg,
+        mode: 'multi',
+        net: { ...cfg.net, roomId: netLaunch.roomId, role: netLaunch.role },
+      };
+    }
     if (inputMode === 'touch') {
       cfg = {
         ...cfg,
@@ -85,8 +96,9 @@ export function boot() {
     }
 
     // 8. World
-    const savedWorld = loadWorld(cfg);
-    const world = savedWorld ?? createWorld(cfg);
+    const savedWorld = netLaunch.role === 'client' ? null : loadWorld(cfg);
+    let world = savedWorld ?? createWorld(cfg);
+    world.roomId = netLaunch.roomId ?? null;
     world.uiState ??= { playerExpanded: false, backpackExpanded: true, coreExpanded: false };
     world.uiHitRects ??= [];
 
@@ -100,6 +112,7 @@ export function boot() {
       }
     }
     world.testMode = (diffMode === 'test');
+    const worldRef = { current: world };
 
     controls.attach();
     if (inputMode === 'touch') controls.updateLayout?.(touchLayout);
@@ -157,6 +170,48 @@ export function boot() {
     }
     let lastRenderMs = 0;
     let prevPhase = world.phase;
+    let netSession = null;
+    let inputBuffer = null;
+    let hostSync = null;
+    let clientSync = null;
+    let inputSequenceId = 0;
+
+    if (cfg.mode === 'multi' && netLaunch.roomId) {
+      if (netLaunch.role === 'host') {
+        inputBuffer = createInputBuffer({ cfg });
+        createNetSession({
+          cfg,
+          role: 'host',
+          roomId: netLaunch.roomId,
+          world,
+          onInput: (playerId, input) => inputBuffer.push(playerId, input),
+          onPeerReady: (peerId) => hostSync?.sendSnapshotTo(peerId, world),
+        }).then((session) => {
+          netSession = session;
+          hostSync = createHostSyncScheduler({ session });
+          console.info('[net] host ready', session.peerId);
+        }).catch((err) => console.warn('[net] host start failed', err));
+      } else {
+        clientSync = createClientSyncApplier({ worldRef, cfg });
+        createNetSession({
+          cfg,
+          role: 'client',
+          roomId: netLaunch.roomId,
+          world,
+          onMessage: (message) => {
+            if (clientSync?.handle(message)) {
+              world = worldRef.current;
+              prevPhase = world.phase;
+            }
+          },
+        }).then((session) => {
+          netSession = session;
+          console.info('[net] client ready', session.slotId);
+        }).catch((err) => console.warn('[net] client start failed', err));
+      }
+    } else if (cfg.mode === 'multi') {
+      console.warn('[net] missing room id; use ?mode=multi&role=host|client&room=ROOM_ID');
+    }
 
     const consumeDebugActions = () => {
       for (const action of controls.consumeDebugActions()) {
@@ -172,11 +227,23 @@ export function boot() {
 
     const loop = startGameLoop({
       update: (dt) => {
+        if (worldRef.current !== world) world = worldRef.current;
         if (!consumeDebugActions()) return;
         if (world.debugPaused) return;
 
+        if (cfg.mode === 'multi' && netLaunch.role === 'client') {
+          controls.viewport = renderer.viewport;
+          controls.uiHitRects = world.uiHitRects ?? [];
+          if (inputMode === 'touch') controls.updateStatus?.(world);
+          if (netSession?.sendInput) {
+            netSession.sendInput(serializeControls(controls, world, cfg, inputSequenceId++));
+          }
+          return;
+        }
+
         world.clock.elapsedSeconds += dt;
         world.clock.updateTick += 1;
+        world.syncTick = (world.syncTick ?? 0) + 1;
         const prevX = world.player.x, prevY = world.player.y;
         world.player = movePlayer(world.player, controls.getMoveVector(), dt, {
           minX: 0,
@@ -186,6 +253,9 @@ export function boot() {
         }, cfg);
         world.player.prevX = prevX;
         world.player.prevY = prevY;
+        inputBuffer?.drain(world, dt, (playerId, reason) => {
+          netSession?.sendTo?.(playerId, { type: 'reject', payload: { reason } });
+        });
 
         const t = cfg.render.tilePx;
 
@@ -305,6 +375,7 @@ export function boot() {
         if (world.firstGame && prevPhase !== 'night' && world.phase === 'night') world.tutorialTimer = 6;
         if (world.firstGame && world.tutorialTimer > 0) world.tutorialTimer = Math.max(0, world.tutorialTimer - dt);
         prevPhase = world.phase;
+        hostSync?.afterHostTick(world);
       },
       render: (alpha) => {
         const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());

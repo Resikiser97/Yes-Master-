@@ -21,14 +21,16 @@ import { spawnDebugEnemies } from './combatRuntime.js';
 import { addDrop, collectNearbyDrops } from '../logic/drops.js';
 import { generateOffer } from '../logic/cardOffer.js';
 import { createRng } from '../logic/rng.js';
+import { ensurePlayer } from './world.js';
 
 const DEBUG_CARD_OFFER_SEED = 20260624 + 8888;
 
 // 挖礦：長按時鎖定最近礦格，依「挖掘能力 × 每秒敲擊數 × dt」累積傷害，達耐久即出塊進背包
 // 進度持久化：停手或換格時把 m.damage 存入 world.mineProgress[tk]；
 // 切回同一格時恢復進度，讓玩家可以分多次完成一個方塊。
-export function updateMining(world, isMining, dt, cfg = GAME_CONFIG) {
-  const m = world.mining;
+export function updateMining(world, isMining, dt, cfg = GAME_CONFIG, playerId = world.localPlayerId) {
+  const player = ensurePlayer(world, playerId, cfg);
+  const m = playerId === world.localPlayerId ? world.mining : playerRuntime(world, playerId).mining;
   const prog = world.mineProgress ?? (world.mineProgress = {});
 
   // 停手或找不到目標：儲存當前進度，清空活動狀態
@@ -40,7 +42,7 @@ export function updateMining(world, isMining, dt, cfg = GAME_CONFIG) {
   if (!isMining) { _saveAndClear(); return; }
 
   const reach = cfg.buildLimits.placeReachTiles;
-  const target = selectNearestMineCell(world.player, world.mines, reach);
+  const target = selectNearestMineCell(player, world.mines, reach);
   if (!target) { _saveAndClear(); return; }
 
   const tk = `${target.mineId},${target.col},${target.row},${target.blockKey}`;
@@ -58,16 +60,16 @@ export function updateMining(world, isMining, dt, cfg = GAME_CONFIG) {
   const need = durabilityToBreak(target.blockKey);
   if (m.damage < need) return;
 
-  const px = Math.round(world.player.x);
-  const py = Math.round(world.player.y);
+  const px = Math.round(player.x);
+  const py = Math.round(player.y);
   const maxStacks = cfg.drops?.maxStacks ?? 128;
 
   // 背包放得下 → 直接進背包
-  if (canAdd(world.player.inventory, target.blockKey, 1, {
-    capacity: world.player.capacity, slots: world.player.slots,
+  if (canAdd(player.inventory, target.blockKey, 1, {
+    capacity: player.capacity, slots: player.slots,
   })) {
     const dug = digMineCell(world.mines[target.mineId].mine, target.col, target.row, world.mineRng);
-    if (dug) world.player.inventory = addItem(world.player.inventory, dug, 1);
+    if (dug) player.inventory = addItem(player.inventory, dug, 1);
     m.full = false;
     m.dropFull = false;
     delete prog[tk];
@@ -96,11 +98,12 @@ export function updateMining(world, isMining, dt, cfg = GAME_CONFIG) {
 }
 
 // 自動撿取玩家附近掉落物（每 tick 呼叫）
-export function collectDrops(world, cfg = GAME_CONFIG) {
+export function collectDrops(world, cfg = GAME_CONFIG, playerId = world.localPlayerId) {
   if (!world.drops?.length) return;
-  const result = collectNearbyDrops(world.drops, world.player, world.player.inventory, cfg);
+  const player = ensurePlayer(world, playerId, cfg);
+  const result = collectNearbyDrops(world.drops, player, player.inventory, cfg);
   world.drops = result.drops;
-  world.player.inventory = result.inventory;
+  player.inventory = result.inventory;
   if (world.drops.length === 0) {
     world.mining.full = false;
     world.mining.dropFull = false;
@@ -109,14 +112,15 @@ export function collectDrops(world, cfg = GAME_CONFIG) {
 
 // 站在「核心格」或「與核心連通的泥土格」上 → 自動把背包倒入塔內資源欄
 // ⚠️ 設計原則：核心格視同連通地基（見 Docs/design-patterns.md），凡對連通泥土生效的功能也對核心生效
-export function tryDeposit(world) {
-  if (Object.keys(world.player.inventory).length === 0) return;
-  const px = Math.round(world.player.x);
-  const py = Math.round(world.player.y);
+export function tryDeposit(world, playerId = world.localPlayerId, cfg = GAME_CONFIG) {
+  const player = ensurePlayer(world, playerId, cfg);
+  if (Object.keys(player.inventory).length === 0) return;
+  const px = Math.round(player.x);
+  const py = Math.round(player.y);
   const onFoundation = isOnFoundation(world, px, py);
   if (!onFoundation) return;
-  const out = depositAll(world.player.inventory, world.storage);
-  world.player.inventory = out.inventory;
+  const out = depositAll(player.inventory, world.storage);
+  player.inventory = out.inventory;
   world.storage = out.storage;
 }
 
@@ -126,28 +130,29 @@ function isOnFoundation(world, px, py) {
   return computeConnected(world.dirt, world.core).has(key(px, py));
 }
 
-function isOnRepairSurface(world) {
-  const px = Math.round(world.player.x);
-  const py = Math.round(world.player.y);
+function isOnRepairSurface(world, player = world.player) {
+  const px = Math.round(player.x);
+  const py = Math.round(player.y);
   return isOnFoundation(world, px, py);
 }
 
 // 建造 ctx（給 building.js 純函式）
-function placeCtx(world, cfg) {
+function placeCtx(world, cfg, player = world.player) {
   return {
     dirt: world.dirt, fore: world.fore, core: world.core,
     coreCenter: world.coreCenter, groundY: world.groundY,
     stage: world.stage, limits: cfg.buildLimits,
-    player: world.player, reach: cfg.buildLimits.buildReachTiles ?? cfg.buildLimits.placeReachTiles,
+    player, reach: cfg.buildLimits.buildReachTiles ?? cfg.buildLimits.placeReachTiles,
   };
 }
 
 // 放置：消耗塔內資源欄一個 blockKey，蓋到 (x,y)；infinite 方塊不消耗
-export function tryPlace(world, blockKey, x, y, cfg = GAME_CONFIG) {
+export function tryPlace(world, blockKey, x, y, cfg = GAME_CONFIG, playerId = world.localPlayerId) {
   if (!blockKey) return { ok: false, reason: 'no_block' };
+  const player = ensurePlayer(world, playerId, cfg);
   const inf = BLOCKS[blockKey]?.infinite;
   if (!inf && !(world.storage[blockKey] > 0)) return { ok: false, reason: 'no_material' };
-  const res = validatePlacement(placeCtx(world, cfg), blockKey, x, y);
+  const res = validatePlacement(placeCtx(world, cfg, player), blockKey, x, y);
   if (!res.ok) return res;
   const k = key(x, y);
   if (res.layer === 'background') world.dirt.add(k);
@@ -158,9 +163,10 @@ export function tryPlace(world, blockKey, x, y, cfg = GAME_CONFIG) {
 }
 
 // 拆除：右鍵 (x,y)，材料退回塔內資源欄（前景優先，泥土需通過連通性）
-export function tryRemove(world, x, y, cfg = GAME_CONFIG) {
+export function tryRemove(world, x, y, cfg = GAME_CONFIG, playerId = world.localPlayerId) {
+  const player = ensurePlayer(world, playerId, cfg);
   const ctx = { dirt: world.dirt, fore: world.fore, core: world.core,
-    player: world.player, reach: cfg.buildLimits.buildReachTiles ?? cfg.buildLimits.placeReachTiles };
+    player, reach: cfg.buildLimits.buildReachTiles ?? cfg.buildLimits.placeReachTiles };
   const res = validateRemoval(ctx, x, y);
   if (!res.ok) return res;
   const hpLoss = BLOCKS[res.blockKey]?.bonus?.hp ?? 0;
@@ -176,14 +182,15 @@ export function tryRemove(world, x, y, cfg = GAME_CONFIG) {
 }
 
 // 放置預覽（render 用）：回 { x, y, valid, blockKey } 或 null（未選方塊）
-export function computeBuildPreview(world, blockKey, x, y, cfg = GAME_CONFIG) {
+export function computeBuildPreview(world, blockKey, x, y, cfg = GAME_CONFIG, playerId = world.localPlayerId) {
   if (!blockKey) return null;
+  const player = ensurePlayer(world, playerId, cfg);
   const hasMat = BLOCKS[blockKey]?.infinite || world.storage[blockKey] > 0;
   const ctx = world.buildPlanMode
     ? { dirt: world.dirt, fore: world.fore, core: world.core,
         coreCenter: world.coreCenter, groundY: world.groundY,
         stage: world.stage, limits: cfg.buildLimits }
-    : placeCtx(world, cfg);
+    : placeCtx(world, cfg, player);
   const res = validatePlacement(ctx, blockKey, x, y);
   return { x, y, valid: res.ok && hasMat, blockKey };
 }
@@ -199,27 +206,29 @@ export function healCore(world, amount) {
   return { ok: true, coreHp: world.coreHp };
 }
 
-export function updateRepair(world, isRepairing, dt, cfg = GAME_CONFIG) {
-  world.repair = { active: false, canRepair: false, reason: null, healed: 0 };
-  if (!isRepairing) return world.repair;
-  if (!isOnRepairSurface(world)) {
-    world.repair.reason = 'not_on_foundation';
-    return world.repair;
+export function updateRepair(world, isRepairing, dt, cfg = GAME_CONFIG, playerId = world.localPlayerId) {
+  const player = ensurePlayer(world, playerId, cfg);
+  const repairState = playerId === world.localPlayerId ? world.repair : playerRuntime(world, playerId).repair;
+  Object.assign(repairState, { active: false, canRepair: false, reason: null, healed: 0 });
+  if (!isRepairing) return repairState;
+  if (!isOnRepairSurface(world, player)) {
+    repairState.reason = 'not_on_foundation';
+    return repairState;
   }
   if (world.coreHp >= world.coreStats.hpMax) {
-    world.repair.reason = 'full';
-    return world.repair;
+    repairState.reason = 'full';
+    return repairState;
   }
-  if (world.player.fatigue <= 0) {
-    world.repair.reason = 'no_fatigue';
-    return world.repair;
+  if (player.fatigue <= 0) {
+    repairState.reason = 'no_fatigue';
+    return repairState;
   }
 
-  const out = repairCoreHp(world.coreHp, world.coreStats.hpMax, world.player.fatigue, dt, cfg.player.repair);
+  const out = repairCoreHp(world.coreHp, world.coreStats.hpMax, player.fatigue, dt, cfg.player.repair);
   world.coreHp = out.hp;
-  world.player.fatigue = out.fatigue;
-  world.repair = { active: out.healed > 0, canRepair: true, reason: null, healed: out.healed };
-  return world.repair;
+  player.fatigue = out.fatigue;
+  Object.assign(repairState, { active: out.healed > 0, canRepair: true, reason: null, healed: out.healed });
+  return repairState;
 }
 
 export function applyDebugAction(world, action, cfg = GAME_CONFIG) {
@@ -283,11 +292,20 @@ export function toggleBuildPlanMode(world) {
     world.buildPlanDrag = null;
     return { ok: true, active: false };
   }
-  if (!isOnRepairSurface(world)) {
+  if (!isOnRepairSurface(world, world.player)) {
     return { ok: false, reason: 'not_on_foundation' };
   }
   world.buildPlanMode = true;
   return { ok: true, active: true };
+}
+
+function playerRuntime(world, playerId) {
+  world.playerRuntime ??= {};
+  world.playerRuntime[playerId] ??= {
+    mining: { targetKey: null, damage: 0, full: false, dropFull: false },
+    repair: { active: false, canRepair: false, reason: null, healed: 0 },
+  };
+  return world.playerRuntime[playerId];
 }
 
 // 預算矩形放置需要多少資源（renderer 顯示用）
@@ -377,4 +395,3 @@ export function tryRemoveRect(world, blockKey, x1, y1, x2, y2, cfg = GAME_CONFIG
   if (removed > 0) refreshCoreSnapshot(world, { applyHpMaxDelta: true });
   return { ok: true, removed };
 }
-

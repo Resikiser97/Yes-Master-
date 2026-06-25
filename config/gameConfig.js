@@ -120,6 +120,15 @@ export const GAME_CONFIG = {
     buildReachTiles: 3, // 建造/拆除：玩家與目標格互動距離上限
   },
 
+  // 網路設定（多人連線用）
+  net: {
+    supabaseUrl: 'https://mezidygnycqtlinoeyml.supabase.co',
+    supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1lemlkeWdueWNxdGxpbm9leW1sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzODk3NDMsImV4cCI6MjA5Nzk2NTc0M30.zYtblFee5kPKOO-1vqKmkeo5-s06ULbRVusneKz8m0c',
+    peerJsHost: '0.peerjs.com',
+    peerJsPort: 443,
+    peerJsSecure: true,
+  },
+
   // 多人波次倍率（MVP）
   multiplayer: {
     normalCountMultiplierPerPlayer: 1, // N 人 = 普通怪 xN

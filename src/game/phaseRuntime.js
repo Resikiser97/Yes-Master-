@@ -24,6 +24,7 @@ import { ENEMIES } from '../../config/enemies.js';
 import { generateOffer } from '../logic/cardOffer.js';
 import { applyCardEffect } from '../logic/cardEffect.js';
 import { refreshCoreSnapshot } from './coreSnapshot.js';
+import { playerCount } from './world.js';
 
 // 出怪隨機序列 seed（與礦山 RNG 獨立，固定可重現）
 const WAVE_RNG_SEED = 20260624;
@@ -72,7 +73,9 @@ function _updatePrep(world, dt, cfg) {
 function _recoverFatigue(world, cfg) {
   const recovery = cfg.player.fatigue ?? 60;
   const max = cfg.player.fatigueMax ?? 120;
-  world.player.fatigue = Math.min(max, (world.player.fatigue ?? 0) + recovery);
+  for (const player of world.players?.values?.() ?? [world.player]) {
+    player.fatigue = Math.min(max, (player.fatigue ?? 0) + recovery);
+  }
 }
 
 function _startNight(world, cfg) {
@@ -85,7 +88,7 @@ function _startNight(world, cfg) {
   // buildWave 產生有 hp/attack/moveSpeed 的敵人實例（純邏輯）
   const waveRng   = createRng(WAVE_RNG_SEED + world.stage * 1000);
   const spawnRng  = createRng(WAVE_RNG_SEED + world.stage * 1000 + 500);
-  const wave      = buildWave(world.stage + 1, 1 /* playerCount：MVP 單人固定 1 */, waveRng);
+  const wave      = buildWave(world.stage + 1, playerCount(world), waveRng);
 
   world.pendingSpawns = _buildPendingSpawns(wave, world, cfg, spawnRng);
 }
@@ -231,4 +234,3 @@ export function resolveCardOffer(world, chosenIndex, cfg = GAME_CONFIG) {
   world.phase      = 'prep';
   world.phaseTimer = cfg.phases.prepSeconds;
 }
-
