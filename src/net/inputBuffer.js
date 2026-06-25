@@ -1,6 +1,6 @@
 import { movePlayer } from '../logic/playerMovement.js';
 import { ensurePlayer } from '../game/world.js';
-import { updateMining, collectDrops, tryDeposit, tryPlace, tryRemove, updateRepair } from '../game/actions.js';
+import { updateMining, collectDrops, tryDeposit, tryPlace, tryRemove, updateRepair, applyDebugAction } from '../game/actions.js';
 import { createInputValidator } from './validation.js';
 
 export function createInputBuffer({ cfg, validator = createInputValidator({ cfg }) } = {}) {
@@ -26,7 +26,7 @@ export function createInputBuffer({ cfg, validator = createInputValidator({ cfg 
   };
 }
 
-export function serializeControls(controls, world, cfg, sequenceId) {
+export function serializeControls(controls, world, cfg, sequenceId, extra = {}) {
   const t = cfg.render.tilePx;
   const tileX = Math.floor(((controls.mouse?.x ?? 0) + (world.camera?.x ?? 0)) / t);
   const tileY = Math.floor(((controls.mouse?.y ?? 0) + (world.camera?.y ?? 0)) / t);
@@ -39,6 +39,7 @@ export function serializeControls(controls, world, cfg, sequenceId) {
     mining: !!controls.isMining?.(),
     repairing: !!controls.isRepairing?.(),
     action,
+    debugActions: extra.debugActions ?? [],
     selectedBlock,
     tile: { x: tileX, y: tileY },
   };
@@ -58,6 +59,9 @@ export function applyInput(world, playerId, input, dt, cfg) {
 
   if (input.action?.kind === 'place') tryPlace(world, input.action.blockKey, input.action.x, input.action.y, cfg, playerId);
   if (input.action?.kind === 'remove') tryRemove(world, input.action.x, input.action.y, cfg, playerId);
+  for (const action of input.debugActions ?? []) {
+    if (action !== 'resetSave') applyDebugAction(world, action, cfg);
+  }
   updateMining(world, !!input.mining, dt, cfg, playerId);
   collectDrops(world, cfg, playerId);
   updateRepair(world, !!input.repairing, dt, cfg, playerId);

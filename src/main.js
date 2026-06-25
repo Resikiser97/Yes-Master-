@@ -228,18 +228,21 @@ export function boot() {
     const loop = startGameLoop({
       update: (dt) => {
         if (worldRef.current !== world) world = worldRef.current;
-        if (!consumeDebugActions()) return;
-        if (world.debugPaused) return;
 
         if (cfg.mode === 'multi' && netLaunch.role === 'client') {
           controls.viewport = renderer.viewport;
           controls.uiHitRects = world.uiHitRects ?? [];
           if (inputMode === 'touch') controls.updateStatus?.(world);
+          const debugActions = controls.consumeDebugActions()
+            .filter((action) => action !== 'resetSave');
           if (netSession?.sendInput) {
-            netSession.sendInput(serializeControls(controls, world, cfg, inputSequenceId++));
+            netSession.sendInput(serializeControls(controls, world, cfg, inputSequenceId++, { debugActions }));
           }
           return;
         }
+
+        if (!consumeDebugActions()) return;
+        if (world.debugPaused) return;
 
         world.clock.elapsedSeconds += dt;
         world.clock.updateTick += 1;

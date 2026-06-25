@@ -4,6 +4,7 @@ import { GAME_CONFIG } from '../config/gameConfig.js';
 import { createWorld, ensurePlayer } from '../src/game/world.js';
 import { updateEnemies } from '../src/game/combatRuntime.js';
 import { createInputValidator } from '../src/net/validation.js';
+import { applyInput } from '../src/net/inputBuffer.js';
 
 function multiConfig() {
   return { ...GAME_CONFIG, mode: 'multi' };
@@ -53,5 +54,24 @@ function testMultiplayerEnemiesDoNotUseFatigueAsHp() {
 
 testMovementInputsAreNotRateLimited();
 testMultiplayerEnemiesDoNotUseFatigueAsHp();
+
+function testClientDebugGrantRunsOnHost() {
+  const cfg = multiConfig();
+  const world = createWorld(cfg);
+  ensurePlayer(world, 'p2', cfg);
+  const before = { ...world.storage };
+
+  applyInput(world, 'p2', {
+    sequenceId: 1,
+    move: { x: 0, y: 0 },
+    debugActions: ['grantResources'],
+  }, cfg.time.fixedStepSeconds, cfg);
+
+  assert.equal(world.storage.dirt, (before.dirt ?? 0) + 10);
+  assert.equal(world.storage.sand, (before.sand ?? 0) + 10);
+  assert.equal(world.storage.stone, (before.stone ?? 0) + 10);
+}
+
+testClientDebugGrantRunsOnHost();
 
 console.log('multiplayer input tests passed');
