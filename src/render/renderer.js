@@ -519,7 +519,8 @@ export class Renderer {
   _drawBackpack(world) {
     const ctx = this.ctx;
     const { height: vh } = this.viewport;
-    const x = 8, y = vh - 208, w = 160, h = 200;
+    const w = 128, h = 160;
+    const x = 6, y = vh - h - 6;
     const inv = world.player?.inventory ?? {};
     const currentWeight = inventoryWeight(inv);
     const maxWeight = world.player?.capacity ?? this.cfg.player?.carry ?? 0;
@@ -528,11 +529,11 @@ export class Renderer {
 
     ctx.save();
     drawPanel(ctx, x, y, w, h, { bg: 'rgba(0,0,0,0.7)', border, borderWidth: 2 });
-    ctx.font = '12px sans-serif';
+    ctx.font = '10px sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     ctx.fillStyle = '#CD7F32';
-    ctx.fillText(`背包承重：${fmt1(currentWeight)}/${fmt1(maxWeight)}`, x + 8, y + 8);
+    ctx.fillText(`背包承重：${fmt1(currentWeight)}/${fmt1(maxWeight)}`, x + 6, y + 6);
 
     const hotbar = this.cfg.hotbar ?? [];
     const orderedKeys = Object.keys(inv)
@@ -544,8 +545,9 @@ export class Renderer {
       })
       .slice(0, 6);
 
-    const cellW = 60, cellH = 52, gap = 4;
-    const gridX = x + 16, gridY = y + 34;
+    // cellW=48, gap=3 → 2 cols = 99px; (128-99)/2 = 14 → symmetric left/right padding
+    const cellW = 48, cellH = 40, gap = 3;
+    const gridX = x + 14, gridY = y + 24;
     for (let i = 0; i < 6; i++) {
       const cx = gridX + (i % 2) * (cellW + gap);
       const cy = gridY + Math.floor(i / 2) * (cellH + gap);
@@ -557,20 +559,20 @@ export class Renderer {
       ctx.strokeRect(cx + 0.5, cy + 0.5, cellW - 1, cellH - 1);
       if (!blockKey) continue;
 
-      const iconSize = 32;
+      const iconSize = 26;
       const iconX = cx + Math.round((cellW - iconSize) / 2);
-      const iconY = cy + 7;
+      const iconY = cy + 6;
       if (!this._drawBlockIcon(blockKey, iconX, iconY, iconSize)) {
         ctx.fillStyle = PALETTE.block[blockKey] ?? '#888';
         ctx.fillRect(iconX + 2, iconY + 2, iconSize - 4, iconSize - 4);
       }
-      ctx.font = 'bold 10px sans-serif';
+      ctx.font = 'bold 9px sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
       ctx.shadowColor = 'rgba(0,0,0,0.8)';
       ctx.shadowBlur = 3;
       ctx.fillStyle = '#FFF';
-      ctx.fillText(`${inv[blockKey] ?? 0}`, cx + cellW - 5, cy + cellH - 4);
+      ctx.fillText(`${inv[blockKey] ?? 0}`, cx + cellW - 4, cy + cellH - 3);
       ctx.shadowBlur = 0;
     }
     ctx.restore();
@@ -585,49 +587,31 @@ export class Renderer {
     world.uiHitRects = world.uiHitRects.filter((r) => r.id !== 'corePanel');
 
     const cs = world.coreStats ?? {};
-    const hpCur = world.coreHp ?? cs.hpMax ?? 0;
-    const hpMax = cs.hpMax ?? 0;
 
     if (!expanded) {
-      // Compact bar: HP bar + attack + speed
-      const x = startX, y = barY - 54, w = 260, h = 46;
+      // Collapsed: single row — attack + speed + expand hint
+      // y positions panel bottom at barY-28, just above _drawCoreHpBar label (≈barY-27)
+      const x = startX, y = barY - 56, w = 280, h = 28;
       world.uiHitRects.push({ id: 'corePanel', x, y, w, h });
       ctx.save();
       drawPanel(ctx, x, y, w, h, { bg: 'rgba(0,0,0,0.65)', border: '#555' });
-      ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
-
-      // HP label + bar
-      ctx.font = 'bold 11px sans-serif';
-      ctx.fillStyle = '#F44336';
-      ctx.fillText('血量', x + 8, y + 13);
-      const barX = x + 36, barW = w - 44, barH = 10, barYp = y + 8;
-      ctx.fillStyle = '#1e2330';
-      ctx.fillRect(barX, barYp, barW, barH);
-      const pct = hpMax > 0 ? Math.max(0, Math.min(1, hpCur / hpMax)) : 0;
-      ctx.fillStyle = '#388E3C';
-      ctx.fillRect(barX, barYp, Math.round(barW * pct), barH);
-      ctx.font = 'bold 9px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillStyle = '#FFF';
-      ctx.shadowColor = 'rgba(0,0,0,0.8)';
-      ctx.shadowBlur = 3;
-      ctx.fillText(`${Math.round(hpCur)} / ${Math.round(hpMax)}`, barX + barW / 2, barYp + barH / 2 + 0.5);
-      ctx.shadowBlur = 0;
-
-      // Attack + speed
-      ctx.textAlign = 'left';
-      ctx.font = '11px sans-serif';
+      ctx.font = '12px sans-serif';
       ctx.fillStyle = '#CCC';
-      ctx.fillText(`攻擊力：${fmt2(cs.attack)}`, x + 8, y + 34);
-      ctx.fillText(`攻速(每秒)：${fmt2(cs.attackSpeed)}`, x + 110, y + 34);
-
+      ctx.textAlign = 'left';
+      ctx.fillText(`攻擊力：${fmt2(cs.attack)}`, x + 8, y + h / 2);
+      ctx.fillText(`攻速(每秒)：${fmt2(cs.attackSpeed)}`, x + 128, y + h / 2);
+      ctx.font = '10px sans-serif';
+      ctx.fillStyle = '#888';
+      ctx.textAlign = 'right';
+      ctx.fillText('▼ 點擊展開', x + w - 8, y + h / 2);
       ctx.restore();
       return;
     }
 
-    // Expanded: full panel
-    const x = startX, y = barY - 134, w = 260, h = 110;
+    // Expanded: three rows of stats
+    // bottom at barY-28, same clearance as collapsed
+    const x = startX, y = barY - 108, w = 280, h = 80;
     world.uiHitRects.push({ id: 'corePanel', x, y, w, h });
     const defense = Number(cs.defense ?? 0);
     const defenseK = Number(this.cfg.core?.defenseK ?? 100);
@@ -637,23 +621,31 @@ export class Renderer {
     drawPanel(ctx, x, y, w, h, { border: '#999' });
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
+
+    // Row 1: attack + speed + collapse hint
     ctx.font = 'bold 12px sans-serif';
     ctx.fillStyle = '#FFF';
-    ctx.fillText(`攻擊力：${fmt2(cs.attack)}`, x + 8, y + 8);
+    ctx.fillText(`攻擊力：${fmt2(cs.attack)}`, x + 8, y + 10);
     ctx.font = '12px sans-serif';
     ctx.fillStyle = '#CCC';
-    ctx.fillText(`攻速(每秒)：${fmt2(cs.attackSpeed)}`, x + 118, y + 8);
+    ctx.fillText(`攻速(每秒)：${fmt2(cs.attackSpeed)}`, x + 118, y + 10);
+    ctx.font = '10px sans-serif';
+    ctx.fillStyle = '#888';
+    ctx.textAlign = 'right';
+    ctx.fillText('▲ 收起', x + w - 8, y + 12);
 
-    const lines = [
-      `攻擊範圍：${fmt1(cs.range)}`,
-      `防禦力：${fmt2(defense)} (抵擋${reductionPct.toFixed(0)}%)`,
-      '靈力增幅：—%',
-      `魔法攻擊：${fmt2(cs.magicPct)}%`,
-      `連鎖：${fmt2(cs.chain)}`,
-    ];
+    // Row 2: range + defense
+    ctx.textAlign = 'left';
     ctx.font = '12px sans-serif';
     ctx.fillStyle = '#CCC';
-    lines.forEach((line, i) => ctx.fillText(line, x + 8, y + 26 + i * 16));
+    ctx.fillText(`攻擊範圍：${fmt1(cs.range)}`, x + 8, y + 30);
+    ctx.fillText(`防禦力：${fmt2(defense)}（抵擋${reductionPct.toFixed(0)}%）`, x + 118, y + 30);
+
+    // Row 3: magic amp + magic atk + chain
+    ctx.fillText(`靈力增幅：${fmt2(cs.magicPct)}%`, x + 8, y + 50);
+    ctx.fillText(`魔法攻擊：${fmt2(cs.magicAtk)}`, x + 118, y + 50);
+    ctx.fillText(`連鎖：${fmt2(cs.chain)}`, x + 210, y + 50);
+
     ctx.restore();
   }
 
