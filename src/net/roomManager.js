@@ -28,14 +28,14 @@ export async function createRoom({ name = 'Room', room_id = roomId(), maxPlayers
   const user = await ensureSupabaseUser(cfg);
   const row = {
     room_id,
-    name,
     status: 'active',
-    max_players: maxPlayers,
     current_host_uid: user.id,
     host_epoch: 1,
+    // Optional columns: kept for future schemas, automatically stripped when absent.
+    name,
+    max_players: maxPlayers,
   };
-  const { data, error } = await supabase.from('rooms').insert(row).select().single();
-  if (error) throw error;
+  const data = await insertCompatible(supabase, 'rooms', row);
   await upsertMembership({ room_id, user_id: user.id, slot_id: 'p1', is_host: true, join_order: 0 }, cfg);
   return data;
 }
@@ -68,14 +68,12 @@ export async function getRoom(room_id, cfg = GAME_CONFIG) {
 export async function updateHostPeer(room_id, peerId, cfg = GAME_CONFIG) {
   const supabase = await getSupabaseClient(cfg);
   const user = await ensureSupabaseUser(cfg);
-  const { data, error } = await supabase
-    .from('rooms')
-    .update({ current_host_uid: user.id, current_host_peer_id: peerId, status: 'active' })
-    .eq('room_id', room_id)
-    .select()
-    .single();
-  if (error) throw error;
-  return data;
+  return updateCompatible(
+    supabase,
+    'rooms',
+    { current_host_uid: user.id, current_host_peer_id: peerId, status: 'active' },
+    (query) => query.eq('room_id', room_id),
+  );
 }
 
 export async function issueRoomJoinToken({ room_id, join_type = 'join', slot_id = null } = {}, cfg = GAME_CONFIG) {
@@ -107,11 +105,38 @@ async function upsertMembership(row, cfg) {
     disconnected_at: null,
     updated_at: new Date().toISOString(),
   };
-  const { data, error } = await supabase
-    .from('room_memberships')
-    .upsert(payload, { onConflict: 'room_id,user_id' })
-    .select()
-    .single();
-  if (error) throw error;
-  return data;
+  return upsertCompatible(supabase, 'room_memberships', payload, { onConflict: 'room_id,user_id' });
+}
+
+async function insertCompatible(supabase, table, row) {
+  return mutateCompatible(row, (payload) => supabase.from(table).insert(payload).select().single());
+}
+
+async function upsertCompatible(supabase, table, row, options) {
+  return mutateCompatible(row, (payload) => supabase.from(table).upsert(payload, options).select().single());
+}
+
+async function updateCompatible(supabase, table, row, where) {
+  return mutateCompatible(row, (payload) => where(supabase.from(table).update(payload)).select().single());
+}
+
+async function mutateCompatible(row, run) {
+  let payload = { ...row };
+  const removed = new Set();
+  for (;;) {
+    const { data, error } = await run(payload);
+    if (!error) return data;
+    const missing = missingColumn(error);
+    if (!missing || removed.has(missing) || !(missing in payload)) throw error;
+    removed.add(missing);
+    const { [missing]: _drop, ...next } = payload;
+    payload = next;
+  }
+}
+
+function missingColumn(error) {
+  if (error?.code !== 'PGRST204') return null;
+  const message = error.message ?? '';
+  const match = /'([^']+)' column/.exec(message);
+  return match?.[1] ?? null;
 }
