@@ -11,9 +11,19 @@
   <meta name="apple-mobile-web-app-title" content="Yes Master" />
   <link rel="apple-touch-icon" href="./icons/icon-192.png" />
   <style>
-    body { margin: 0; background: #1a1a1a; color: #eee; font-family: sans-serif; overflow: hidden; }
+    *, *::before, *::after {
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+    }
+    html, body {
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+      overscroll-behavior: none;
+    }
+    body { margin: 0; background: #1a1a1a; color: #eee; font-family: sans-serif; overflow: hidden; display: flex; justify-content: center; }
     /* #stage / #game の寸法は renderer.js が JS で制御（動態 tilePx）。CSS で固定しない。 */
-    #stage { position: relative; background: #222; display: block; }
+    #stage { position: relative; background: #222; display: inline-block; margin: 0 auto; }
     #game { display: block; image-rendering: pixelated; }
     #mode-badge { position: absolute; top: 8px; left: 8px; padding: 2px 8px;
       background: #2d6; color: #000; font-size: 12px; border-radius: 4px; }
@@ -27,6 +37,11 @@
     <span id="version">v0.0.11.0</span>
   </div>
   <!-- 全模組化：ES Module 入口（鐵則 7） -->
+  <script>
+    document.addEventListener('contextmenu', e => e.preventDefault());
+    document.addEventListener('dragstart', e => e.preventDefault());
+    document.addEventListener('selectstart', e => e.preventDefault());
+  </script>
   <script type="module" src="./src/main.js"></script>
 </body>
 </html>

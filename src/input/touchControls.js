@@ -139,11 +139,6 @@ export class TouchControls {
       'height:100%',
       'pointer-events:none',
       'z-index:200',
-      'touch-action:none',
-      'user-select:none',
-      '-webkit-user-select:none',
-      '-webkit-touch-callout:none',
-      '-webkit-tap-highlight-color:transparent',
     ].join(';') + ';';
 
     this._buildPanels();
@@ -292,11 +287,6 @@ export class TouchControls {
       'height:100vh',
       'pointer-events:none',
       'z-index:210',
-      'touch-action:none',
-      'user-select:none',
-      '-webkit-user-select:none',
-      '-webkit-touch-callout:none',
-      '-webkit-tap-highlight-color:transparent',
     ].join(';') + ';';
 
     this._rightPanel = document.createElement('div');
@@ -369,10 +359,15 @@ export class TouchControls {
       } else {
         btn.textContent = label;
         const keys = this._dirToKeys(id);
-        btn.addEventListener('pointerdown', (e) => { e.preventDefault(); keys.forEach(k => { this._dpad[k] = true; }); });
-        btn.addEventListener('pointerup',     () => keys.forEach(k => { this._dpad[k] = false; }));
-        btn.addEventListener('pointercancel', () => keys.forEach(k => { this._dpad[k] = false; }));
-        btn.addEventListener('pointerleave',  () => keys.forEach(k => { this._dpad[k] = false; }));
+        const down = (e) => { e.preventDefault(); e.stopPropagation(); keys.forEach(k => { this._dpad[k] = true; }); };
+        const up   = () => keys.forEach(k => { this._dpad[k] = false; });
+        btn.addEventListener('pointerdown', down);
+        btn.addEventListener('pointerup', up);
+        btn.addEventListener('pointercancel', up);
+        btn.addEventListener('pointerleave', up);
+        btn.addEventListener('touchstart', down, { passive: false });
+        btn.addEventListener('touchend', up);
+        btn.addEventListener('touchcancel', up);
       }
       wrap.appendChild(btn);
     }
@@ -413,10 +408,14 @@ export class TouchControls {
       const btn = document.createElement('button');
       btn.textContent = label;
       btn.style.cssText = `width:68px;height:48px;font-size:12px;${BTN_BASE};`;
-      btn.addEventListener('pointerdown', (e) => { e.preventDefault(); onDown?.(); });
+      const wrappedDown = (e) => { e.preventDefault(); e.stopPropagation(); onDown?.(); };
+      btn.addEventListener('pointerdown', wrappedDown);
+      btn.addEventListener('touchstart', wrappedDown, { passive: false });
       if (onUp) {
         btn.addEventListener('pointerup',     onUp);
         btn.addEventListener('pointercancel', onUp);
+        btn.addEventListener('touchend',      onUp);
+        btn.addEventListener('touchcancel',   onUp);
       }
       return btn;
     };
@@ -481,11 +480,13 @@ export class TouchControls {
       btn.dataset.dx = String(dx);
       btn.dataset.dy = String(dy);
       btn.style.cssText = `width:40px;height:40px;font-size:16px;${BTN_BASE};`;
-      btn.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
+      const selDown = (e) => {
+        e.preventDefault(); e.stopPropagation();
         this.placeOffset = { dx, dy };
         this._refreshSelector();
-      });
+      };
+      btn.addEventListener('pointerdown', selDown);
+      btn.addEventListener('touchstart', selDown, { passive: false });
       this._selectorBtns.push(btn);
       grid.appendChild(btn);
     }
@@ -552,11 +553,13 @@ export class TouchControls {
       this._hotbarQtyBadges.push(badge);
 
       const idx = i;
-      btn.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
+      const hotbarDown = (e) => {
+        e.preventDefault(); e.stopPropagation();
         if (btn.disabled) return;
         this.setSelectedSlot(this.selectedSlot === idx ? null : idx);
-      });
+      };
+      btn.addEventListener('pointerdown', hotbarDown);
+      btn.addEventListener('touchstart', hotbarDown, { passive: false });
       this._hotbarEls.push(btn);
       wrap.appendChild(btn);
     }
@@ -650,7 +653,9 @@ export class TouchControls {
         'background:rgba(0,0,0,0.45);border:1px solid rgba(255,180,0,0.3);' +
         'color:#f0b020;font-size:12px;cursor:pointer;text-align:left;font-family:monospace;' +
         'pointer-events:all;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;';
-      btn.addEventListener('pointerdown', (e) => { e.preventDefault(); handler(); });
+      const dbgDown = (e) => { e.preventDefault(); e.stopPropagation(); handler(); };
+      btn.addEventListener('pointerdown', dbgDown);
+      btn.addEventListener('touchstart', dbgDown, { passive: false });
       return btn;
     };
 
