@@ -31,6 +31,7 @@ import { clearSave } from './storage/saveLocal.js';
 import { refreshCoreSnapshot } from './game/coreSnapshot.js';
 import { showSplashScreen } from './ui/splash.js';
 import { applyThreeColumnLayout, setupOrientationGuard } from './ui/mobileLayout.js';
+import { applyUiClick, ensureUiState } from './ui/uiState.js';
 import { loadImages } from './render/imageLoader.js';
 import { SPRITE_SHEETS } from '../config/sprites.js';
 import { parseNetLaunch, createNetSession } from './net/netSession.js';
@@ -99,7 +100,7 @@ export function boot() {
     const savedWorld = netLaunch.role === 'client' ? null : loadWorld(cfg);
     let world = savedWorld ?? createWorld(cfg);
     world.roomId = netLaunch.roomId ?? null;
-    world.uiState ??= { playerExpanded: false, backpackExpanded: true, coreExpanded: false };
+    ensureUiState(world);
     world.uiHitRects ??= [];
 
     if (!savedWorld) {
@@ -294,15 +295,7 @@ export function boot() {
         controls.viewport = renderer.viewport;
         controls.uiHitRects = world.uiHitRects ?? [];
 
-        const uiClick = controls.consumeUiClick?.();
-        if (uiClick === 'playerPanel') {
-          world.uiState ??= { playerExpanded: false, backpackExpanded: true, coreExpanded: false };
-          world.uiState.playerExpanded = !world.uiState.playerExpanded;
-        }
-        if (uiClick === 'corePanel') {
-          world.uiState ??= { playerExpanded: false, backpackExpanded: true, coreExpanded: false };
-          world.uiState.coreExpanded = !world.uiState.coreExpanded;
-        }
+        applyUiClick(world, controls.consumeUiClick?.());
 
         // Sync drag preview to world for renderer
         if ((world.buildPlanMode || world.buildDestroyMode) && controls.dragging && controls.dragStart) {
@@ -421,6 +414,7 @@ function syncLocalInputUi({ controls, renderer, world, cfg, inputMode }) {
   controls.buildDestroyMode = world.buildDestroyMode;
   controls.viewport = renderer.viewport;
   controls.uiHitRects = world.uiHitRects ?? [];
+  applyUiClick(world, controls.consumeUiClick?.());
 
   if ((world.buildPlanMode || world.buildDestroyMode) && controls.dragging && controls.dragStart) {
     const sx = Math.floor((controls.dragStart.px + world.camera.x) / t);

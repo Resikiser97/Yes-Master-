@@ -13,6 +13,7 @@ import './actions-mining.test.js';
 import './import-smoke.test.js';
 import './mobileLayout.test.js';
 import './saveManager.test.js';
+import './uiState.test.js';
 import './multiplayerState.test.js';
 import './multiplayerInput.test.js';
 
