@@ -21,9 +21,9 @@
       -webkit-user-select: none;
       overscroll-behavior: none;
     }
-    body { margin: 0; background: #1a1a1a; color: #eee; font-family: sans-serif; overflow: hidden; display: flex; justify-content: center; }
+    body { margin: 0; background: #1a1a1a; color: #eee; font-family: sans-serif; overflow: hidden; }
     /* #stage / #game の寸法は renderer.js が JS で制御（動態 tilePx）。CSS で固定しない。 */
-    #stage { position: relative; background: #222; display: inline-block; margin: 0 auto; }
+    #stage { position: relative; background: #222; display: block; margin: 0 auto; width: fit-content; }
     #game { display: block; image-rendering: pixelated; }
     #mode-badge { position: absolute; top: 8px; left: 8px; padding: 2px 8px;
       background: #2d6; color: #000; font-size: 12px; border-radius: 4px; }
