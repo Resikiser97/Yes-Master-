@@ -25,6 +25,7 @@ serve(async (req) => {
     const room_id = body.room_id || crypto.randomUUID();
     const room = await insertCompatible(supabase, "rooms", {
       room_id,
+      owner_id: user.id,
       status: "active",
       current_host_uid: user.id,
       host_epoch: 1,

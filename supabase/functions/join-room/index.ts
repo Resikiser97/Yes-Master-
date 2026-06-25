@@ -32,10 +32,30 @@ serve(async (req) => {
       .single();
     if (roomErr || !room) return json({ error: "room not found or inactive" }, 404);
 
+    const { data: existing } = await supabase
+      .from("room_memberships")
+      .select("slot_id,join_order")
+      .eq("room_id", room_id)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    const { data: latestMember } = await supabase
+      .from("room_memberships")
+      .select("join_order")
+      .eq("room_id", room_id)
+      .order("join_order", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const joinOrder = existing?.join_order ?? ((latestMember?.join_order ?? 0) + 1);
+    const slotId = existing?.slot_id ?? `p${joinOrder + 1}`;
+
     const membership = await upsertCompatible(supabase, "room_memberships", {
       room_id,
       user_id: user.id,
+      slot_id: slotId,
       is_host: false,
+      join_order: joinOrder,
       online: true,
       disconnected_at: null,
       updated_at: new Date().toISOString(),
