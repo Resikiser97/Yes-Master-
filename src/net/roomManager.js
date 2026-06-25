@@ -25,25 +25,24 @@ export async function listRooms(cfg = GAME_CONFIG) {
 
 export async function createRoom({ name = 'Room', room_id = roomId(), maxPlayers = 4 } = {}, cfg = GAME_CONFIG) {
   const supabase = await getSupabaseClient(cfg);
-  const user = await ensureSupabaseUser(cfg);
-  const row = {
-    room_id,
-    status: 'active',
-    current_host_uid: user.id,
-    host_epoch: 1,
-    // Optional columns: kept for future schemas, automatically stripped when absent.
-    name,
-    max_players: maxPlayers,
-  };
-  const data = await insertCompatible(supabase, 'rooms', row);
-  await upsertMembership({ room_id, user_id: user.id, slot_id: 'p1', is_host: true, join_order: 0 }, cfg);
+  await ensureSupabaseUser(cfg);
+  const { data, error } = await supabase.functions.invoke('create-room', {
+    body: { room_id, name, max_players: maxPlayers },
+  });
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
   return data;
 }
 
 export async function joinRoom(room_id, cfg = GAME_CONFIG) {
+  const supabase = await getSupabaseClient(cfg);
   const user = await ensureSupabaseUser(cfg);
-  const member = await upsertMembership({ room_id, user_id: user.id, is_host: false }, cfg);
-  return { room_id, user, membership: member };
+  const { data, error } = await supabase.functions.invoke('join-room', {
+    body: { room_id },
+  });
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+  return { room_id, user, membership: data.membership ?? data };
 }
 
 export async function leaveRoom(room_id, cfg = GAME_CONFIG) {
@@ -67,13 +66,13 @@ export async function getRoom(room_id, cfg = GAME_CONFIG) {
 
 export async function updateHostPeer(room_id, peerId, cfg = GAME_CONFIG) {
   const supabase = await getSupabaseClient(cfg);
-  const user = await ensureSupabaseUser(cfg);
-  return updateCompatible(
-    supabase,
-    'rooms',
-    { current_host_uid: user.id, current_host_peer_id: peerId, status: 'active' },
-    (query) => query.eq('room_id', room_id),
-  );
+  await ensureSupabaseUser(cfg);
+  const { data, error } = await supabase.functions.invoke('update-host-peer', {
+    body: { room_id, peer_id: peerId },
+  });
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+  return data;
 }
 
 export async function issueRoomJoinToken({ room_id, join_type = 'join', slot_id = null } = {}, cfg = GAME_CONFIG) {
