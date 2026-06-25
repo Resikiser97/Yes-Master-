@@ -193,8 +193,8 @@ export class Renderer {
       this._drawWaveTimer(world);
       this._drawBackpack(world);
       this._drawCoreStatsPanel(world);
+      this._drawCoreHpBar(world);
       this._drawEnemyInfo(world);
-      this._drawResourceBar(world);
       this._drawXpGoldBar(world);
       this._drawDesktopHotbar(world);
       this._drawModeHint(world);
@@ -579,8 +579,56 @@ export class Renderer {
   _drawCoreStatsPanel(world) {
     const ctx = this.ctx;
     const { startX, barY } = this._hotbarMetrics();
-    const x = startX, y = barY - 134, w = 260, h = 110;
+    const expanded = world.uiState?.coreExpanded ?? false;
+
+    world.uiHitRects ??= [];
+    world.uiHitRects = world.uiHitRects.filter((r) => r.id !== 'corePanel');
+
     const cs = world.coreStats ?? {};
+    const hpCur = world.coreHp ?? cs.hpMax ?? 0;
+    const hpMax = cs.hpMax ?? 0;
+
+    if (!expanded) {
+      // Compact bar: HP bar + attack + speed
+      const x = startX, y = barY - 54, w = 260, h = 46;
+      world.uiHitRects.push({ id: 'corePanel', x, y, w, h });
+      ctx.save();
+      drawPanel(ctx, x, y, w, h, { bg: 'rgba(0,0,0,0.65)', border: '#555' });
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+
+      // HP label + bar
+      ctx.font = 'bold 11px sans-serif';
+      ctx.fillStyle = '#F44336';
+      ctx.fillText('血量', x + 8, y + 13);
+      const barX = x + 36, barW = w - 44, barH = 10, barYp = y + 8;
+      ctx.fillStyle = '#1e2330';
+      ctx.fillRect(barX, barYp, barW, barH);
+      const pct = hpMax > 0 ? Math.max(0, Math.min(1, hpCur / hpMax)) : 0;
+      ctx.fillStyle = '#388E3C';
+      ctx.fillRect(barX, barYp, Math.round(barW * pct), barH);
+      ctx.font = 'bold 9px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#FFF';
+      ctx.shadowColor = 'rgba(0,0,0,0.8)';
+      ctx.shadowBlur = 3;
+      ctx.fillText(`${Math.round(hpCur)} / ${Math.round(hpMax)}`, barX + barW / 2, barYp + barH / 2 + 0.5);
+      ctx.shadowBlur = 0;
+
+      // Attack + speed
+      ctx.textAlign = 'left';
+      ctx.font = '11px sans-serif';
+      ctx.fillStyle = '#CCC';
+      ctx.fillText(`攻擊力：${fmt2(cs.attack)}`, x + 8, y + 34);
+      ctx.fillText(`攻速(每秒)：${fmt2(cs.attackSpeed)}`, x + 110, y + 34);
+
+      ctx.restore();
+      return;
+    }
+
+    // Expanded: full panel
+    const x = startX, y = barY - 134, w = 260, h = 110;
+    world.uiHitRects.push({ id: 'corePanel', x, y, w, h });
     const defense = Number(cs.defense ?? 0);
     const defenseK = Number(this.cfg.core?.defenseK ?? 100);
     const reductionPct = defenseK + defense > 0 ? (defense / (defenseK + defense)) * 100 : 0;
@@ -606,6 +654,44 @@ export class Renderer {
     ctx.font = '12px sans-serif';
     ctx.fillStyle = '#CCC';
     lines.forEach((line, i) => ctx.fillText(line, x + 8, y + 26 + i * 16));
+    ctx.restore();
+  }
+
+  _drawCoreHpBar(world) {
+    const ctx = this.ctx;
+    const { startX, totalW, barY } = this._hotbarMetrics();
+    const cs = world.coreStats ?? {};
+    const hpCur = world.coreHp ?? cs.hpMax ?? 0;
+    const hpMax = cs.hpMax ?? 0;
+    if (hpMax <= 0) return;
+
+    const barH = 12;
+    const y = barY - 16;
+    const pct = Math.max(0, Math.min(1, hpCur / hpMax));
+
+    ctx.save();
+    // Label
+    ctx.font = 'bold 10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillStyle = '#F44336';
+    ctx.fillText('核心血量', startX + totalW / 2, y - 1);
+
+    // Bar background
+    ctx.fillStyle = '#1e2330';
+    ctx.fillRect(startX, y, totalW, barH);
+    // Bar fill
+    ctx.fillStyle = pct > 0.3 ? '#388E3C' : '#F44336';
+    ctx.fillRect(startX, y, Math.round(totalW * pct), barH);
+
+    // Center text
+    ctx.font = 'bold 9px sans-serif';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#FFF';
+    ctx.shadowColor = 'rgba(0,0,0,0.9)';
+    ctx.shadowBlur = 3;
+    ctx.fillText(`${Math.round(hpCur)} / ${Math.round(hpMax)}`, startX + totalW / 2, y + barH / 2);
+    ctx.shadowBlur = 0;
     ctx.restore();
   }
 
@@ -641,34 +727,8 @@ export class Renderer {
     ctx.restore();
   }
 
-  _drawResourceBar(world) {
-    const ctx = this.ctx;
-    const { startX, totalW, barY } = this._hotbarMetrics();
-    const barYPos = barY - 10;
-    const counts = world.blockCounts ?? {};
-    const total = Object.values(counts).reduce((sum, v) => sum + Math.max(0, Number(v) || 0), 0);
-    if (total <= 0) return;
-    const colors = {
-      sand: '#C8E64E', dirt: '#8B6914', stone: '#9E9E9E',
-      iron: '#607D8B', gold: '#FFD700', glass: '#00BCD4', diamond: '#9C27B0',
-      ladder: '#8B5A2B',
-    };
-
-    ctx.save();
-    let offsetX = startX;
-    const entries = Object.entries(counts).filter(([, count]) => count > 0);
-    entries.forEach(([key, count], index) => {
-      const segW = index === entries.length - 1
-        ? startX + totalW - offsetX
-        : Math.round((count / total) * totalW);
-      ctx.fillStyle = colors[key] ?? '#888';
-      ctx.fillRect(offsetX, barYPos, Math.max(1, segW), 6);
-      offsetX += segW;
-    });
-    ctx.restore();
-  }
-
   _drawXpGoldBar(world) {
+    if (!(world.uiState?.coreExpanded ?? false)) return;
     const ctx = this.ctx;
     const { startX, barY } = this._hotbarMetrics();
     const y = barY - 24;

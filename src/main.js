@@ -225,6 +225,10 @@ export function boot() {
           world.uiState ??= { playerExpanded: false, backpackExpanded: true, coreExpanded: false };
           world.uiState.playerExpanded = !world.uiState.playerExpanded;
         }
+        if (uiClick === 'corePanel') {
+          world.uiState ??= { playerExpanded: false, backpackExpanded: true, coreExpanded: false };
+          world.uiState.coreExpanded = !world.uiState.coreExpanded;
+        }
 
         // Sync drag preview to world for renderer
         if ((world.buildPlanMode || world.buildDestroyMode) && controls.dragging && controls.dragStart) {
