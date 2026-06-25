@@ -230,9 +230,7 @@ export function boot() {
         if (worldRef.current !== world) world = worldRef.current;
 
         if (cfg.mode === 'multi' && netLaunch.role === 'client') {
-          controls.viewport = renderer.viewport;
-          controls.uiHitRects = world.uiHitRects ?? [];
-          if (inputMode === 'touch') controls.updateStatus?.(world);
+          syncLocalInputUi({ controls, renderer, world, cfg, inputMode });
           const debugActions = controls.consumeDebugActions()
             .filter((action) => action !== 'resetSave');
           if (netSession?.sendInput) {
@@ -397,6 +395,48 @@ export function boot() {
   });
 
   return null; // app 在 splash 按鈕點擊後才初始化
+}
+
+function syncLocalInputUi({ controls, renderer, world, cfg, inputMode }) {
+  const t = cfg.render.tilePx;
+  const localPlayer = world.players?.get(world.localPlayerId) ?? world.player;
+
+  if (inputMode === 'touch' && localPlayer) {
+    const off = controls.placeOffset ?? { dx: 0, dy: 0 };
+    controls.mouse.x = (localPlayer.x + off.dx) * t - world.camera.x;
+    controls.mouse.y = (localPlayer.y + off.dy) * t - world.camera.y;
+  }
+
+  const tileX = Math.floor((controls.mouse.x + world.camera.x) / t);
+  const tileY = Math.floor((controls.mouse.y + world.camera.y) / t);
+  const slot = controls.getSelectedSlot?.();
+  const selectedBlock = slot != null ? cfg.hotbar[slot] : null;
+  if (slot != null && !selectedBlock) controls.setSelectedSlot?.(null);
+
+  world.selectedBlock = selectedBlock ?? null;
+  world.buildPreview = computeBuildPreview(world, selectedBlock, tileX, tileY, cfg, world.localPlayerId);
+  controls.cardOfferMode = (world.phase === 'cardOffer');
+  controls.cardOfferRects = world.cardOfferRects ?? null;
+  controls.buildPlanMode = world.buildPlanMode;
+  controls.buildDestroyMode = world.buildDestroyMode;
+  controls.viewport = renderer.viewport;
+  controls.uiHitRects = world.uiHitRects ?? [];
+
+  if ((world.buildPlanMode || world.buildDestroyMode) && controls.dragging && controls.dragStart) {
+    const sx = Math.floor((controls.dragStart.px + world.camera.x) / t);
+    const sy = Math.floor((controls.dragStart.py + world.camera.y) / t);
+    const ex = Math.floor((controls.mouse.x + world.camera.x) / t);
+    const ey = Math.floor((controls.mouse.y + world.camera.y) / t);
+    world.buildPlanDrag = { startX: sx, startY: sy, endX: ex, endY: ey };
+    world.buildPlanDragPreview = (!world.buildDestroyMode && selectedBlock)
+      ? previewPlaceRect(world, selectedBlock, sx, sy, ex, ey, cfg)
+      : null;
+  } else {
+    world.buildPlanDrag = null;
+    world.buildPlanDragPreview = null;
+  }
+
+  if (inputMode === 'touch') controls.updateStatus?.(world);
 }
 
 if (typeof document !== 'undefined') {

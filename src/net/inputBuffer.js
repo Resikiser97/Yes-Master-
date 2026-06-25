@@ -1,6 +1,7 @@
 import { movePlayer } from '../logic/playerMovement.js';
 import { ensurePlayer } from '../game/world.js';
-import { updateMining, collectDrops, tryDeposit, tryPlace, tryRemove, updateRepair, applyDebugAction } from '../game/actions.js';
+import { updateMining, collectDrops, tryDeposit, tryPlace, tryRemove, updateRepair, applyDebugAction, toggleBuildPlanMode, tryPlaceRect, tryRemoveRect } from '../game/actions.js';
+import { resolveCardOffer } from '../game/phaseRuntime.js';
 import { createInputValidator } from './validation.js';
 
 export function createInputBuffer({ cfg, validator = createInputValidator({ cfg }) } = {}) {
@@ -32,13 +33,14 @@ export function serializeControls(controls, world, cfg, sequenceId, extra = {}) 
   const tileY = Math.floor(((controls.mouse?.y ?? 0) + (world.camera?.y ?? 0)) / t);
   const slot = controls.getSelectedSlot?.();
   const selectedBlock = slot != null ? cfg.hotbar[slot] : null;
-  const action = consumeControlAction(controls, selectedBlock, tileX, tileY);
+  const actions = consumeControlActions(controls, world, selectedBlock, tileX, tileY, cfg);
   return {
     sequenceId,
     move: controls.getMoveVector?.() ?? { x: 0, y: 0 },
     mining: !!controls.isMining?.(),
     repairing: !!controls.isRepairing?.(),
-    action,
+    action: actions[0] ?? null,
+    actions,
     debugActions: extra.debugActions ?? [],
     selectedBlock,
     tile: { x: tileX, y: tileY },
@@ -57,8 +59,8 @@ export function applyInput(world, playerId, input, dt, cfg) {
   }, cfg);
   world.players.set(playerId, { ...moved, id: playerId, prevX, prevY });
 
-  if (input.action?.kind === 'place') tryPlace(world, input.action.blockKey, input.action.x, input.action.y, cfg, playerId);
-  if (input.action?.kind === 'remove') tryRemove(world, input.action.x, input.action.y, cfg, playerId);
+  const actions = input.actions?.length ? input.actions : (input.action ? [input.action] : []);
+  for (const action of actions) applyAction(world, playerId, action, cfg);
   for (const action of input.debugActions ?? []) {
     if (action !== 'resetSave') applyDebugAction(world, action, cfg);
   }
@@ -68,8 +70,59 @@ export function applyInput(world, playerId, input, dt, cfg) {
   tryDeposit(world, playerId);
 }
 
-function consumeControlAction(controls, selectedBlock, tileX, tileY) {
-  if (selectedBlock && controls.consumePlace?.()) return { kind: 'place', blockKey: selectedBlock, x: tileX, y: tileY };
-  if (controls.consumeRemove?.()) return { kind: 'remove', x: tileX, y: tileY };
-  return null;
+function consumeControlActions(controls, world, selectedBlock, tileX, tileY, cfg) {
+  const actions = [];
+  if (world.phase === 'cardOffer' || controls.cardOfferMode) {
+    const cardChoice = controls.consumeCardChoice?.();
+    return cardChoice != null ? [{ kind: 'cardChoice', index: cardChoice }] : actions;
+  }
+
+  if (controls.consumeBuildPlanToggle?.()) actions.push({ kind: 'buildPlanToggle' });
+  if (controls.consumeDestroyToggle?.()) actions.push({ kind: 'destroyToggle' });
+
+  const dragRect = controls.consumeDragRect?.();
+  if (dragRect && selectedBlock) {
+    const rect = dragRectToTiles(dragRect, world, cfg);
+    actions.push({
+      kind: world.buildDestroyMode ? 'removeRect' : 'placeRect',
+      blockKey: selectedBlock,
+      ...rect,
+    });
+  }
+
+  if (selectedBlock && controls.consumePlace?.()) {
+    actions.push(world.buildPlanMode && !world.buildDestroyMode
+      ? { kind: 'placeRect', blockKey: selectedBlock, x1: tileX, y1: tileY, x2: tileX, y2: tileY }
+      : { kind: 'place', blockKey: selectedBlock, x: tileX, y: tileY });
+  }
+  if (controls.consumeRemove?.()) actions.push({ kind: 'remove', x: tileX, y: tileY });
+  return actions;
+}
+
+function dragRectToTiles(dragRect, world, cfg) {
+  const t = cfg.render.tilePx;
+  return {
+    x1: Math.floor((dragRect.startPx + world.camera.x) / t),
+    y1: Math.floor((dragRect.startPy + world.camera.y) / t),
+    x2: Math.floor((dragRect.endPx + world.camera.x) / t),
+    y2: Math.floor((dragRect.endPy + world.camera.y) / t),
+  };
+}
+
+function applyAction(world, playerId, action, cfg) {
+  if (!action) return;
+  if (action.kind === 'place') tryPlace(world, action.blockKey, action.x, action.y, cfg, playerId);
+  else if (action.kind === 'remove') tryRemove(world, action.x, action.y, cfg, playerId);
+  else if (action.kind === 'buildPlanToggle') {
+    const result = toggleBuildPlanMode(world, cfg, playerId);
+    if (result.ok && world.buildPlanMode) world.buildDestroyMode = false;
+  } else if (action.kind === 'destroyToggle') {
+    if (world.buildPlanMode) world.buildDestroyMode = !world.buildDestroyMode;
+  } else if (action.kind === 'placeRect') {
+    tryPlaceRect(world, action.blockKey, action.x1, action.y1, action.x2, action.y2, cfg);
+  } else if (action.kind === 'removeRect') {
+    tryRemoveRect(world, action.blockKey, action.x1, action.y1, action.x2, action.y2, cfg);
+  } else if (action.kind === 'cardChoice') {
+    resolveCardOffer(world, action.index, cfg);
+  }
 }

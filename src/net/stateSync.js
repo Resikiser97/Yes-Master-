@@ -38,6 +38,8 @@ export function serializeSnapshot(world) {
     cardBonuses: { ...(world.cardBonuses ?? {}) },
     cardModifiers: (world.cardModifiers ?? []).map(m => ({ ...m })),
     pendingCardOffer: world.pendingCardOffer ? world.pendingCardOffer.map(c => ({ ...c, effect: { ...(c.effect ?? {}) } })) : null,
+    buildPlanMode: !!world.buildPlanMode,
+    buildDestroyMode: !!world.buildDestroyMode,
     mineProgress: { ...(world.mineProgress ?? {}) },
     clock: { ...(world.clock ?? {}) },
   };
@@ -63,6 +65,8 @@ export function serializeDelta(prevSnapshot, world) {
     coreStats: snapshot.coreStats,
     combat: snapshot.combat,
     pendingCardOffer: snapshot.pendingCardOffer,
+    buildPlanMode: snapshot.buildPlanMode,
+    buildDestroyMode: snapshot.buildDestroyMode,
     clock: snapshot.clock,
   };
 }
@@ -132,6 +136,8 @@ function applyPartialState(world, state, cfg) {
   if ('pendingCardOffer' in state) {
     world.pendingCardOffer = state.pendingCardOffer ? state.pendingCardOffer.map(c => ({ ...c })) : null;
   }
+  if (state.buildPlanMode != null) world.buildPlanMode = !!state.buildPlanMode;
+  if (state.buildDestroyMode != null) world.buildDestroyMode = !!state.buildDestroyMode;
   if (state.clock) world.clock = { ...world.clock, ...state.clock };
 }
 

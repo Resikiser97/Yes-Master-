@@ -23,6 +23,8 @@ function testSnapshotRoundTripKeepsPlayers() {
   world.storage.dirt = 3;
   world.dirt.add('79,90');
   world.fore.set('79,90', 'stone');
+  world.buildPlanMode = true;
+  world.buildDestroyMode = true;
   world.syncTick = 7;
 
   const target = createWorld(GAME_CONFIG);
@@ -35,6 +37,8 @@ function testSnapshotRoundTripKeepsPlayers() {
   assert.equal(target.storage.dirt, 3);
   assert.equal(target.dirt.has('79,90'), true);
   assert.equal(target.fore.get('79,90'), 'stone');
+  assert.equal(target.buildPlanMode, true);
+  assert.equal(target.buildDestroyMode, true);
 }
 
 testPlayerAliasUpdatesLocalPlayer();

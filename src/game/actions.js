@@ -285,14 +285,15 @@ export function applyDebugAction(world, action, cfg = GAME_CONFIG) {
 }
 
 // Build Plan Mode：站在核心地基上才能開啟
-export function toggleBuildPlanMode(world) {
+export function toggleBuildPlanMode(world, cfg = GAME_CONFIG, playerId = world.localPlayerId) {
+  const player = ensurePlayer(world, playerId, cfg);
   if (world.buildPlanMode) {
     world.buildPlanMode = false;
     world.buildDestroyMode = false;
     world.buildPlanDrag = null;
     return { ok: true, active: false };
   }
-  if (!isOnRepairSurface(world, world.player)) {
+  if (!isOnRepairSurface(world, player)) {
     return { ok: false, reason: 'not_on_foundation' };
   }
   world.buildPlanMode = true;

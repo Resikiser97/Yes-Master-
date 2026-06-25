@@ -24,7 +24,7 @@ export async function startPeerHost({ roomId, cfg = GAME_CONFIG, world = null, o
       for (const session of peers.values()) sendConn(session.conn, message);
     },
     sendTo(id, message) {
-      const session = peers.get(id);
+      const session = peers.get(id) ?? [...peers.values()].find((item) => item.slotId === id);
       if (session) sendConn(session.conn, message);
     },
     close() {

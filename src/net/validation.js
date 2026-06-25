@@ -2,7 +2,7 @@ import { validatePlacement, validateRemoval } from '../logic/building.js';
 import { key } from '../logic/connectivity.js';
 
 const DEFAULT_LIMITS = {
-  minActionIntervalMs: 100,
+  minActionIntervalMs: 0,
   maxSequenceGap: 120,
 };
 
@@ -22,10 +22,13 @@ export function createInputValidator({ cfg, limits = DEFAULT_LIMITS } = {}) {
       if (!validAxis(input.move.x) || !validAxis(input.move.y)) return reject('bad_move_vector');
     }
 
-    if (input.action) {
-      if (now - state.actionAt < limits.minActionIntervalMs) return reject('action_rate');
-      const actionResult = validateAction(input.action, { world, playerId, cfg });
-      if (!actionResult.ok) return actionResult;
+    const actions = input.actions?.length ? input.actions : (input.action ? [input.action] : []);
+    if (actions.length) {
+      if (limits.minActionIntervalMs > 0 && now - state.actionAt < limits.minActionIntervalMs) return reject('action_rate');
+      for (const action of actions) {
+        const actionResult = validateAction(action, { world, playerId, cfg });
+        if (!actionResult.ok) return actionResult;
+      }
       state.actionAt = now;
     }
 
@@ -69,6 +72,9 @@ function validateAction(action, { world, playerId, cfg }) {
       player,
       reach: cfg.buildLimits.buildReachTiles ?? cfg.buildLimits.placeReachTiles,
     }, action.x, action.y);
+  }
+  if (['buildPlanToggle', 'destroyToggle', 'placeRect', 'removeRect', 'cardChoice'].includes(action.kind)) {
+    return { ok: true };
   }
   if (action.kind === 'deposit') {
     const px = Math.round(player.x);
