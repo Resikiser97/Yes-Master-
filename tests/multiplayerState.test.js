@@ -23,13 +23,16 @@ function testSnapshotRoundTripKeepsPlayers() {
   world.storage.dirt = 3;
   world.dirt.add('79,90');
   world.fore.set('79,90', 'stone');
-  world.buildPlanMode = true;
-  world.buildDestroyMode = true;
   world.syncTick = 7;
 
   const target = createWorld(GAME_CONFIG);
   target.localPlayerId = 'p2';
-  applySnapshot(target, serializeSnapshot(world), GAME_CONFIG);
+  target.buildPlanMode = true;
+  target.buildDestroyMode = true;
+  const snapshot = serializeSnapshot(world);
+  assert.equal('buildPlanMode' in snapshot, false);
+  assert.equal('buildDestroyMode' in snapshot, false);
+  applySnapshot(target, snapshot, GAME_CONFIG);
 
   assert.equal(target.syncTick, 7);
   assert.equal(target.localPlayerId, 'p2');

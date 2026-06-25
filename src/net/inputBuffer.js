@@ -77,8 +77,16 @@ function consumeControlActions(controls, world, selectedBlock, tileX, tileY, cfg
     return cardChoice != null ? [{ kind: 'cardChoice', index: cardChoice }] : actions;
   }
 
-  if (controls.consumeBuildPlanToggle?.()) actions.push({ kind: 'buildPlanToggle' });
-  if (controls.consumeDestroyToggle?.()) actions.push({ kind: 'destroyToggle' });
+  if (controls.consumeBuildPlanToggle?.()) {
+    const result = toggleBuildPlanMode(world, cfg, world.localPlayerId);
+    if (result.ok) actions.push({ kind: 'buildPlanToggle', active: world.buildPlanMode });
+  }
+  if (controls.consumeDestroyToggle?.()) {
+    if (world.buildPlanMode) {
+      world.buildDestroyMode = !world.buildDestroyMode;
+      actions.push({ kind: 'destroyToggle', active: world.buildDestroyMode });
+    }
+  }
 
   const dragRect = controls.consumeDragRect?.();
   if (dragRect && selectedBlock) {
@@ -114,9 +122,11 @@ function applyAction(world, playerId, action, cfg) {
   if (action.kind === 'place') tryPlace(world, action.blockKey, action.x, action.y, cfg, playerId);
   else if (action.kind === 'remove') tryRemove(world, action.x, action.y, cfg, playerId);
   else if (action.kind === 'buildPlanToggle') {
+    if (playerId !== world.localPlayerId) return;
     const result = toggleBuildPlanMode(world, cfg, playerId);
     if (result.ok && world.buildPlanMode) world.buildDestroyMode = false;
   } else if (action.kind === 'destroyToggle') {
+    if (playerId !== world.localPlayerId) return;
     if (world.buildPlanMode) world.buildDestroyMode = !world.buildDestroyMode;
   } else if (action.kind === 'placeRect') {
     tryPlaceRect(world, action.blockKey, action.x1, action.y1, action.x2, action.y2, cfg);

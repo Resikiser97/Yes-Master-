@@ -84,7 +84,7 @@ function placePlayerOnCore(world, playerId, cfg) {
   return player;
 }
 
-function testClientCanToggleBuildPlanOnHost() {
+function testRemoteBuildPlanToggleDoesNotChangeHostUi() {
   const cfg = multiConfig();
   const world = createWorld(cfg);
   placePlayerOnCore(world, 'p2', cfg);
@@ -95,8 +95,37 @@ function testClientCanToggleBuildPlanOnHost() {
     actions: [{ kind: 'buildPlanToggle' }],
   }, cfg.time.fixedStepSeconds, cfg);
 
-  assert.equal(world.buildPlanMode, true);
+  assert.equal(world.buildPlanMode, false);
   assert.equal(world.buildDestroyMode, false);
+}
+
+function testClientBuildPlanToggleIsLocalBeforeSending() {
+  const cfg = multiConfig();
+  const world = createWorld(cfg);
+  world.localPlayerId = 'p2';
+  placePlayerOnCore(world, 'p2', cfg);
+  let pendingToggle = true;
+  const controls = {
+    mouse: { x: 0, y: 0 },
+    getSelectedSlot: () => null,
+    getMoveVector: () => ({ x: 0, y: 0 }),
+    isMining: () => false,
+    isRepairing: () => false,
+    consumeBuildPlanToggle: () => {
+      const out = pendingToggle;
+      pendingToggle = false;
+      return out;
+    },
+    consumeDestroyToggle: () => false,
+    consumeDragRect: () => null,
+    consumePlace: () => false,
+    consumeRemove: () => false,
+    consumeCardChoice: () => null,
+  };
+
+  const input = serializeControls(controls, world, cfg, 6);
+  assert.equal(world.buildPlanMode, true);
+  assert.deepEqual(input.actions, [{ kind: 'buildPlanToggle', active: true }]);
 }
 
 function testClientCanPlaceBlocksOnHost() {
@@ -157,7 +186,8 @@ function testCardChoiceDoesNotSerializeBuildAction() {
   assert.deepEqual(input.actions, [{ kind: 'cardChoice', index: 2 }]);
 }
 
-testClientCanToggleBuildPlanOnHost();
+testRemoteBuildPlanToggleDoesNotChangeHostUi();
+testClientBuildPlanToggleIsLocalBeforeSending();
 testClientCanPlaceBlocksOnHost();
 testClientCanChooseCardsOnHost();
 testCardChoiceDoesNotSerializeBuildAction();
