@@ -119,6 +119,10 @@ export class TouchControls {
     if (i != null) this._mining = false;
     this._refreshHotbar();
   }
+  consumeBuildPlanToggle() { return false; }
+  consumeDestroyToggle()  { return false; }
+  consumeUiClick()        { return null; }
+  consumeDragRect()       { return null; }
   consumePlace()   { const v = this.pendingPlace;       this.pendingPlace = false;       return v; }
   consumeRemove()  { const v = this.pendingRemove;      this.pendingRemove = false;      return v; }
   consumeDebugActions() { const v = this.pendingDebug; this.pendingDebug = []; return v; }
