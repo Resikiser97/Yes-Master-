@@ -1021,13 +1021,22 @@ export class Renderer {
       `礦格: ${mineStr}`,
     ];
     const lineH = 16, padX = 12, padY = 8;
-    const panelW = 300;
-    const panelH = padY * 2 + lines.length * lineH;
-    const px = vw - panelW - 8;
-    const py = 8;
     ctx.save();
     ctx.font = '12px monospace';
     ctx.textBaseline = 'top';
+    const maxTextW = Math.max(...lines.map(ln => ctx.measureText(ln).width));
+    const panelW = Math.ceil(maxTextW) + padX * 2;
+    const panelH = padY * 2 + lines.length * lineH;
+    let rightMargin = 8;
+    if (this.cfg.render.drawCanvasHud === false) {
+      const rp = document.getElementById('touch-right-panel');
+      if (rp) {
+        const scale = this.canvas.width / (this.canvas.clientWidth || 1);
+        rightMargin = Math.ceil(rp.offsetWidth * scale) + 52;
+      }
+    }
+    const px = vw - panelW - rightMargin;
+    const py = 8;
     ctx.fillStyle = 'rgba(10,16,24,0.82)';
     ctx.fillRect(px, py, panelW, panelH);
     ctx.strokeStyle = 'rgba(255,180,0,0.4)';

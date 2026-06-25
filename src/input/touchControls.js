@@ -631,10 +631,10 @@ export class TouchControls {
     panel.id = 'debug-panel-touch';
     panel.style.cssText = [
       'display:none',
-      'position:fixed',
+      'position:absolute',
       'top:58px',
+      'left:8px',
       'right:8px',
-      'width:280px',
       'z-index:280',
       'background:rgba(10,16,24,0.92)',
       'border:1px solid rgba(255,180,0,0.4)',
