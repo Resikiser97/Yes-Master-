@@ -1021,7 +1021,7 @@ export class Renderer {
       `礦格: ${mineStr}`,
     ];
     const lineH = 16, padX = 12, padY = 8;
-    const panelW = 210;
+    const panelW = 300;
     const panelH = padY * 2 + lines.length * lineH;
     const px = vw - panelW - 8;
     const py = 8;
