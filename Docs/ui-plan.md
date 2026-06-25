@@ -332,26 +332,400 @@ padding: 6px
 
 ---
 
-## 實作優先順序
+## Codex 實作任務（分批執行）
 
-### Phase 1 — 核心資訊（最高優先）
-1. **C. 波次/計時器**（右上角）— 玩家最需要的進度資訊
-2. **E. 核心數值面板** — 取代目前的純文字 HUD
-3. **G-3. 快捷列升級** — 在現有 hotbar 基礎上優化
+> **執行模式**：Codex 5.5 high，每批獨立 commit。
+> **共用規則**：
+> - 所有繪製加在 `src/render/renderer.js`，作為 `Renderer` 類別的新方法。
+> - 不建新檔。通用工具函式（`drawPanel` / `drawBar`）作為 renderer.js 頂部的 module-level helper。
+> - **不動** `_drawDesktopHotbar`（快捷列已完成）。
+> - **不動手機模式**（touchControls.js / mobileLayout.js 不在本計劃範圍）。
+> - 未來才有數據的欄位（spirit / equipment / totalXP / totalGold / totalCards / players[]）：**畫空位佔格，顯示 `—` 或 `0`**，不要跳過不畫。
+> - 色碼、字型、尺寸嚴格按本文件「UI 樣式規範」章節。
+> - 每個 `_draw*` 方法開頭必須 `ctx.save()`，結尾 `ctx.restore()`。
+> - 必須 import `BLOCKS` from blocks.js（已有）、`GAME_CONFIG` from gameConfig.js（已有）。
+> - 需要 `buildWave` 預覽下一波時，import `{ buildWave }` from `../../src/logic/waveGen.js`。
 
-### Phase 2 — 戰鬥資訊
-4. **F. 敵人情報面板** — 了解當前/下一波威脅
-5. **A. 玩家面板**（HP/疲勞條）— 圖形化取代純文字
+---
 
-### Phase 3 — 背包與資源
-6. **D. 背包面板** — 挖礦背包視覺化
-7. **G-2. 資源條** — 方塊比例可視化
-8. **G-1. 經驗/卡片/金幣** — 累計統計顯示
+### Batch 1 — 通用工具 + C. 波次計時器
 
-### Phase 4 — 多人與裝備
-9. **B. 隊友列** — PeerJS 多人同步後
-10. **A. 裝備槽** — 裝備系統實裝後
-11. **H-2. EXIT 按鈕** — 退出功能
+**目標**：建立通用繪製工具 + 右上角波次/計時器面板。
+
+#### Step 1：在 renderer.js 頂部（import 區下方）加入 module-level helper
+
+```javascript
+function drawPanel(ctx, x, y, w, h, opts = {}) {
+  ctx.fillStyle = opts.bg ?? 'rgba(0,0,0,0.75)';
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = opts.border ?? '#666';
+  ctx.lineWidth = opts.borderWidth ?? 1;
+  ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+}
+
+function drawBar(ctx, x, y, w, h, pct, color, opts = {}) {
+  ctx.fillStyle = '#333';
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = color;
+  ctx.fillRect(x, y, Math.round(w * Math.min(1, pct)), h);
+  if (opts.text) {
+    ctx.font = 'bold 10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#FFF';
+    ctx.fillText(opts.text, x + w / 2, y + h / 2);
+  }
+}
+```
+
+#### Step 2：新增 `_drawWaveTimer(world)` 方法
+
+**位置**：右上角，padding 8px，右對齊。
+**面板尺寸**：約 200×80。
+
+**繪製內容**（從上到下）：
+
+1. **關卡編號**：`關卡 {十位}-{個位}`（font 12px #FFD700）
+   ```
+   const stage = world.stage ?? 0;
+   const set = Math.floor(stage / 10) + 1;
+   const num = (stage % 10) + 1;
+   → "關卡 {set}-{num}"
+   ```
+
+2. **波次進度點**：10 個圓點，gap=4，每個 r=5
+   ```
+   stageInSet = stage % 10;  // 0~9
+   i < stageInSet   → fill=#4CAF50（已通過）
+   i === stageInSet  → fill=#FFF 描邊（目前關）
+   i > stageInSet    → fill=#555（未到）
+   i === 9           → fill=#FF9800（Boss 位），已通過仍用綠
+   第 8 與第 9 點之間畫 1px 分隔線
+   ```
+
+3. **倒數計時器**：`[MM:SS]`（font bold 16px monospace）
+   ```
+   const t = world.phaseTimer ?? 0;
+   const mm = String(Math.floor(t / 60)).padStart(2, '0');
+   const ss = String(Math.floor(t % 60)).padStart(2, '0');
+   prep → fill=#FFF
+   night → fill=#FF6B6B
+   overtime → fill=#FF0000，每 0.5 秒閃爍（用 Date.now() % 1000 < 500 判斷）
+   ```
+
+4. **階段文字**：`準備中` / `夜晚` / `加時賽`（font 12px #AAA）
+
+#### Step 3：在 `render(world)` 方法中呼叫
+
+找到 `if (this.cfg.render.drawCanvasHud !== false) this._drawHud(world);` 這行，在它**之後**加：
+```javascript
+if (this.cfg.render.drawCanvasHud !== false) this._drawWaveTimer(world);
+```
+
+#### 驗收
+- 右上角出現面板，顯示關卡編號 + 10 個進度點 + 倒數 + 階段
+- prep/night/overtime 各階段文字和顏色正確
+- 不影響現有 HUD 和快捷列
+
+---
+
+### Batch 2 — E. 核心數值面板 + H-1. 版本標籤
+
+**目標**：底部中央偏左的核心數值面板 + 右下角版本標籤。
+
+#### Step 1：新增 `_drawCoreStatsPanel(world)` 方法
+
+**位置**：底部，x 在快捷列左邊緣對齊，y 在快捷列上方（留 4px gap）。
+**面板尺寸**：260×110。
+
+**繪製內容**（6 行，lineHeight=16px）：
+
+```
+第 1 行：攻擊力：{attack}　　攻速(每秒)：{attackSpeed}
+         左段 bold 12px #FFF，右段 12px #CCC
+第 2 行：攻擊範圍：{range}
+第 3 行：防禦力：{defense} (抵擋{reductionPct}%)
+         reductionPct = defense / (100 + defense) × 100，toFixed(0)
+第 4 行：靈力增幅：—%
+         （world.player.spirit 尚未實裝，顯示 "—"）
+第 5 行：魔法攻擊：{magicPct}%
+第 6 行：連鎖：{chain}
+```
+
+**數據來源**：全部從 `world.coreStats.*` 讀取，用 `toFixed(1)` 或 `toFixed(2)` 格式化。
+
+#### Step 2：新增 `_drawVersionLabel()` 方法
+
+**位置**：右下角 padding 8px。
+**內容**：`Yes, Master! {GAME_CONFIG.version}`
+**樣式**：font 11px #666，textAlign=right。
+
+#### Step 3：在 render pipeline 中呼叫
+
+在 `_drawWaveTimer` 呼叫之後加：
+```javascript
+if (this.cfg.render.drawCanvasHud !== false) {
+  this._drawCoreStatsPanel(world);
+  this._drawVersionLabel();
+}
+```
+
+#### Step 4：從舊 `_drawHud` 移除重複資訊
+
+`_drawHud` 的 `leftLines` 中，`coreLine`（核心 HP/ATK/攻速/DEF）和 `coreLine2`（範圍/魔法/連鎖）已被新面板取代。
+**移除 `coreLine` 和 `coreLine2`**，只保留背包/塔內/已放置。
+同時把 `rightLines` 的 `fatigueLine` 也移除（疲勞將在 Batch 3 的玩家面板顯示）。
+
+#### 驗收
+- 快捷列上方出現核心數值面板，6 行數值正確
+- 右下角顯示 "Yes, Master! v0.0.13.0"
+- 舊 HUD 不再重複顯示核心數值和疲勞
+
+---
+
+### Batch 3 — A. 玩家面板 + F. 敵人情報
+
+**目標**：左上角玩家面板（HP/疲勞條）+ 右下角敵人情報面板。
+
+#### Step 1：新增 `_drawPlayerPanel(world)` 方法
+
+**位置**：左上角 padding 8px。
+**面板尺寸**：約 210×80。
+
+**繪製內容**：
+
+1. **頭像佔位圓**：cx=40, cy=40, r=32, stroke=#333 2px, fill=rgba(60,60,60,0.5)
+   - 圓內畫一個文字 `👺`（font 28px，textAlign center，textBaseline middle）作為 MVP 哥布林佔位
+   - 未來替換為角色 sprite
+
+2. **HP 條**（綠）：x=80, y=16, w=120, h=14
+   - pct = `world.coreHp / world.coreStats.hpMax`
+   - color = `#4CAF50`
+   - text = `{coreHp}/{hpMax}`（取整）
+
+3. **靈力條**（藍）：x=80, y=34, w=56, h=10
+   - 尚未實裝，pct=0，color=#2196F3
+   - 不顯示文字，條內空白
+
+4. **疲勞條**（紅）：x=142, y=34, w=56, h=10
+   - pct = `world.player.fatigue / cfg.player.fatigueMax`
+   - color = `#F44336`
+   - text = `{fatigue}/{fatigueMax}`（取整）
+
+5. **裝備槽 ×3 佔位**：y=56, 各 40×20, gap=6
+   - 3 個空矩形，邊框分別 #FFD700 / #FF9800 / #E91E63
+   - 內部 fill=rgba(0,0,0,0.3)
+   - 未來裝備系統實裝後填入圖示
+
+#### Step 2：新增 `_drawEnemyInfo(world)` 方法
+
+**位置**：右下角，版本標籤上方。
+**面板尺寸**：260×80。
+
+**繪製內容**：
+
+1. **標題**：`進攻人數`（font bold 12px #F44336）
+
+2. **當前波**：統計 `world.enemies` 中存活敵人
+   ```javascript
+   const counts = {};
+   for (const e of world.enemies ?? []) {
+     counts[e.key] = (counts[e.key] ?? 0) + 1;
+   }
+   // 顯示每種：{ENEMIES[key].zh}x{count}
+   // 格式：font 11px #FFF
+   // 無敵人時顯示 "— 無敵人"
+   ```
+   需要 import `{ ENEMIES }` from `../../config/enemies.js`。
+
+3. **下一波預覽**：
+   ```javascript
+   // 用 buildWave 預算下一波組成
+   import { buildWave } from '../../src/logic/waveGen.js';
+   // 在方法內：
+   const nextStage = (world.stage ?? 0) + 1;
+   // buildWave(nextStage, cfg, rng) — 但需要 rng，預覽僅顯示怪種和數量
+   // 簡化：直接從 WAVES config 讀取 wave.enemies 欄位
+   ```
+   - 如果取不到下一波資料（超過 30 關），顯示 `— 最終波已過`
+   - 格式：font 11px #AAA
+
+#### Step 3：在 render pipeline 中呼叫
+
+```javascript
+if (this.cfg.render.drawCanvasHud !== false) {
+  this._drawPlayerPanel(world);
+  this._drawEnemyInfo(world);
+}
+```
+
+#### Step 4：從舊 `_drawHud` 移除重複
+
+- `rightLines` 中的 `enemyLine`（敵人數 + 最近命中）已被 F 面板取代，移除。
+- `leftLines` 中核心 HP 已被 A 面板的 HP 條取代（Batch 2 已移除 coreLine，此處確認）。
+
+#### 驗收
+- 左上角出現玩家面板：頭像圓 + HP 綠條 + 靈力藍條（空）+ 疲勞紅條 + 3 個裝備空格
+- 右下角出現敵人情報：當前波怪種統計 + 下一波預覽
+- 進入夜晚後敵人數即時更新
+
+---
+
+### Batch 4 — D. 背包 + G-2. 資源條 + G-1. 統計行 + H-2. EXIT
+
+**目標**：左下角背包面板 + 快捷列上方資源條和統計行 + EXIT 按鈕。
+
+#### Step 1：新增 `_drawBackpack(world)` 方法
+
+**位置**：左下角 padding 8px。
+**面板尺寸**：160×200，邊框 #CD7F32（銅色）2px。
+
+**繪製內容**：
+
+1. **標題**：`背包承重：{currentWeight}/{maxWeight}`（font 12px #CD7F32）
+   ```javascript
+   import { inventoryWeight } from '../logic/inventory.js'; // 已有 import
+   const currentWeight = inventoryWeight(world.player.inventory);
+   const maxWeight = world.player.capacity;
+   ```
+
+2. **2×3 格子**：每格 60×52, gap=4
+   ```javascript
+   const hotbar = this.cfg.hotbar ?? [];
+   // 遍歷 world.player.inventory 的 key，按 hotbar 順序排列
+   // 每格：
+   //   空格 → fill=rgba(60,40,20,0.5), stroke=#8B6914
+   //   有物品 → 用 this._drawBlockIcon(blockKey, x, y, 32) 畫方塊 sprite
+   //            右下角數量 font bold 10px #FFF
+   //   承重已滿（currentWeight >= maxWeight）→ 整個面板邊框閃紅
+   ```
+
+#### Step 2：新增 `_drawResourceBar(world)` 方法
+
+**位置**：快捷列正上方，與快捷列等寬。
+**高度**：6px。
+
+```javascript
+// 讀取 world.blockCounts（各方塊已放置數量）
+const total = Object.values(world.blockCounts ?? {}).reduce((s, v) => s + v, 0);
+if (total === 0) return; // 沒放方塊不畫
+// 顏色表：
+const BAR_COLORS = {
+  sand: '#C8E64E', dirt: '#8B6914', stone: '#9E9E9E',
+  iron: '#607D8B', gold: '#FFD700', glass: '#00BCD4', diamond: '#9C27B0',
+};
+// 按比例畫分段色條
+let offsetX = barStartX;
+for (const [key, count] of Object.entries(world.blockCounts ?? {})) {
+  if (!count) continue;
+  const segW = Math.round((count / total) * barTotalW);
+  ctx.fillStyle = BAR_COLORS[key] ?? '#888';
+  ctx.fillRect(offsetX, barY, segW, 6);
+  offsetX += segW;
+}
+```
+
+#### Step 3：新增 `_drawXpGoldBar(world)` 方法
+
+**位置**：資源條上方。
+**內容**：`累計經驗：{xp}XP，累計卡片：{cards}張，累計金幣：{gold}`
+**樣式**：font 11px #FFD700，textAlign=left。
+**數據**：`world.totalXP ?? 0` / `world.totalCards ?? 0` / `world.totalGold ?? 0`（目前全部顯示 0）。
+
+#### Step 4：新增 `_drawExitButton()` 方法
+
+**位置**：最右下角，版本標籤右側。
+**樣式**：
+```
+border: 2px solid #F44336
+color: #F44336
+font: bold 14px sans-serif
+padding: 4px 12px
+文字: "EXIT"
+```
+**功能**：目前僅繪製，不接點擊事件（點擊功能留待後續實裝）。
+
+#### Step 5：在 render pipeline 中呼叫
+
+```javascript
+if (this.cfg.render.drawCanvasHud !== false) {
+  this._drawBackpack(world);
+  this._drawResourceBar(world);
+  this._drawXpGoldBar(world);
+  this._drawExitButton();
+}
+```
+
+#### Step 6：從舊 `_drawHud` 移除重複
+
+- `leftLines` 中的背包行（`背包 {weight}/{capacity} {items}`）和塔內行（`塔內 {items}`）和已放置行（`已放置 {items}`）已被新面板取代，移除。
+
+#### 驗收
+- 左下角出現銅色背包面板，2×3 格子正確顯示背包物品
+- 快捷列上方出現分段色條
+- 色條上方出現經驗/卡片/金幣行（全部顯示 0）
+- 右下角出現紅色 EXIT 按鈕
+- 背包滿時邊框閃紅
+
+---
+
+### Batch 5 — 整合清理
+
+**目標**：移除舊 `_drawHud` 中所有已被新面板取代的內容，整理 render pipeline。
+
+#### Step 1：清理 `_drawHud`
+
+經過 Batch 2-4 的移除，`_drawHud` 應該只剩：
+- `phaseLine`（階段/波次文字）— 已被 C 面板取代
+- `modeLine`（建造/挖礦模式提示）— **保留**，這是操作提示
+- 背包/核心/疲勞/敵人 — 全部已移除
+
+**最終 `_drawHud` 只保留 `modeLine`（建造/挖礦模式文字提示）和 plan/destroy 狀態提示。**
+
+如果 `_drawHud` 只剩 modeLine，可以簡化為 `_drawModeHint(world)`，畫在快捷列上方或下方。
+
+#### Step 2：統一 render pipeline 順序
+
+在 `render(world)` 方法的 HUD 區域，按此順序呼叫：
+```javascript
+if (this.cfg.render.drawCanvasHud !== false) {
+  this._drawPlayerPanel(world);     // 左上
+  // B 區隊友列：暫不呼叫（多人模式後實裝）
+  this._drawWaveTimer(world);       // 右上
+  this._drawBackpack(world);        // 左下
+  this._drawCoreStatsPanel(world);  // 下中左
+  this._drawEnemyInfo(world);       // 右下
+  this._drawResourceBar(world);     // 快捷列上方
+  this._drawXpGoldBar(world);       // 資源條上方
+  this._drawDesktopHotbar(world);   // 下中（已有）
+  this._drawModeHint(world);        // 建造/挖礦模式提示
+  this._drawVersionLabel();         // 右下角
+  this._drawExitButton();           // 最右下
+}
+```
+
+#### Step 3：移除舊 `_drawHud` 和 `_drawHudLine`
+
+如果 `_drawHud` 已完全清空（所有內容轉移到新面板），刪除 `_drawHud` 和 `_drawHudLine` 方法。
+保留 `_phaseLine` helper 如果仍被其他地方使用。
+
+#### 驗收
+- 遊戲畫面無任何重複資訊
+- 所有面板正確顯示在對應位置，無重疊
+- 建造模式/挖礦模式提示文字仍正確顯示
+- 手機模式（touchControls）不受影響
+
+---
+
+### 暫不實作（佔位空格，未來加入）
+
+| 區塊 | 原因 | 實裝時機 |
+|---|---|---|
+| **B. 隊友列** | 需要 PeerJS 多人連線 `world.players[]` | 多人連線骨架完成後 |
+| **A. 裝備槽內容** | 需要裝備系統 `world.player.equipment` | 裝備系統實裝後 |
+| **A. 靈力條數值** | 需要 `world.player.spirit` 接入 | 靈動系統實裝後 |
+| **G-1. 經驗/卡片/金幣實際數據** | 需要 `world.totalXP` 等累計欄位 | 累計統計系統後 |
+| **H-2. EXIT 點擊事件** | 需要回到 splash 的流程 | 退出功能實裝後 |
 
 ---
 
