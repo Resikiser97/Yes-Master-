@@ -5,7 +5,7 @@
  * @exports     Renderer
  * @depends     config/gameConfig.js
  * @sourceOfTruth Docs/game-design-plan.md「建築維度」「遊戲內 UI 設計」
- * @version     v0.0.12.0
+ * @version     v0.0.13.0
  *
  * 渲染層只「讀」world 狀態畫圖，不寫任何遊戲規則（鐵則 9）。
  */
@@ -164,6 +164,7 @@ export class Renderer {
     ctx.restore();
 
     if (this.cfg.render.drawCanvasHud !== false) this._drawHud(world); // 螢幕座標 HUD（不受鏡頭位移）
+    if (this.cfg.render.drawCanvasHud !== false) this._drawDesktopHotbar(world);
     if (world.phase === 'gameover') this._drawGameOverOverlay(world);
     if (world.phase === 'cardOffer') this._drawCardOffer(world);
     if (world.firstGame && world.tutorialTimer > 0) this._drawTutorialHint(world);
@@ -172,10 +173,26 @@ export class Renderer {
   }
 
   _drawMiningProgress(world) {
+    const prog = world.mineProgress;
     const m = world.mining;
-    if (!m?.targetKey || m.damage <= 0) return; // 未開始挖或剛重置 → 不顯示
-    // targetKey 格式："{mineId},{col},{row},{blockKey}"
-    const parts = m.targetKey.split(',');
+    const activeKey = m?.targetKey;
+
+    // 繪製所有已存進度的礦格（非活動中的）
+    if (prog) {
+      for (const [tk, savedDmg] of Object.entries(prog)) {
+        if (tk === activeKey || savedDmg <= 0) continue;
+        this._drawMineBar(world, tk, savedDmg);
+      }
+    }
+
+    // 繪製活動中的礦格（即時進度，可能比 saved 更新）
+    if (activeKey && m.damage > 0) {
+      this._drawMineBar(world, activeKey, m.damage);
+    }
+  }
+
+  _drawMineBar(world, targetKey, damage) {
+    const parts = targetKey.split(',');
     if (parts.length < 4) return;
     const [mineId, colStr, rowStr, blockKey] = parts;
     const mine = world.mines?.[mineId];
@@ -187,15 +204,13 @@ export class Renderer {
     const t = this.t;
     const maxDur = durabilityToBreak(blockKey);
     if (maxDur <= 0) return;
-    const pct = Math.min(1, m.damage / maxDur);
+    const pct = Math.min(1, damage / maxDur);
     const barW = t - 4;
     const barH = 3;
     const bx = wx * t + 2;
     const by = wy * t - 5;
-    // 背景（灰）
     this.ctx.fillStyle = 'rgba(0,0,0,0.6)';
     this.ctx.fillRect(bx, by, barW, barH);
-    // 前景（白→橙，依耐久比例）
     const r = Math.round(255 * pct);
     const g = Math.round(180 * (1 - pct));
     this.ctx.fillStyle = `rgb(${r},${g},40)`;
@@ -230,6 +245,39 @@ export class Renderer {
     const pv = world.buildPreview;
     if (!pv) return;
     const t = this.t;
+
+    // Build Plan / Destroy Mode 拖拽矩形預覽
+    const drag = world.buildPlanDrag;
+    if (drag) {
+      const x1 = Math.min(drag.startX, drag.endX);
+      const y1 = Math.min(drag.startY, drag.endY);
+      const x2 = Math.max(drag.startX, drag.endX);
+      const y2 = Math.max(drag.startY, drag.endY);
+      const isDestroy = world.buildDestroyMode;
+      const preview = world.buildPlanDragPreview;
+      const notEnough = !isDestroy && preview && !preview.enough;
+      const fillColor = isDestroy ? 'rgba(192,57,43,0.2)' : notEnough ? 'rgba(192,57,43,0.2)' : 'rgba(63,174,90,0.2)';
+      const strokeColor = isDestroy ? '#c0392b' : notEnough ? '#c0392b' : '#3fae5a';
+      this.ctx.fillStyle = fillColor;
+      this.ctx.fillRect(x1 * t, y1 * t, (x2 - x1 + 1) * t, (y2 - y1 + 1) * t);
+      this.ctx.strokeStyle = strokeColor;
+      this.ctx.lineWidth = 2;
+      this.ctx.setLineDash([4, 4]);
+      this.ctx.strokeRect(x1 * t + 1, y1 * t + 1, (x2 - x1 + 1) * t - 2, (y2 - y1 + 1) * t - 2);
+      this.ctx.setLineDash([]);
+      // 資源需求提示（世界座標，畫在矩形中央）
+      if (!isDestroy && preview) {
+        const cx = (x1 + x2 + 1) * t / 2;
+        const cy = (y1 + y2 + 1) * t / 2;
+        this.ctx.font = 'bold 12px sans-serif';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillStyle = notEnough ? '#ff4444' : '#ffffff';
+        this.ctx.fillText(`${preview.needed}/${preview.available}`, cx, cy);
+      }
+      return;
+    }
+
     this.ctx.fillStyle = pv.valid ? 'rgba(63,174,90,0.35)' : 'rgba(192,57,43,0.35)';
     this.ctx.fillRect(pv.x * t, pv.y * t, t, t);
     this.ctx.strokeStyle = pv.valid ? '#3fae5a' : '#c0392b';
@@ -253,9 +301,14 @@ export class Renderer {
     const hitTotal = world.combat?.lastHits?.reduce((sum, hit) => sum + hit.damage, 0) ?? 0;
     const enemyLine = `敵人 ${world.enemies?.length ?? 0}　最近命中 ${fmt2(hitTotal)}`;
     const phaseLine = this._phaseLine(world);
-    const modeText = world.selectedBlock
-      ? `建造：${BLOCKS[world.selectedBlock]?.zh ?? world.selectedBlock}（剩 ${world.storage[world.selectedBlock] ?? 0}）　左鍵放置 / 右鍵拆除 / 再按取消`
-      : '挖礦模式（左鍵長按挖最近）　按 1~7 選材料建造';
+    const planTag = world.buildDestroyMode ? '【🔨 拆除模式】' : world.buildPlanMode ? '【📐 規劃模式】' : '';
+    const modeText = world.buildDestroyMode && world.selectedBlock
+      ? `${planTag} 拆除：${BLOCKS[world.selectedBlock]?.zh ?? world.selectedBlock}　拖拽選區拆除 / V 切回建造 / B 退出`
+      : world.buildPlanMode && world.selectedBlock
+      ? `${planTag} 建造：${BLOCKS[world.selectedBlock]?.zh ?? world.selectedBlock}（剩 ${BLOCKS[world.selectedBlock]?.infinite ? '∞' : (world.storage[world.selectedBlock] ?? 0)}）　拖拽放置 / V 拆除模式 / B 退出`
+      : world.selectedBlock
+      ? `建造：${BLOCKS[world.selectedBlock]?.zh ?? world.selectedBlock}（剩 ${BLOCKS[world.selectedBlock]?.infinite ? '∞' : (world.storage[world.selectedBlock] ?? 0)}）　左鍵放置 / 右鍵拆除 / 再按取消`
+      : `挖礦模式（左鍵長按挖最近）　按 1~8 選材料建造${world.buildPlanMode ? '　' + planTag : ''}`;
     const modeLine = world.selectedBlock
       ? { text: modeText, iconKey: world.selectedBlock }
       : modeText;
@@ -282,7 +335,8 @@ export class Renderer {
     const padY = 8;
     const rows = Math.max(leftLines.length, rightLines.length);
     const panelH = padY * 2 + rows * lineH;
-    const panelTop = vh - panelH - 8;
+    const hotbarReserve = 70;
+    const panelTop = vh - panelH - hotbarReserve;
     const halfW = Math.floor((vw - 16) / 2);
     ctx.save();
     ctx.font = '12px sans-serif';
@@ -305,6 +359,86 @@ export class Renderer {
 
     const iconDrawn = line.iconKey ? this._drawBlockIcon(line.iconKey, x, y - 1, 16) : false;
     this.ctx.fillText(line.text ?? '', iconDrawn ? x + 20 : x, y);
+  }
+
+  _drawDesktopHotbar(world) {
+    const ctx = this.ctx;
+    const { width: vw, height: vh } = this.viewport;
+    const hotbar = this.cfg.hotbar ?? [];
+    if (!hotbar.length) return;
+
+    const slotSize = 40;
+    const iconSize = 28;
+    const gap = 4;
+    const totalW = hotbar.length * slotSize + (hotbar.length - 1) * gap;
+    const barH = slotSize + 18;
+    const startX = Math.round((vw - totalW) / 2);
+    const barY = vh - barH - 4;
+
+    ctx.save();
+
+    // 背景條
+    ctx.fillStyle = 'rgba(10,16,24,0.72)';
+    ctx.fillRect(startX - 6, barY - 4, totalW + 12, barH + 8);
+    ctx.strokeStyle = 'rgba(255,180,0,0.25)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(startX - 6 + 0.5, barY - 4 + 0.5, totalW + 11, barH + 7);
+
+    const labels = ['1','2','3','4','5','6','7','8','9','0'];
+
+    const isBackpackSlot = (i) => i === hotbar.length - 1;
+
+    for (let i = 0; i < hotbar.length; i++) {
+      const blockKey = hotbar[i];
+      const sx = startX + i * (slotSize + gap);
+      const sy = barY;
+      const selected = blockKey != null && world.selectedBlock === blockKey;
+
+      // 槽位背景
+      ctx.fillStyle = selected ? 'rgba(212,160,23,0.3)' : 'rgba(0,0,0,0.5)';
+      ctx.fillRect(sx, sy, slotSize, slotSize);
+      ctx.strokeStyle = selected ? '#D4A017' : 'rgba(255,180,0,0.3)';
+      ctx.lineWidth = selected ? 2 : 1;
+      ctx.strokeRect(sx + 0.5, sy + 0.5, slotSize - 1, slotSize - 1);
+
+      const iconX = sx + Math.round((slotSize - iconSize) / 2);
+      const iconY = sy + Math.round((slotSize - iconSize) / 2);
+
+      if (isBackpackSlot(i)) {
+        // ⚙️ 背包按鈕
+        ctx.font = '20px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = 'rgba(240,176,32,0.8)';
+        ctx.fillText('⚙️', sx + slotSize / 2, sy + slotSize / 2);
+      } else if (blockKey) {
+        // 方塊 sprite 圖示
+        if (!this._drawBlockIcon(blockKey, iconX, iconY, iconSize)) {
+          ctx.fillStyle = PALETTE.block[blockKey] ?? '#888';
+          ctx.fillRect(iconX + 2, iconY + 2, iconSize - 4, iconSize - 4);
+        }
+      }
+
+      // 快捷鍵數字（左上角）
+      ctx.font = 'bold 10px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillStyle = selected ? '#D4A017' : 'rgba(240,176,32,0.6)';
+      ctx.fillText(labels[i] ?? '', sx + 3, sy + 2);
+
+      // 數量（槽位下方，背包格和空格不顯示）
+      if (blockKey) {
+        const isInfinite = BLOCKS[blockKey]?.infinite;
+        const qty = world.storage?.[blockKey] ?? 0;
+        ctx.font = '10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = isInfinite || qty > 0 ? '#ddd' : 'rgba(255,255,255,0.3)';
+        ctx.fillText(isInfinite ? '∞' : `${qty}`, sx + slotSize / 2, sy + slotSize + 2);
+      }
+    }
+
+    ctx.restore();
   }
 
   _drawBlockIcon(blockKey, x, y, size) {

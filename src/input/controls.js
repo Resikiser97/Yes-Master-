@@ -5,7 +5,7 @@
  * @exports     Controls
  * @depends     （無；僅綁瀏覽器事件，不 import 其他模組）
  * @sourceOfTruth Docs/game-design-plan.md「操作輸入方式」
- * @version     v0.0.12.0
+ * @version     v0.0.13.0
  *
  * 輸入層只把操作「轉成資料」丟給上層，不在此做規則判定（鐵則 9）。
  * 模式：未選材料 = 挖礦模式（左鍵長按挖最近）；按快捷列數字選材料 = 建造模式（左鍵放置）。
@@ -26,13 +26,21 @@ export class Controls {
     this.pendingRemove = false;    // 本幀待處理的拆除（右鍵點擊，一次性）
     this.repairing = false;        // R 長按修復
     this.pendingDebug = [];        // 本幀待處理 debug action
+    this.buildPlanMode = false;    // 由 main.js 同步
+    this.buildDestroyMode = false; // 由 main.js 同步
+    this.pendingBuildPlanToggle = false; // B 鍵觸發
+    this.pendingDestroyToggle = false;  // V 鍵觸發
+    this.dragStart = null;         // build plan 拖拽起點 { px, py }（canvas 像素）
+    this.dragging = false;         // 正在拖拽中
+    this.pendingDragRect = null;   // 拖拽完成：{ x1, y1, x2, y2 }（tile 座標，由 main 消費）
+    this.viewport = { width: 0, height: 0 }; // 由 main.js 每幀同步
     this.cardOfferMode = false;    // 由 main.js 同步 world.phase === 'cardOffer'
     this.cardOfferRects = null;    // 由 main.js 每幀同步 renderer 寫入的卡片座標
     this.pendingCardChoice = null; // null | 0 | 1 | 2（玩家點選的卡片索引）
     this._onKeyDown = (e) => this._handleKey(e, true);
     this._onKeyUp = (e) => this._handleKey(e, false);
     this._onPointerDown = (e) => this._handlePointerDown(e);
-    this._onPointerUp = () => { this.mining = false; };
+    this._onPointerUp = (e) => this._handlePointerUp(e);
     this._onPointerMove = (e) => this._syncPointer(e);
     this._onContextMenu = (e) => e.preventDefault(); // 右鍵不彈系統選單
   }
@@ -48,6 +56,9 @@ export class Controls {
   isRepairing() { return this.repairing; }
   consumeDebugActions() { const v = this.pendingDebug; this.pendingDebug = []; return v; }
   consumeCardChoice() { const v = this.pendingCardChoice; this.pendingCardChoice = null; return v; }
+  consumeBuildPlanToggle() { const v = this.pendingBuildPlanToggle; this.pendingBuildPlanToggle = false; return v; }
+  consumeDestroyToggle() { const v = this.pendingDestroyToggle; this.pendingDestroyToggle = false; return v; }
+  consumeDragRect() { const v = this.pendingDragRect; this.pendingDragRect = null; return v; }
 
   attach() {
     if (this.bound || typeof window === 'undefined') return;
@@ -91,6 +102,14 @@ export class Controls {
     this.target?.focus?.({ preventScroll: true });
     this._syncPointer(e);
     e.preventDefault?.();
+    // 快捷列點擊
+    if (e.button === 0) {
+      const hit = this._hitTestHotbar(this.mouse.x, this.mouse.y);
+      if (hit != null) {
+        this.setSelectedSlot(this.selectedSlot === hit ? null : hit);
+        return;
+      }
+    }
     // 卡片選擇模式：左鍵偵測點了哪張卡，右鍵忽略
     if (e.button === 0 && this.cardOfferMode) {
       const mx = this.mouse.x, my = this.mouse.y;
@@ -104,8 +123,45 @@ export class Controls {
       return;
     }
     if (e.button === 2) { this.pendingRemove = true; return; } // 右鍵拆除
+    // Build Plan / Destroy Mode：左鍵拖拽起點
+    if (e.button === 0 && (this.buildPlanMode || this.buildDestroyMode) && this.selectedSlot != null) {
+      this.dragStart = { px: this.mouse.x, py: this.mouse.y };
+      this.dragging = true;
+      return;
+    }
     if (this.selectedSlot != null) this.pendingPlace = true;    // 建造模式：放置
     else this.mining = true;                                    // 挖礦模式：長按
+  }
+
+  _handlePointerUp(e) {
+    this.mining = false;
+    if (this.dragging && this.dragStart) {
+      this._syncPointer(e);
+      this.pendingDragRect = {
+        startPx: this.dragStart.px, startPy: this.dragStart.py,
+        endPx: this.mouse.x, endPy: this.mouse.y,
+      };
+      this.dragStart = null;
+      this.dragging = false;
+    }
+  }
+
+  _hitTestHotbar(mx, my) {
+    const vw = this.viewport.width, vh = this.viewport.height;
+    if (!vw) return null;
+    const slotSize = 40, gap = 4, slots = this.hotbarSlots;
+    const totalW = slots * slotSize + (slots - 1) * gap;
+    const barH = slotSize + 18;
+    const startX = Math.round((vw - totalW) / 2);
+    const barY = vh - barH - 4;
+    if (my < barY || my > barY + slotSize) return null;
+    if (mx < startX || mx > startX + totalW) return null;
+    const rel = mx - startX;
+    const unit = slotSize + gap;
+    const i = Math.floor(rel / unit);
+    if (i >= slots) return null;
+    if (rel - i * unit > slotSize) return null; // in the gap
+    return i;
   }
 
   _syncPointer(e) {
@@ -120,6 +176,16 @@ export class Controls {
       const debugAction = keyToDebugAction(event);
       if (debugAction) {
         if (!event.repeat) this.pendingDebug.push(debugAction);
+        event.preventDefault();
+        return;
+      }
+      if (event.code === 'KeyB' && !event.repeat) {
+        this.pendingBuildPlanToggle = true;
+        event.preventDefault();
+        return;
+      }
+      if (event.code === 'KeyV' && !event.repeat) {
+        this.pendingDestroyToggle = true;
         event.preventDefault();
         return;
       }

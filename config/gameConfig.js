@@ -5,12 +5,12 @@
  * @exports     GAME_CONFIG
  * @depends     （無）
  * @sourceOfTruth Docs/game-design-plan.md、Docs/game-architecture-plan.md、Docs/waveplan.md
- * @version     v0.0.12.0
+ * @version     v0.0.13.0
  */
 
 export const GAME_CONFIG = {
   // 版本同步點之一（見 .claude/instructions.md 版本號同步鐵則）
-  version: 'v0.0.12.0',
+  version: 'v0.0.13.0',
 
   // MVP 模式角標（單人 / 多人），方便錄影分辨測試版本
   mode: 'single', // 'single' | 'multi'
@@ -50,8 +50,9 @@ export const GAME_CONFIG = {
     snapToPixel: true,            // render 時整數像素對齊（可切換測試 pixel art 抖動取捨）
   },
 
-  // 塔內資源欄快捷列：快捷鍵 1~7 對應的方塊種類（見 game-design-plan「塔內資源欄」）
-  hotbar: ['sand', 'dirt', 'stone', 'iron', 'gold', 'glass', 'diamond'],
+  // 塔內資源欄快捷列：快捷鍵 1~9 對應方塊，0 = 背包（見 game-design-plan「塔內資源欄」）
+  // index 0~8 = 鍵 1~9（方塊），index 9 = 鍵 0（⚙️ 背包）；null = 空格或特殊按鈕
+  hotbar: ['sand', 'dirt', 'stone', 'iron', 'gold', 'glass', 'diamond', 'ladder', null, null],
 
   // 遊戲時間步進：遊戲進程固定更新，避免螢幕 Hz 越高進程越快
   time: {

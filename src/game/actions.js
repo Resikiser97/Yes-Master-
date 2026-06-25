@@ -2,10 +2,10 @@
  * @file        actions.js
  * @module      game（狀態/orchestration 層，非純邏輯、非渲染）
  * @summary     挖礦/卸貨/建造放置/拆除/核心修復/debug；呼叫純邏輯、改 world 狀態
- * @exports     updateMining, collectDrops, tryDeposit, tryPlace, tryRemove, computeBuildPreview, updateRepair, damageCore, healCore, applyDebugAction
+ * @exports     updateMining, collectDrops, tryDeposit, tryPlace, tryRemove, computeBuildPreview, updateRepair, damageCore, healCore, applyDebugAction, tryPlaceRect, tryRemoveRect, toggleBuildPlanMode, previewPlaceRect
  * @depends     config/gameConfig.js、config/blocks.js、src/game/coreSnapshot.js、src/game/combatRuntime.js、src/logic/mining.js、src/logic/mineGen.js、src/logic/inventory.js、src/logic/connectivity.js、src/logic/building.js、src/logic/coreHealth.js、src/logic/drops.js
  * @sourceOfTruth Docs/game-design-plan.md「操作輸入方式」「方塊系統」「遊戲內 UI 設計」
- * @version     v0.0.12.0
+ * @version     v0.0.13.0
  */
 
 import { GAME_CONFIG } from '../../config/gameConfig.js';
@@ -13,7 +13,7 @@ import { BLOCKS } from '../../config/blocks.js';
 import { selectNearestMineCell, miningDamagePerSecond, durabilityToBreak } from '../logic/mining.js';
 import { digMineCell } from '../logic/mineGen.js';
 import { canAdd, addItem, removeItem, depositAll } from '../logic/inventory.js';
-import { computeConnected, key } from '../logic/connectivity.js';
+import { computeConnected, canRemoveDirt, key } from '../logic/connectivity.js';
 import { validatePlacement, validateRemoval } from '../logic/building.js';
 import { damageCoreHp, repairCoreHp, clampCoreHp } from '../logic/coreHealth.js';
 import { refreshCoreSnapshot } from './coreSnapshot.js';
@@ -142,16 +142,17 @@ function placeCtx(world, cfg) {
   };
 }
 
-// 放置：消耗塔內資源欄一個 blockKey，蓋到 (x,y)
+// 放置：消耗塔內資源欄一個 blockKey，蓋到 (x,y)；infinite 方塊不消耗
 export function tryPlace(world, blockKey, x, y, cfg = GAME_CONFIG) {
   if (!blockKey) return { ok: false, reason: 'no_block' };
-  if (!(world.storage[blockKey] > 0)) return { ok: false, reason: 'no_material' };
+  const inf = BLOCKS[blockKey]?.infinite;
+  if (!inf && !(world.storage[blockKey] > 0)) return { ok: false, reason: 'no_material' };
   const res = validatePlacement(placeCtx(world, cfg), blockKey, x, y);
   if (!res.ok) return res;
   const k = key(x, y);
   if (res.layer === 'background') world.dirt.add(k);
   else world.fore.set(k, blockKey);
-  world.storage = removeItem(world.storage, blockKey, 1);
+  if (!inf) world.storage = removeItem(world.storage, blockKey, 1);
   refreshCoreSnapshot(world, { applyHpMaxDelta: true });
   return { ok: true, layer: res.layer };
 }
@@ -177,8 +178,13 @@ export function tryRemove(world, x, y, cfg = GAME_CONFIG) {
 // 放置預覽（render 用）：回 { x, y, valid, blockKey } 或 null（未選方塊）
 export function computeBuildPreview(world, blockKey, x, y, cfg = GAME_CONFIG) {
   if (!blockKey) return null;
-  const hasMat = world.storage[blockKey] > 0;
-  const res = validatePlacement(placeCtx(world, cfg), blockKey, x, y);
+  const hasMat = BLOCKS[blockKey]?.infinite || world.storage[blockKey] > 0;
+  const ctx = world.buildPlanMode
+    ? { dirt: world.dirt, fore: world.fore, core: world.core,
+        coreCenter: world.coreCenter, groundY: world.groundY,
+        stage: world.stage, limits: cfg.buildLimits }
+    : placeCtx(world, cfg);
+  const res = validatePlacement(ctx, blockKey, x, y);
   return { x, y, valid: res.ok && hasMat, blockKey };
 }
 
@@ -267,5 +273,108 @@ export function applyDebugAction(world, action, cfg = GAME_CONFIG) {
     return { ok: true };
   }
   return { ok: false, reason: 'unknown_debug_action' };
+}
+
+// Build Plan Mode：站在核心地基上才能開啟
+export function toggleBuildPlanMode(world) {
+  if (world.buildPlanMode) {
+    world.buildPlanMode = false;
+    world.buildDestroyMode = false;
+    world.buildPlanDrag = null;
+    return { ok: true, active: false };
+  }
+  if (!isOnRepairSurface(world)) {
+    return { ok: false, reason: 'not_on_foundation' };
+  }
+  world.buildPlanMode = true;
+  return { ok: true, active: true };
+}
+
+// 預算矩形放置需要多少資源（renderer 顯示用）
+export function previewPlaceRect(world, blockKey, x1, y1, x2, y2, cfg = GAME_CONFIG) {
+  if (!blockKey) return { needed: 0, available: 0, enough: false };
+  const inf = BLOCKS[blockKey]?.infinite;
+  const minX = Math.min(x1, x2), maxX = Math.max(x1, x2);
+  const minY = Math.min(y1, y2), maxY = Math.max(y1, y2);
+  let needed = 0;
+  const ctx = {
+    dirt: world.dirt, fore: world.fore, core: world.core,
+    coreCenter: world.coreCenter, groundY: world.groundY,
+    stage: world.stage, limits: cfg.buildLimits,
+  };
+  for (let y = minY; y <= maxY; y++) {
+    for (let x = minX; x <= maxX; x++) {
+      if (validatePlacement(ctx, blockKey, x, y).ok) needed++;
+    }
+  }
+  if (inf) return { needed, available: Infinity, enough: true };
+  const available = world.storage[blockKey] ?? 0;
+  return { needed, available, enough: available >= needed };
+}
+
+// Build Plan Mode 矩形放置：資源不足時整批拒絕；infinite 方塊不消耗
+export function tryPlaceRect(world, blockKey, x1, y1, x2, y2, cfg = GAME_CONFIG) {
+  if (!blockKey) return { ok: false, placed: 0, reason: 'no_block' };
+  const inf = BLOCKS[blockKey]?.infinite;
+  const minX = Math.min(x1, x2), maxX = Math.max(x1, x2);
+  const minY = Math.min(y1, y2), maxY = Math.max(y1, y2);
+  const ctx = {
+    dirt: world.dirt, fore: world.fore, core: world.core,
+    coreCenter: world.coreCenter, groundY: world.groundY,
+    stage: world.stage, limits: cfg.buildLimits,
+  };
+  const validTiles = [];
+  for (let y = minY; y <= maxY; y++) {
+    for (let x = minX; x <= maxX; x++) {
+      const res = validatePlacement(ctx, blockKey, x, y);
+      if (res.ok) validTiles.push({ x, y, layer: res.layer });
+    }
+  }
+  if (validTiles.length === 0) return { ok: false, placed: 0, reason: 'no_valid_tiles' };
+  if (!inf) {
+    const available = world.storage[blockKey] ?? 0;
+    if (available < validTiles.length) {
+      return { ok: false, placed: 0, reason: 'not_enough', needed: validTiles.length, available };
+    }
+  }
+  for (const tile of validTiles) {
+    const k = key(tile.x, tile.y);
+    if (tile.layer === 'background') world.dirt.add(k);
+    else world.fore.set(k, blockKey);
+    if (!inf) world.storage = removeItem(world.storage, blockKey, 1);
+  }
+  refreshCoreSnapshot(world, { applyHpMaxDelta: true });
+  return { ok: true, placed: validTiles.length };
+}
+
+// Destroy Mode 矩形拆除：只拆除指定種類的方塊，退回資源
+export function tryRemoveRect(world, blockKey, x1, y1, x2, y2, cfg = GAME_CONFIG) {
+  if (!blockKey) return { ok: false, removed: 0 };
+  const minX = Math.min(x1, x2), maxX = Math.max(x1, x2);
+  const minY = Math.min(y1, y2), maxY = Math.max(y1, y2);
+  const isDirt = (blockKey === 'dirt');
+  let removed = 0;
+  // 前景方塊先拆，安全；泥土需要逐個檢查連通性
+  for (let y = minY; y <= maxY; y++) {
+    for (let x = minX; x <= maxX; x++) {
+      const k = key(x, y);
+      if (isDirt) {
+        if (!world.dirt.has(k)) continue;
+        if (world.fore.has(k)) continue; // 上面有前景方塊，不能拆泥土
+        if (!canRemoveDirt(world.dirt, world.core, x, y)) continue;
+        world.dirt.delete(k);
+        world.storage = addItem(world.storage, 'dirt', 1);
+        removed++;
+      } else {
+        if (!world.fore.has(k)) continue;
+        if (world.fore.get(k) !== blockKey) continue; // 只拆指定種類
+        world.fore.delete(k);
+        world.storage = addItem(world.storage, blockKey, 1);
+        removed++;
+      }
+    }
+  }
+  if (removed > 0) refreshCoreSnapshot(world, { applyHpMaxDelta: true });
+  return { ok: true, removed };
 }
 

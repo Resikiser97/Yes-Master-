@@ -1,8 +1,8 @@
 # MAIN.md — 函式級參考
 
-> 版本：v0.0.12.0
+> 版本：v0.0.13.0
 > 類型：**代碼優先**（文件描述錯了，以代碼為準去改本檔）。
-> ⚠️ MVP 單機可動：移動/挖礦/背包/塔內資源/掉落物自動撿取/跟隨鏡頭/初版建造/核心數值回饋/核心 HP 與修復/核心戰鬥/正式波次晝夜/卡片選擇（hover+tier中文）/localStorage 存檔/新手教學提示/**debug 浮層（` 鍵）+ T 暫停**/**測試難度 preset（1~30 關）**/**手機觸控 UI + 動態 canvas 縮放**/**固定 bolt 電擊 VFX + 正式攻擊範圍可視化**/**快捷列圖示（手機 + 鍵盤 HUD）**/**sprite 基礎設施**已成完整循環。
+> ⚠️ MVP 單機可動：移動/挖礦/背包/塔內資源/掉落物自動撿取/跟隨鏡頭/初版建造/核心數值回饋/核心 HP 與修復/核心戰鬥/正式波次晝夜/卡片選擇（hover+tier中文）/localStorage 存檔/新手教學提示/**debug 浮層（` 鍵）+ T 暫停**/**測試難度 preset（1~30 關）**/**手機觸控 UI + 動態 canvas 縮放**/**固定 bolt 電擊 VFX + 正式攻擊範圍可視化**/**快捷列圖示（手機 + 鍵盤 HUD）**/**sprite 基礎設施**/**規劃模式（B 鍵拖拽建造+資源預檢）+ 拆除模式（V 鍵材質選擇性拆除）**/**快捷列 10 格（1~0）+ 滑鼠點擊**/**梯子無限方塊**/**挖礦進度條持久化**已成完整循環。
 > 規則：新增 / 刪除函式必須同步本檔（見 `.claude/instructions.md` 開發鐵則）。
 >
 > 註：原本的「planning 進入點 / source map」已移至 `Docs/source-map.md`。
@@ -174,6 +174,10 @@ config/* 為靜態資料，被 logic 層 import。
 | `computeBuildPreview(world, blockKey, x, y, cfg?)` | 回傳 render 用建造預覽資料與合法性 |
 | `damageCore(world, amount)` / `healCore(world, amount)` | 扣除 / 回復核心目前 HP（debug 與後續戰鬥共用） |
 | `updateRepair(world, isRepairing, dt, cfg?)` | R 長按修復：站在核心或連通泥土地基上，消耗疲勞回復核心 |
+| `toggleBuildPlanMode(world)` | 切換規劃模式（需站在核心地基上）；離開時重置拆除模式 |
+| `tryPlaceRect(world, blockKey, x1, y1, x2, y2, cfg?)` | 規劃模式矩形放置：收集合法格→資源預檢→全部放置或全部拒絕；infinite 方塊跳過資源檢查 |
+| `tryRemoveRect(world, blockKey, x1, y1, x2, y2, cfg?)` | 規劃模式矩形拆除：僅拆除指定材質的方塊，材料退回塔內 |
+| `previewPlaceRect(world, blockKey, x1, y1, x2, y2, cfg?)` | 回傳 `{needed, available, enough}` 供拖拽預覽顯示 |
 | `applyDebugAction(world, action, cfg?)` | 開發 debug hotkeys：扣血、回血、補建材、生成敵人 |
 
 ### `src/game/coreSnapshot.js`
@@ -227,8 +231,10 @@ config/* 為靜態資料，被 logic 層 import。
 | `Renderer._drawDebugOverlay(world)` | 半透明金邊浮層疊在畫布右上角；顯示 debug hotkeys + 即時狀態（tick/phase/stage/testMode/drops/enemies/coreHp）；` 鍵關閉 |
 | `loadImages(manifest)` (imageLoader.js) | 非同步批量載入圖片；回傳 `Promise<Map<key, HTMLImageElement>>`；失敗只警告不中斷 |
 | `getFrameRect(img, sheet, keyOrIndex)` (sprites.js) | 從 spritesheet 取單幀 `{sx,sy,sw,sh}`，等寬等高均分切割 |
-| `Controls.attach/detach` | 綁/解 WASD/方向鍵、滑鼠長按挖礦、快捷列選材、左鍵放置、右鍵拆除、R 修復、debug hotkeys；canvas 自動 focus |
+| `Controls.attach/detach` | 綁/解 WASD/方向鍵、滑鼠長按挖礦、快捷列選材（鍵盤+滑鼠點擊）、左鍵放置、右鍵拆除、R 修復、B 規劃模式、V 拆除模式、拖拽放置/拆除、debug hotkeys；canvas 自動 focus |
 | `Controls.getMoveVector()` / `Controls.isMining()` / `Controls.getSelectedSlot()` / `Controls.isRepairing()` | 回傳移動向量 / 是否長按挖礦中 / 目前快捷列 / 是否長按修復 |
+| `Controls.consumeBuildPlanToggle()` / `consumeDestroyToggle()` / `consumeDragRect()` | 消費規劃模式切換 / 拆除模式切換 / 拖拽矩形（一次性事件） |
+| `Controls._hitTestHotbar(mx, my)` | 根據 viewport 尺寸判斷滑鼠是否點擊在快捷列槽位上，回傳槽位索引或 null |
 | `TouchControls.attach/detach` | 建立/移除 HTML overlay（D-pad + 動作鍵 + 快捷列 + HTML debug 面板）；canvas touchstart 監聽卡片選擇 |
 | `TouchControls.*`（public 介面） | 與 `Controls` 完全相容：`getMoveVector / isMining / isRepairing / getSelectedSlot / setSelectedSlot / consumePlace / consumeRemove / consumeDebugActions / consumeCardChoice` |
 | `computeTilePx(cfg, reserveBottomPx?)` | 根據 `window.innerWidth/Height` 和可見格數（首次快取）算出最佳 tilePx；最小 4 |

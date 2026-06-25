@@ -1,8 +1,43 @@
 # CHANGELOG.md — 版本歷史
 
-> 版本：v0.0.12.0
+> 版本：v0.0.13.0
 > 類型：**只增不改**（歷史紀錄，永遠往上加，最新在最上方，不回頭改舊條目）。
 > 條目格式：`## vX.Y.Z.W - YYYY-MM-DD`，下分「新增 / 修復 / 調整」。
+
+---
+
+## v0.0.13.0 - 2026-06-25
+
+### 新增
+- **規劃模式（Build Plan Mode）**：
+  - 站在核心上按 B 鍵進入規劃模式，可無視距離限制在任何連通位置建造。
+  - 拖拽放置：左鍵拖拽畫出矩形，一次放置整個區域的方塊。
+  - 資源預檢：拖拽範圍所需資源不足時，整批拒絕放置（防止大範圍誤操作）。
+  - 拖拽預覽：綠色虛線框顯示建造區域，紅色表示資源不足或拆除模式，中央顯示所需/可用數量。
+- **拆除模式（Destroy Mode）**：
+  - 規劃模式內按 V 鍵切換拆除模式。
+  - 材質選擇性拆除：選擇快捷欄材料後拖拽，僅拆除該類型方塊（如選沙只清沙）。
+  - 拆除的材料自動退回塔內資源欄。
+- **快捷列擴充至 10 格**：
+  - 鍵盤 1~9 + 0 對應 10 個槽位；最後一格（鍵 0）顯示 ⚙️ 作為背包預留按鈕。
+  - 手機觸控版同步支援 10 格。
+- **快捷列滑鼠點擊**：
+  - 電腦版快捷列可直接用滑鼠點擊選擇/取消材料，不限於鍵盤快捷鍵。
+  - `Controls._hitTestHotbar()` 根據 viewport 尺寸計算槽位碰撞。
+- **梯子設為無限功能性方塊**：
+  - `config/blocks.js` 梯子新增 `infinite: true`，放置不消耗資源。
+  - 快捷列顯示 `∞` 代替數量（桌面+手機）。
+  - 選中梯子時不會因 storage 為 0 被自動取消。
+- **挖礦進度條持久化**：
+  - 所有被部分挖過的方塊都會持續顯示進度條，讓玩家知道上次挖到哪裡。
+
+### 調整
+- `src/game/world.js`：新增 `buildPlanMode`、`buildDestroyMode`、`buildPlanDrag` 狀態欄位。
+- `src/game/actions.js`：新增 `toggleBuildPlanMode`、`tryPlaceRect`、`tryRemoveRect`、`previewPlaceRect`；`tryPlace`/`computeBuildPreview` 支援 infinite 方塊。
+- `src/input/controls.js`：新增 B/V 鍵、拖拽追蹤、`_hitTestHotbar`、`viewport` 同步。
+- `src/render/renderer.js`：`_drawMiningProgress` 改為迭代所有 `world.mineProgress`；`_drawBuildPreview` 增加拖拽矩形預覽；`_drawDesktopHotbar` 擴展至 10 格並支援 ∞ 顯示。
+- `src/main.js`：整合 Build Plan / Destroy Mode 控制流、拖拽消費、infinite 方塊自動取消跳過。
+- `config/gameConfig.js`：hotbar 擴充為 10 元素陣列。
 
 ---
 

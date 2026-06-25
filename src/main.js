@@ -7,7 +7,7 @@
  *              src/render/renderer.js、src/input/controls.js、src/input/touchControls.js、
  *              src/ui/mobileLayout.js
  * @sourceOfTruth Docs/game-architecture-plan.md「MVP 開發範圍」
- * @version     v0.0.12.0
+ * @version     v0.0.13.0
  *
  * renderer、controls は splash 後に inputMode が確定してから生成。
  * 手機模式：TouchControls + setupOrientationGuard + 動態 tilePx resize。
@@ -15,6 +15,7 @@
  */
 
 import { GAME_CONFIG } from '../config/gameConfig.js';
+import { BLOCKS } from '../config/blocks.js';
 import { buildTestConfig } from '../config/testPreset.js';
 import { createWorld, updateCameraFollow } from './game/world.js';
 import { startGameLoop } from './game/gameLoop.js';
@@ -22,7 +23,7 @@ import { Renderer } from './render/renderer.js';
 import { Controls } from './input/controls.js';
 import { TouchControls } from './input/touchControls.js';
 import { movePlayer } from './logic/playerMovement.js';
-import { updateMining, collectDrops, tryDeposit, tryPlace, tryRemove, computeBuildPreview, updateRepair, applyDebugAction } from './game/actions.js';
+import { updateMining, collectDrops, tryDeposit, tryPlace, tryRemove, computeBuildPreview, updateRepair, applyDebugAction, toggleBuildPlanMode, tryPlaceRect, tryRemoveRect, previewPlaceRect } from './game/actions.js';
 import { updateEnemies, updateCoreCombat } from './game/combatRuntime.js';
 import { updatePhase, resolveCardOffer } from './game/phaseRuntime.js';
 import { saveWorld, loadWorld } from './storage/saveManager.js';
@@ -186,13 +187,68 @@ export function boot() {
         const tileY = Math.floor((controls.mouse.y + world.camera.y) / t);
         const slot = controls.getSelectedSlot();
         const selectedBlock = slot != null ? cfg.hotbar[slot] : null;
-        if (slot != null && !selectedBlock) controls.setSelectedSlot(null);
+        if (slot != null && !selectedBlock) {
+          // 背包格（最後一格，鍵 0）：目前無效果，預留給背包 UI
+          controls.setSelectedSlot(null);
+        }
         world.selectedBlock = selectedBlock ?? null;
         world.buildPreview = computeBuildPreview(world, selectedBlock, tileX, tileY, cfg);
 
-        if (controls.consumePlace() && selectedBlock) tryPlace(world, selectedBlock, tileX, tileY, cfg);
+        // Build Plan / Destroy Mode toggle
+        if (controls.consumeBuildPlanToggle()) {
+          toggleBuildPlanMode(world);
+          if (world.buildPlanMode) world.buildDestroyMode = false;
+        }
+        if (controls.consumeDestroyToggle()) {
+          if (world.buildPlanMode) {
+            world.buildDestroyMode = !world.buildDestroyMode;
+          }
+        }
+        controls.buildPlanMode = world.buildPlanMode;
+        controls.buildDestroyMode = world.buildDestroyMode;
+        controls.viewport = renderer.viewport;
+
+        // Sync drag preview to world for renderer
+        if ((world.buildPlanMode || world.buildDestroyMode) && controls.dragging && controls.dragStart) {
+          const sx = Math.floor((controls.dragStart.px + world.camera.x) / t);
+          const sy = Math.floor((controls.dragStart.py + world.camera.y) / t);
+          const ex = Math.floor((controls.mouse.x + world.camera.x) / t);
+          const ey = Math.floor((controls.mouse.y + world.camera.y) / t);
+          world.buildPlanDrag = { startX: sx, startY: sy, endX: ex, endY: ey };
+          if (!world.buildDestroyMode && selectedBlock) {
+            world.buildPlanDragPreview = previewPlaceRect(world, selectedBlock, sx, sy, ex, ey, cfg);
+          } else {
+            world.buildPlanDragPreview = null;
+          }
+        } else {
+          world.buildPlanDrag = null;
+          world.buildPlanDragPreview = null;
+        }
+
+        // Build Plan / Destroy Mode drag rect
+        const dragRect = controls.consumeDragRect();
+        if (dragRect && world.buildPlanMode && selectedBlock) {
+          const tx1 = Math.floor((dragRect.startPx + world.camera.x) / t);
+          const ty1 = Math.floor((dragRect.startPy + world.camera.y) / t);
+          const tx2 = Math.floor((dragRect.endPx + world.camera.x) / t);
+          const ty2 = Math.floor((dragRect.endPy + world.camera.y) / t);
+          if (world.buildDestroyMode) {
+            tryRemoveRect(world, selectedBlock, tx1, ty1, tx2, ty2, cfg);
+          } else {
+            tryPlaceRect(world, selectedBlock, tx1, ty1, tx2, ty2, cfg);
+          }
+        }
+
+        // 一般放置/拆除
+        if (controls.consumePlace() && selectedBlock) {
+          if (world.buildPlanMode && !world.buildDestroyMode) {
+            tryPlaceRect(world, selectedBlock, tileX, tileY, tileX, tileY, cfg);
+          } else if (!world.buildPlanMode) {
+            tryPlace(world, selectedBlock, tileX, tileY, cfg);
+          }
+        }
         if (controls.consumeRemove()) tryRemove(world, tileX, tileY, cfg);
-        if (selectedBlock && !(world.storage[selectedBlock] > 0)) controls.setSelectedSlot(null);
+        if (selectedBlock && !BLOCKS[selectedBlock]?.infinite && !(world.storage[selectedBlock] > 0)) controls.setSelectedSlot(null);
 
         controls.cardOfferMode = (world.phase === 'cardOffer');
         controls.cardOfferRects = world.cardOfferRects ?? null;

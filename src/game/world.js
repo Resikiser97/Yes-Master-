@@ -5,7 +5,7 @@
  * @exports     createWorld, coreCenterTile, focusCamera
  * @depends     config/gameConfig.js、config/mines.js、src/game/coreSnapshot.js、src/logic/connectivity.js、src/logic/rng.js、src/logic/mineGen.js
  * @sourceOfTruth Docs/game-architecture-plan.md「核心地基系統」、game-design-plan.md「建築維度」
- * @version     v0.0.12.0
+ * @version     v0.0.13.0
  *
  * 座標：tile (col x, row y)。x 0..widthTiles-1（左→右）；y 0..heightTiles-1（0=上、大=下）。
  * 兩深度層（Z）：dirt = 背景泥土地基（Set<"x,y">）；fore = 前景第二層方塊（Map<"x,y", blockKey>）。
@@ -90,6 +90,9 @@ export function createWorld(cfg = GAME_CONFIG) {
     drops: [],         // 掉落物列表 [{ blockKey, x, y, qty }]（背包滿時溢出，同格同物品合併 qty）
     vfx: { timer: 0, bolts: [] }, // 視覺特效：攻擊閃電（攻擊時固定生成路徑，renderer 只負責繪製）
     cardHoverIndex: null, // 卡片面板滑鼠懸停索引（null | 0 | 1 | 2）
+    buildPlanMode: false, // B 鍵切換：站在核心地基上時開啟，無距離限制+拖拽建造
+    buildDestroyMode: false, // 拆除子模式：選材料後拖拽只拆該種方塊
+    buildPlanDrag: null,  // { startX, startY, endX, endY } 拖拽矩形（tile 座標）
     showDebug: false,  // ` 鍵切換 debug 浮層（不影響遊戲進程）
     debugPaused: false, // T debug 暫停：停止 gameplay update，但保留 render/input 方便恢復
     testMode: false,   // 由 splash 傳入；true = 測試難度 1~30

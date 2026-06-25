@@ -4,7 +4,7 @@
  * @summary     手機觸控輸入：8方向D-pad、動作按鍵（挖礦/修復/放置/拆除）、快捷列；介面與 Controls 完全相容
  * @exports     TouchControls
  * @depends     config/blocks.js、src/logic/inventory.js
- * @version     v0.0.12.0
+ * @version     v0.0.13.0
  *
  * 鐵則 9：只把操作「轉成資料」丟給上層，不在此做規則判定。
  * 介面與 Controls 完全相容，main.js 的 game loop 不需判斷輸入類型。
@@ -214,6 +214,23 @@ export class TouchControls {
   updateStatus(world) {
     if (!this._statusPanel || !world) return;
     this._statusPanel.textContent = this._mobileHudText(world);
+    this._updateHotbarQuantities(world);
+  }
+
+  _updateHotbarQuantities(world) {
+    if (!this._hotbarQtyBadges.length) return;
+    const hotbar = this.cfg.hotbar ?? [];
+    for (let i = 0; i < this._hotbarQtyBadges.length; i++) {
+      const blockKey = hotbar[i];
+      const badge = this._hotbarQtyBadges[i];
+      if (badge) {
+        if (blockKey && BLOCKS[blockKey]?.infinite) {
+          badge.textContent = '∞';
+        } else {
+          badge.textContent = String(blockKey ? (world.storage?.[blockKey] ?? 0) : 0);
+        }
+      }
+    }
   }
 
   _mobileHudText(world) {
@@ -504,7 +521,7 @@ export class TouchControls {
 
     this._hotbarEls = [];
     this._hotbarIconCanvases = [];
-    const labels = ['1','2','3','4','5','6','7','8','9','0'];
+    this._hotbarQtyBadges = [];
     for (let i = 0; i < HOTBAR_DISPLAY_SLOTS; i++) {
       const btn = document.createElement('button');
       btn.style.cssText = `position:relative;width:36px;height:40px;padding:2px;box-sizing:border-box;${BTN_BASE};`;
@@ -519,9 +536,9 @@ export class TouchControls {
       btn.appendChild(icvs);
       this._hotbarIconCanvases.push(icvs);
 
-      // 熱鍵角標（右下，顏色繼承 button 以便 _refreshHotbar 統一控制）
+      // 數量角標（右下，顯示塔內資源數量）
       const badge = document.createElement('span');
-      badge.textContent = labels[i];
+      badge.textContent = '0';
       badge.style.cssText = [
         'position:absolute',
         'bottom:1px',
@@ -532,6 +549,7 @@ export class TouchControls {
         'pointer-events:none',
       ].join(';') + ';';
       btn.appendChild(badge);
+      this._hotbarQtyBadges.push(badge);
 
       const idx = i;
       btn.addEventListener('pointerdown', (e) => {
@@ -566,9 +584,17 @@ export class TouchControls {
       ctx2.clearRect(0, 0, icvs.width, icvs.height);
       const blockKey = hotbar[i];
       if (!blockKey) {
-        // 停用 slot：畫半透明佔位色塊
-        ctx2.fillStyle = 'rgba(255,255,255,0.08)';
-        ctx2.fillRect(2, 2, icvs.width - 4, icvs.height - 4);
+        if (i === hotbar.length - 1) {
+          // 背包按鈕：⚙️
+          ctx2.font = '22px sans-serif';
+          ctx2.textAlign = 'center';
+          ctx2.textBaseline = 'middle';
+          ctx2.fillStyle = 'rgba(240,176,32,0.8)';
+          ctx2.fillText('⚙️', icvs.width / 2, icvs.height / 2);
+        } else {
+          ctx2.fillStyle = 'rgba(255,255,255,0.08)';
+          ctx2.fillRect(2, 2, icvs.width - 4, icvs.height - 4);
+        }
         return;
       }
       const frame = getFrameRect(img, sheet, blockKey);
