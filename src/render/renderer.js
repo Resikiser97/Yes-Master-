@@ -12,6 +12,8 @@
 
 import { GAME_CONFIG } from '../../config/gameConfig.js';
 import { BLOCKS } from '../../config/blocks.js';
+import { ENEMIES } from '../../config/enemies.js';
+import { WAVES } from '../../config/waves.js';
 import { SPRITE_SHEETS, getFrameRect } from '../../config/sprites.js';
 import { coreAttackAnchors } from '../game/combatRuntime.js';
 import { inventoryWeight } from '../logic/inventory.js';
@@ -79,6 +81,29 @@ function wrapText(ctx, text, x, y, maxW, lineH, maxLines) {
     }
   }
   if (line && lineCount < maxLines) ctx.fillText(line, x, y + lineCount * lineH);
+}
+
+function drawPanel(ctx, x, y, w, h, opts = {}) {
+  ctx.fillStyle = opts.bg ?? 'rgba(0,0,0,0.75)';
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = opts.border ?? '#666';
+  ctx.lineWidth = opts.borderWidth ?? 1;
+  ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+}
+
+function drawBar(ctx, x, y, w, h, pct, color, opts = {}) {
+  const safePct = Math.max(0, Math.min(1, Number.isFinite(pct) ? pct : 0));
+  ctx.fillStyle = '#333';
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = color;
+  ctx.fillRect(x, y, Math.round(w * safePct), h);
+  if (opts.text) {
+    ctx.font = 'bold 10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#FFF';
+    ctx.fillText(opts.text, x + w / 2, y + h / 2);
+  }
 }
 
 export class Renderer {
@@ -163,8 +188,19 @@ export class Renderer {
 
     ctx.restore();
 
-    if (this.cfg.render.drawCanvasHud !== false) this._drawHud(world); // 螢幕座標 HUD（不受鏡頭位移）
-    if (this.cfg.render.drawCanvasHud !== false) this._drawDesktopHotbar(world);
+    if (this.cfg.render.drawCanvasHud !== false) {
+      this._drawPlayerPanel(world);
+      this._drawWaveTimer(world);
+      this._drawBackpack(world);
+      this._drawCoreStatsPanel(world);
+      this._drawEnemyInfo(world);
+      this._drawResourceBar(world);
+      this._drawXpGoldBar(world);
+      this._drawDesktopHotbar(world);
+      this._drawModeHint(world);
+      this._drawVersionLabel();
+      this._drawExitButton();
+    }
     if (world.phase === 'gameover') this._drawGameOverOverlay(world);
     if (world.phase === 'cardOffer') this._drawCardOffer(world);
     if (world.firstGame && world.tutorialTimer > 0) this._drawTutorialHint(world);
@@ -285,22 +321,402 @@ export class Renderer {
     this.ctx.strokeRect(pv.x * t + 1, pv.y * t + 1, t - 2, t - 2);
   }
 
-  _drawHud(world) {
+  _hotbarMetrics() {
+    const hotbar = this.cfg.hotbar ?? [];
+    const slotSize = 40;
+    const gap = 4;
+    const totalW = hotbar.length * slotSize + Math.max(0, hotbar.length - 1) * gap;
+    const barH = slotSize + 18;
+    const { width: vw, height: vh } = this.viewport;
+    return {
+      hotbar,
+      slotSize,
+      gap,
+      totalW,
+      barH,
+      startX: Math.round((vw - totalW) / 2),
+      barY: vh - barH - 4,
+    };
+  }
+
+  _drawPlayerPanel(world) {
+    const ctx = this.ctx;
+    const x = 8, y = 8, w = 240;
+    const expanded = world.uiState?.playerExpanded ?? false;
+    const h = expanded ? 186 : 90;
+    const avatarCx = x + 37;
+    const avatarCy = y + 37;
+    const avatarStroke = expanded ? '#5ba4f5' : '#555';
+    const startX = x + 80;
+    const startY = y + 14;
+    const lineH = 18;
+    const fatigue = Number(world.player?.fatigue ?? 0);
+    const fatigueMax = Number(this.cfg.player?.fatigueMax ?? 120);
+    const fatiguePct = fatigueMax > 0 ? fatigue / fatigueMax : 0;
+
+    world.uiHitRects ??= [];
+    world.uiHitRects = world.uiHitRects.filter((r) => r.id !== 'playerPanel');
+    world.uiHitRects.push({ id: 'playerPanel', x, y, w, h });
+
+    ctx.save();
+    drawPanel(ctx, x, y, w, h, { bg: 'rgba(0,0,0,0.68)', border: '#333' });
+
+    ctx.fillStyle = 'rgba(60,60,60,0.5)';
+    ctx.beginPath();
+    ctx.arc(avatarCx, avatarCy, 29, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = avatarStroke;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.font = '28px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#E0D6B8';
+    ctx.fillText('👺', avatarCx, avatarCy + 1);
+
+    ctx.fillStyle = 'rgba(26,31,43,1)';
+    ctx.beginPath();
+    ctx.arc(avatarCx - 20, avatarCy - 20, 9, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = avatarStroke;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.font = '10px sans-serif';
+    ctx.fillStyle = expanded ? '#5ba4f5' : '#888';
+    ctx.fillText('⚙', avatarCx - 20, avatarCy - 20 + 0.5);
+
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.font = '11px sans-serif';
+    ctx.fillStyle = '#5ba4f5';
+    ctx.fillText('挖掘能力', startX, startY);
+    ctx.font = 'bold 13px sans-serif';
+    ctx.fillText(String(this.cfg.player?.mining ?? 0), startX + 62, startY - 1);
+
+    const barX = startX;
+    const barY = startY + lineH + 15;
+    const barW = 142;
+    const barH = 12;
+    ctx.font = '11px sans-serif';
+    ctx.fillStyle = '#4CAF50';
+    ctx.fillText('疲勞值', startX, startY + lineH);
+    ctx.fillStyle = '#1e2330';
+    ctx.fillRect(barX, barY, barW, barH);
+    ctx.fillStyle = '#4CAF50';
+    ctx.fillRect(barX, barY, Math.round(barW * Math.max(0, Math.min(1, fatiguePct))), barH);
+    ctx.fillStyle = 'rgba(0,0,0,0.42)';
+    ctx.fillRect(barX + 42, barY + 1, 58, barH - 2);
+    ctx.font = 'bold 9px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#f3f7f0';
+    ctx.fillText(`${Math.round(fatigue)}/${Math.round(fatigueMax)}`, barX + barW / 2, barY + barH / 2 + 0.5);
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.font = '9px sans-serif';
+    ctx.fillStyle = '#556';
+    ctx.fillText(`每分鐘回復 ${this.cfg.player?.fatigue ?? 0}`, barX, barY + 15);
+
+    const dividerY = startY + lineH * 2 + 24;
+    ctx.strokeStyle = '#2a2a2a';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(x + 10, dividerY);
+    ctx.lineTo(x + w - 10, dividerY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.font = '10px sans-serif';
+    ctx.fillStyle = '#444';
+    ctx.textAlign = 'center';
+    ctx.fillText(expanded ? '▲ 點擊頭像收合' : '▼ 點擊頭像展開', x + w / 2, dividerY + 4);
+
+    if (expanded) {
+      const spiritPct = ((this.cfg.player?.spirit ?? 0) / 100 * 10
+        + (this.cfg.mode === 'single' ? (this.cfg.player?.spiritSinglePlayerBonusPct ?? 0) : 0)).toFixed(0);
+      const repairPerSec = Math.floor(((this.cfg.player?.repair ?? 0) / 60) * 100) / 100;
+      const rows = [
+        ['靈動能力', `核心加成 ${spiritPct}%`, '#FFD700'],
+        ['背負能力', String(this.cfg.player?.carry ?? world.player?.capacity ?? 0), '#FF9800'],
+        ['修復能力', `${repairPerSec.toFixed(2)}/s`, '#E91E63'],
+        ['移動速度', String(this.cfg.player?.moveSpeed ?? world.player?.moveSpeed ?? 0), '#F44336'],
+      ];
+      ctx.textAlign = 'left';
+      ctx.font = '11px sans-serif';
+      rows.forEach(([label, value, color], i) => {
+        const rowY = dividerY + 22 + i * 18;
+        ctx.fillStyle = color;
+        ctx.fillText(label, startX, rowY);
+        ctx.fillText(value, startX + 62, rowY);
+      });
+    }
+    ctx.restore();
+  }
+
+  _drawWaveTimer(world) {
+    const ctx = this.ctx;
+    const { width: vw } = this.viewport;
+    const w = 200, h = 80;
+    const x = vw - w - 56, y = 8;
+    const stage = world.stage ?? 0;
+    const set = Math.floor(stage / 10) + 1;
+    const num = (stage % 10) + 1;
+    const stageInSet = stage % 10;
+    const phase = world.phase ?? 'prep';
+    const phaseLabel = phase === 'prep' ? '準備中' : phase === 'night' ? '夜晚' : phase === 'overtime' ? '加時賽' : phase;
+    const t = Math.max(0, world.phaseTimer ?? 0);
+    const mm = String(Math.floor(t / 60)).padStart(2, '0');
+    const ss = String(Math.floor(t % 60)).padStart(2, '0');
+    const timerColor = phase === 'night'
+      ? '#FF6B6B'
+      : phase === 'overtime'
+        ? (Date.now() % 1000 < 500 ? '#FF0000' : '#7A0000')
+        : '#FFF';
+
+    ctx.save();
+    drawPanel(ctx, x, y, w, h, { bg: 'rgba(0,0,0,0.7)', border: '#666' });
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.font = '12px sans-serif';
+    ctx.fillStyle = '#FFD700';
+    ctx.fillText(`關卡 ${set}-${num}`, x + 8, y + 7);
+
+    const dotY = y + 31;
+    const dotStartX = x + 11;
+    for (let i = 0; i < 10; i++) {
+      const dx = dotStartX + i * 16 + (i === 9 ? 7 : 0);
+      if (i === 9) {
+        ctx.strokeStyle = '#777';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(dx - 8.5, dotY - 7);
+        ctx.lineTo(dx - 8.5, dotY + 7);
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      ctx.arc(dx, dotY, 5, 0, Math.PI * 2);
+      ctx.fillStyle = i < stageInSet ? '#4CAF50' : i === 9 ? '#FF9800' : '#555';
+      ctx.fill();
+      if (i === stageInSet) {
+        ctx.strokeStyle = '#FFF';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+    }
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.font = 'bold 16px monospace';
+    ctx.fillStyle = timerColor;
+    ctx.fillText(`[${mm}:${ss}]`, x + w / 2, y + 42);
+    ctx.font = '12px sans-serif';
+    ctx.fillStyle = '#AAA';
+    ctx.fillText(phaseLabel, x + w / 2, y + 62);
+    ctx.restore();
+  }
+
+  _drawBackpack(world) {
+    const ctx = this.ctx;
+    const { height: vh } = this.viewport;
+    const x = 8, y = vh - 208, w = 160, h = 200;
+    const inv = world.player?.inventory ?? {};
+    const currentWeight = inventoryWeight(inv);
+    const maxWeight = world.player?.capacity ?? this.cfg.player?.carry ?? 0;
+    const isFull = maxWeight > 0 && currentWeight >= maxWeight;
+    const border = isFull && Date.now() % 600 < 300 ? '#FF0000' : '#CD7F32';
+
+    ctx.save();
+    drawPanel(ctx, x, y, w, h, { bg: 'rgba(0,0,0,0.7)', border, borderWidth: 2 });
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = '#CD7F32';
+    ctx.fillText(`背包承重：${fmt1(currentWeight)}/${fmt1(maxWeight)}`, x + 8, y + 8);
+
+    const hotbar = this.cfg.hotbar ?? [];
+    const orderedKeys = Object.keys(inv)
+      .filter((key) => (inv[key] ?? 0) > 0)
+      .sort((a, b) => {
+        const ai = hotbar.indexOf(a);
+        const bi = hotbar.indexOf(b);
+        return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi) || a.localeCompare(b);
+      })
+      .slice(0, 6);
+
+    const cellW = 60, cellH = 52, gap = 4;
+    const gridX = x + 16, gridY = y + 34;
+    for (let i = 0; i < 6; i++) {
+      const cx = gridX + (i % 2) * (cellW + gap);
+      const cy = gridY + Math.floor(i / 2) * (cellH + gap);
+      const blockKey = orderedKeys[i];
+      ctx.fillStyle = 'rgba(60,40,20,0.5)';
+      ctx.fillRect(cx, cy, cellW, cellH);
+      ctx.strokeStyle = '#8B6914';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(cx + 0.5, cy + 0.5, cellW - 1, cellH - 1);
+      if (!blockKey) continue;
+
+      const iconSize = 32;
+      const iconX = cx + Math.round((cellW - iconSize) / 2);
+      const iconY = cy + 7;
+      if (!this._drawBlockIcon(blockKey, iconX, iconY, iconSize)) {
+        ctx.fillStyle = PALETTE.block[blockKey] ?? '#888';
+        ctx.fillRect(iconX + 2, iconY + 2, iconSize - 4, iconSize - 4);
+      }
+      ctx.font = 'bold 10px sans-serif';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'bottom';
+      ctx.shadowColor = 'rgba(0,0,0,0.8)';
+      ctx.shadowBlur = 3;
+      ctx.fillStyle = '#FFF';
+      ctx.fillText(`${inv[blockKey] ?? 0}`, cx + cellW - 5, cy + cellH - 4);
+      ctx.shadowBlur = 0;
+    }
+    ctx.restore();
+  }
+
+  _drawCoreStatsPanel(world) {
+    const ctx = this.ctx;
+    const { startX, barY } = this._hotbarMetrics();
+    const x = startX, y = barY - 134, w = 260, h = 110;
+    const cs = world.coreStats ?? {};
+    const defense = Number(cs.defense ?? 0);
+    const defenseK = Number(this.cfg.core?.defenseK ?? 100);
+    const reductionPct = defenseK + defense > 0 ? (defense / (defenseK + defense)) * 100 : 0;
+
+    ctx.save();
+    drawPanel(ctx, x, y, w, h, { border: '#999' });
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.fillStyle = '#FFF';
+    ctx.fillText(`攻擊力：${fmt2(cs.attack)}`, x + 8, y + 8);
+    ctx.font = '12px sans-serif';
+    ctx.fillStyle = '#CCC';
+    ctx.fillText(`攻速(每秒)：${fmt2(cs.attackSpeed)}`, x + 118, y + 8);
+
+    const lines = [
+      `攻擊範圍：${fmt1(cs.range)}`,
+      `防禦力：${fmt2(defense)} (抵擋${reductionPct.toFixed(0)}%)`,
+      '靈力增幅：—%',
+      `魔法攻擊：${fmt2(cs.magicPct)}%`,
+      `連鎖：${fmt2(cs.chain)}`,
+    ];
+    ctx.font = '12px sans-serif';
+    ctx.fillStyle = '#CCC';
+    lines.forEach((line, i) => ctx.fillText(line, x + 8, y + 26 + i * 16));
+    ctx.restore();
+  }
+
+  _drawEnemyInfo(world) {
     const ctx = this.ctx;
     const { width: vw, height: vh } = this.viewport;
-    const inv = world.player.inventory;
-    const cs = world.coreStats;
-    const coreLine = cs
-      ? `核心 HP ${fmt1(world.coreHp ?? cs.hpMax)}/${fmt1(cs.hpMax)}　ATK ${fmt2(cs.attack)}　攻速 ${fmt2(cs.attackSpeed)}/s　DEF ${fmt2(cs.defense)}`
-      : '核心數值計算中';
-    const coreLine2 = cs
-      ? `範圍 ${fmt1(cs.range)}　魔法 ${fmt2(cs.magicPct)}%　連鎖 ${fmt2(cs.chain)}`
-      : '';
-    const fatigueLine = `疲勞 ${fmt1(world.player.fatigue ?? 0)}/${fmt1(this.cfg.player.fatigueMax)}　修復 ${fmt2(this.cfg.player.repair / 60)}/s`;
-    const blockLine = `已放置 ${fmtItems(world.blockCounts ?? {})}`;
-    const hitTotal = world.combat?.lastHits?.reduce((sum, hit) => sum + hit.damage, 0) ?? 0;
-    const enemyLine = `敵人 ${world.enemies?.length ?? 0}　最近命中 ${fmt2(hitTotal)}`;
-    const phaseLine = this._phaseLine(world);
+    const w = 260, h = 80;
+    const x = vw - w - 8, y = vh - 152;
+    const currentStage = (world.stage ?? 0) + 1;
+    const nextStage = currentStage + 1;
+    const counts = {};
+    for (const enemy of world.enemies ?? []) {
+      if (!enemy?.key) continue;
+      counts[enemy.key] = (counts[enemy.key] ?? 0) + 1;
+    }
+    const currentText = this._formatEnemyCounts(counts, '— 無敵人');
+    const nextText = WAVES[nextStage]
+      ? this._formatEnemyCounts(WAVES[nextStage], '— 無敵人')
+      : '— 最終波已過';
+
+    ctx.save();
+    drawPanel(ctx, x, y, w, h);
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.fillStyle = '#F44336';
+    ctx.fillText('進攻人數', x + 8, y + 7);
+    ctx.font = '11px sans-serif';
+    ctx.fillStyle = '#FFF';
+    ctx.fillText(`當前波 ${this._stageLabel(currentStage)} ${currentText}`, x + 8, y + 28, w - 16);
+    ctx.fillStyle = '#AAA';
+    ctx.fillText(`下一波 ${this._stageLabel(nextStage)} ${nextText}`, x + 8, y + 48, w - 16);
+    ctx.restore();
+  }
+
+  _drawResourceBar(world) {
+    const ctx = this.ctx;
+    const { startX, totalW, barY } = this._hotbarMetrics();
+    const barYPos = barY - 10;
+    const counts = world.blockCounts ?? {};
+    const total = Object.values(counts).reduce((sum, v) => sum + Math.max(0, Number(v) || 0), 0);
+    if (total <= 0) return;
+    const colors = {
+      sand: '#C8E64E', dirt: '#8B6914', stone: '#9E9E9E',
+      iron: '#607D8B', gold: '#FFD700', glass: '#00BCD4', diamond: '#9C27B0',
+      ladder: '#8B5A2B',
+    };
+
+    ctx.save();
+    let offsetX = startX;
+    const entries = Object.entries(counts).filter(([, count]) => count > 0);
+    entries.forEach(([key, count], index) => {
+      const segW = index === entries.length - 1
+        ? startX + totalW - offsetX
+        : Math.round((count / total) * totalW);
+      ctx.fillStyle = colors[key] ?? '#888';
+      ctx.fillRect(offsetX, barYPos, Math.max(1, segW), 6);
+      offsetX += segW;
+    });
+    ctx.restore();
+  }
+
+  _drawXpGoldBar(world) {
+    const ctx = this.ctx;
+    const { startX, barY } = this._hotbarMetrics();
+    const y = barY - 24;
+    ctx.save();
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = '#FFD700';
+    ctx.fillText(`累計經驗：${world.totalXP ?? 0}XP，累計卡片：${world.totalCards ?? 0}張，累計金幣：${world.totalGold ?? 0}`, startX, y);
+    ctx.restore();
+  }
+
+  _drawVersionLabel() {
+    const ctx = this.ctx;
+    const { width: vw, height: vh } = this.viewport;
+    const exitW = 58;
+    ctx.save();
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'bottom';
+    ctx.fillStyle = '#666666';
+    ctx.fillText('@Goblin Nest', vw - exitW - 20, vh - 48);
+    ctx.fillText(String(GAME_CONFIG.version).toUpperCase(), vw - exitW - 20, vh - 34);
+    ctx.restore();
+  }
+
+  _drawExitButton() {
+    const ctx = this.ctx;
+    const { width: vw, height: vh } = this.viewport;
+    const w = 58, h = 24;
+    const x = vw - w - 8, y = vh - h - 32;
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = '#F44336';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+    ctx.font = 'bold 14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#F44336';
+    ctx.fillText('EXIT', x + w / 2, y + h / 2 + 1);
+    ctx.restore();
+  }
+
+  _drawModeHint(world) {
+    const ctx = this.ctx;
+    const { width: vw } = this.viewport;
     const planTag = world.buildDestroyMode ? '【🔨 拆除模式】' : world.buildPlanMode ? '【📐 規劃模式】' : '';
     const modeText = world.buildDestroyMode && world.selectedBlock
       ? `${planTag} 拆除：${BLOCKS[world.selectedBlock]?.zh ?? world.selectedBlock}　拖拽選區拆除 / V 切回建造 / B 退出`
@@ -309,56 +725,52 @@ export class Renderer {
       : world.selectedBlock
       ? `建造：${BLOCKS[world.selectedBlock]?.zh ?? world.selectedBlock}（剩 ${BLOCKS[world.selectedBlock]?.infinite ? '∞' : (world.storage[world.selectedBlock] ?? 0)}）　左鍵放置 / 右鍵拆除 / 再按取消`
       : `挖礦模式（左鍵長按挖最近）　按 1~8 選材料建造${world.buildPlanMode ? '　' + planTag : ''}`;
-    const modeLine = world.selectedBlock
-      ? { text: modeText, iconKey: world.selectedBlock }
-      : modeText;
-    const leftLines = [
-      coreLine,
-      coreLine2,
-      `背包 ${inventoryWeight(inv)}/${world.player.capacity}　${fmtItems(inv)}`,
-      `塔內 ${fmtItems(world.storage)}`,
-      blockLine,
-    ].filter(Boolean);
-    const rightLines = [
-      phaseLine,
-      modeLine,
-      fatigueLine,
-      enemyLine,
-    ].filter(Boolean);
-    if (world.mining?.dropFull) rightLines.push('⚠ 地面已滿');
-    else if (world.mining?.full) rightLines.push('⚠ 背包已滿');
-    else if (world.repair?.active) rightLines.push('修復中');
-    else if (world.repair?.reason === 'not_on_foundation') rightLines.push('需站在核心或連通地基上');
-    else if (world.repair?.reason === 'no_fatigue') rightLines.push('疲勞不足');
+    const status = world.mining?.dropFull
+      ? '　⚠ 地面已滿'
+      : world.mining?.full
+        ? '　⚠ 背包已滿'
+        : world.repair?.active
+          ? '　修復中'
+          : world.repair?.reason === 'not_on_foundation'
+            ? '　需站在核心或連通地基上'
+            : world.repair?.reason === 'no_fatigue'
+              ? '　疲勞不足'
+              : '';
+    const text = `${modeText}${status}`;
+    const panelW = Math.min(vw - 32, 620);
+    const panelH = 28;
+    const x = Math.round((vw - panelW) / 2);
+    const y = world.uiState?.playerExpanded ? 202 : 96;
 
-    const lineH = 14;
-    const padY = 8;
-    const rows = Math.max(leftLines.length, rightLines.length);
-    const panelH = padY * 2 + rows * lineH;
-    const hotbarReserve = 70;
-    const panelTop = vh - panelH - hotbarReserve;
-    const halfW = Math.floor((vw - 16) / 2);
     ctx.save();
+    drawPanel(ctx, x, y, panelW, panelH, { bg: 'rgba(0,0,0,0.62)', border: 'rgba(255,180,0,0.25)' });
+    let textX = x + 12;
+    const textMaxW = panelW - 24 - (world.selectedBlock ? 22 : 0);
+    if (world.selectedBlock && this._drawBlockIcon(world.selectedBlock, x + 10, y + 6, 16)) {
+      textX += 22;
+    }
     ctx.font = '12px sans-serif';
-    ctx.textBaseline = 'top';
-    ctx.fillStyle = 'rgba(0,0,0,0.55)';
-    ctx.fillRect(8, panelTop, vw - 16, panelH);
-    ctx.fillStyle = 'rgba(255,255,255,0.08)';
-    ctx.fillRect(8 + halfW, panelTop + 4, 1, panelH - 8);
-    ctx.fillStyle = '#eee';
-    leftLines.forEach((ln, i) => ctx.fillText(ln, 14, panelTop + padY + i * lineH));
-    rightLines.forEach((ln, i) => this._drawHudLine(ln, 8 + halfW + 8, panelTop + padY + i * lineH));
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#EEE';
+    ctx.fillText(text, textX, y + panelH / 2, textMaxW);
     ctx.restore();
   }
 
-  _drawHudLine(line, x, y) {
-    if (typeof line === 'string') {
-      this.ctx.fillText(line, x, y);
-      return;
-    }
+  _formatEnemyCounts(counts, emptyText) {
+    const parts = Object.entries(counts ?? {})
+      .filter(([, count]) => count > 0)
+      .map(([key, count]) => {
+        const def = ENEMIES[key];
+        const hp = def?.hp != null ? ` [血量${fmt1(def.hp)}]` : '';
+        return `${def?.zh ?? key}x${count}${hp}`;
+      });
+    return parts.length ? parts.join(' ') : emptyText;
+  }
 
-    const iconDrawn = line.iconKey ? this._drawBlockIcon(line.iconKey, x, y - 1, 16) : false;
-    this.ctx.fillText(line.text ?? '', iconDrawn ? x + 20 : x, y);
+  _stageLabel(stage) {
+    const s = Math.max(1, Number(stage) || 1);
+    return `${Math.floor((s - 1) / 10) + 1}-${((s - 1) % 10) + 1}`;
   }
 
   _drawDesktopHotbar(world) {
@@ -491,7 +903,7 @@ export class Renderer {
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
     const pad = 14, fh = 20;
     const w = vw * 0.7, h = fh + pad * 2;
-    const x = (vw - w) / 2, y = 54;
+    const x = (vw - w) / 2, y = world.uiState?.playerExpanded ? 236 : 132;
     ctx.beginPath();
     ctx.roundRect?.(x, y, w, h, 6) ?? ctx.fillRect(x, y, w, h);
     ctx.fill();

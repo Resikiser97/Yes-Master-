@@ -96,6 +96,12 @@ export function createWorld(cfg = GAME_CONFIG) {
     showDebug: false,  // ` 鍵切換 debug 浮層（不影響遊戲進程）
     debugPaused: false, // T debug 暫停：停止 gameplay update，但保留 render/input 方便恢復
     testMode: false,   // 由 splash 傳入；true = 測試難度 1~30
+    uiState: {
+      playerExpanded: false,
+      backpackExpanded: true,
+      coreExpanded: false,
+    },
+    uiHitRects: [],
   };
 
   // 第 0 關初始資源包：直接入塔內共享資源欄（shared、不依人數放大、只給一次）

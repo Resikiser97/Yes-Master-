@@ -37,6 +37,8 @@ export class Controls {
     this.cardOfferMode = false;    // 由 main.js 同步 world.phase === 'cardOffer'
     this.cardOfferRects = null;    // 由 main.js 每幀同步 renderer 寫入的卡片座標
     this.pendingCardChoice = null; // null | 0 | 1 | 2（玩家點選的卡片索引）
+    this.uiHitRects = [];          // Canvas HUD 命中區，由 renderer/main 每幀同步
+    this.pendingUiClick = null;    // 本幀待處理 UI 點擊 id
     this._onKeyDown = (e) => this._handleKey(e, true);
     this._onKeyUp = (e) => this._handleKey(e, false);
     this._onPointerDown = (e) => this._handlePointerDown(e);
@@ -56,6 +58,7 @@ export class Controls {
   isRepairing() { return this.repairing; }
   consumeDebugActions() { const v = this.pendingDebug; this.pendingDebug = []; return v; }
   consumeCardChoice() { const v = this.pendingCardChoice; this.pendingCardChoice = null; return v; }
+  consumeUiClick() { const v = this.pendingUiClick; this.pendingUiClick = null; return v; }
   consumeBuildPlanToggle() { const v = this.pendingBuildPlanToggle; this.pendingBuildPlanToggle = false; return v; }
   consumeDestroyToggle() { const v = this.pendingDestroyToggle; this.pendingDestroyToggle = false; return v; }
   consumeDragRect() { const v = this.pendingDragRect; this.pendingDragRect = null; return v; }
@@ -102,6 +105,11 @@ export class Controls {
     this.target?.focus?.({ preventScroll: true });
     this._syncPointer(e);
     e.preventDefault?.();
+    const uiHit = this._hitTestUi(this.mouse.x, this.mouse.y);
+    if (uiHit) {
+      if (e.button === 0) this.pendingUiClick = uiHit.id;
+      return;
+    }
     // 快捷列點擊
     if (e.button === 0) {
       const hit = this._hitTestHotbar(this.mouse.x, this.mouse.y);
@@ -162,6 +170,13 @@ export class Controls {
     if (i >= slots) return null;
     if (rel - i * unit > slotSize) return null; // in the gap
     return i;
+  }
+
+  _hitTestUi(mx, my) {
+    for (const r of this.uiHitRects ?? []) {
+      if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) return r;
+    }
+    return null;
   }
 
   _syncPointer(e) {
@@ -283,4 +298,3 @@ function keyToDirection(event) {
       return null;
   }
 }
-

@@ -50,6 +50,7 @@ export function boot() {
         map: { ...cfg.map, viewportPx: { ...cfg.map.viewportPx } },
       };
     }
+    if (versionEl) versionEl.style.display = inputMode === 'touch' ? '' : 'none';
 
     // 2. Renderer（手機三欄保留原始 viewport，再由 CSS 裁切放大呈現）
     let touchLayout = null;
@@ -78,11 +79,16 @@ export function boot() {
 
     // 7. badge
     const badge = document.getElementById('mode-badge');
-    if (badge) badge.textContent = diffMode === 'test' ? '測試模式' : (cfg.mode === 'single' ? '單人模式' : '多人模式');
+    if (badge) {
+      badge.textContent = diffMode === 'test' ? '測試模式' : (cfg.mode === 'single' ? '單人模式' : '多人模式');
+      badge.style.display = inputMode === 'touch' ? '' : 'none';
+    }
 
     // 8. World
     const savedWorld = loadWorld(cfg);
     const world = savedWorld ?? createWorld(cfg);
+    world.uiState ??= { playerExpanded: false, backpackExpanded: true, coreExpanded: false };
+    world.uiHitRects ??= [];
 
     if (!savedWorld) {
       world.firstGame = true;
@@ -123,7 +129,12 @@ export function boot() {
       if (inputMode === 'touch') {
         controls.mountDebugButton?.(debugBtn);
       } else {
-        document.body.appendChild(debugBtn);
+        const stage = document.getElementById('stage');
+        debugBtn.style.position = 'absolute';
+        debugBtn.style.top = '8px';
+        debugBtn.style.right = 'auto';
+        debugBtn.style.left = `${cfg.map.viewportPx.width - 42}px`;
+        (stage ?? document.body).appendChild(debugBtn);
       }
     }
 
@@ -207,6 +218,13 @@ export function boot() {
         controls.buildPlanMode = world.buildPlanMode;
         controls.buildDestroyMode = world.buildDestroyMode;
         controls.viewport = renderer.viewport;
+        controls.uiHitRects = world.uiHitRects ?? [];
+
+        const uiClick = controls.consumeUiClick?.();
+        if (uiClick === 'playerPanel') {
+          world.uiState ??= { playerExpanded: false, backpackExpanded: true, coreExpanded: false };
+          world.uiState.playerExpanded = !world.uiState.playerExpanded;
+        }
 
         // Sync drag preview to world for renderer
         if ((world.buildPlanMode || world.buildDestroyMode) && controls.dragging && controls.dragStart) {
