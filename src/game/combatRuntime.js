@@ -53,7 +53,7 @@ export function updateEnemies(world, dt) {
   if (world.phase === 'gameover') return;
 
   for (const enemy of world.enemies) {
-    const target = world.cfg?.mode === 'multi' ? nearestAttackTarget(world, enemy) : nearestCoreCell(world, enemy);
+    const target = nearestCoreCell(world, enemy);
     if (!target) continue;
 
     const dx = target.x - enemy.x;
@@ -65,8 +65,7 @@ export function updateEnemies(world, dt) {
       enemy.attackCooldown = (enemy.attackCooldown ?? 0) - dt;
       if (enemy.attackCooldown <= 0) {
         const amount = (enemy.attack ?? 0) * (world.combat?.overtimeMultiplier ?? 1);
-        if (target.kind === 'player') _applyPlayerPressure(target.player, amount);
-        else _applyCoreDamage(world, amount);
+        _applyCoreDamage(world, amount);
         enemy.attackCooldown = 2;
       }
       continue;
@@ -77,26 +76,6 @@ export function updateEnemies(world, dt) {
     enemy.x += (dx / d) * step;
     enemy.y += (dy / d) * step;
   }
-}
-
-function nearestAttackTarget(world, enemy) {
-  const candidates = [];
-  for (const player of world.players?.values?.() ?? []) {
-    if (player.online === false) continue;
-    candidates.push({ kind: 'player', player, x: player.x, y: player.y });
-  }
-  const core = nearestCoreCell(world, enemy);
-  if (core) candidates.push({ kind: 'core', ...core });
-  let best = null;
-  let bestD2 = Infinity;
-  for (const candidate of candidates) {
-    const d2 = dist2(enemy, candidate);
-    if (d2 < bestD2) {
-      bestD2 = d2;
-      best = candidate;
-    }
-  }
-  return best;
 }
 
 function nearestCoreCell(world, enemy) {
@@ -116,10 +95,6 @@ function _applyCoreDamage(world, amount) {
   const current = world.coreHp ?? world.coreStats?.hpMax ?? 0;
   world.coreHp = damageCoreHp(current, amount);
   if (world.coreHp <= 0) world.phase = 'gameover';
-}
-
-function _applyPlayerPressure(player, amount) {
-  player.fatigue = Math.max(0, (player.fatigue ?? 0) - amount);
 }
 
 export function coreAttackAnchors(world) {

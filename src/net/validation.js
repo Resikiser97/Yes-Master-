@@ -2,7 +2,6 @@ import { validatePlacement, validateRemoval } from '../logic/building.js';
 import { key } from '../logic/connectivity.js';
 
 const DEFAULT_LIMITS = {
-  minMoveIntervalMs: 50,
   minActionIntervalMs: 100,
   maxSequenceGap: 120,
 };
@@ -15,14 +14,12 @@ export function createInputValidator({ cfg, limits = DEFAULT_LIMITS } = {}) {
     if (!Number.isInteger(input.sequenceId) || input.sequenceId < 0) return reject('bad_sequence');
 
     const now = Date.now();
-    const state = last.get(playerId) ?? { sequenceId: -1, moveAt: 0, actionAt: 0 };
+    const state = last.get(playerId) ?? { sequenceId: -1, actionAt: 0 };
     if (input.sequenceId <= state.sequenceId) return reject('replay');
     if (input.sequenceId - state.sequenceId > limits.maxSequenceGap && state.sequenceId >= 0) return reject('sequence_gap');
 
     if (input.move) {
-      if (now - state.moveAt < limits.minMoveIntervalMs) return reject('move_rate');
       if (!validAxis(input.move.x) || !validAxis(input.move.y)) return reject('bad_move_vector');
-      state.moveAt = now;
     }
 
     if (input.action) {

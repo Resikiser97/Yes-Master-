@@ -14,6 +14,7 @@ import './import-smoke.test.js';
 import './mobileLayout.test.js';
 import './saveManager.test.js';
 import './multiplayerState.test.js';
+import './multiplayerInput.test.js';
 
 function fakeRng(value = 0) {
   return { next: () => value };
