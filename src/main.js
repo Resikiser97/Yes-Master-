@@ -120,12 +120,15 @@ export function boot() {
       debugBtn.textContent = '⚙';
       debugBtn.title = 'Toggle debug overlay';
       debugBtn.style.cssText = 'position:fixed;top:8px;right:8px;z-index:300;width:34px;height:34px;background:rgba(10,16,24,0.82);border:1px solid rgba(255,180,0,0.5);color:#f0b020;font-size:16px;cursor:pointer;padding:0;';
-      debugBtn.addEventListener('click', () => {
+      const toggleDebug = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         world.showDebug = !world.showDebug;
-        // touch 模式下同步切換 HTML debug 面板
         const panel = document.getElementById('debug-panel-touch');
         if (panel) panel.style.display = world.showDebug ? 'block' : 'none';
-      });
+      };
+      debugBtn.addEventListener('pointerdown', toggleDebug);
+      debugBtn.addEventListener('touchstart', toggleDebug, { passive: false });
       if (inputMode === 'touch') {
         controls.mountDebugButton?.(debugBtn);
       } else {
