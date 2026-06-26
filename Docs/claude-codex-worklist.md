@@ -226,11 +226,29 @@
 
 ---
 
-## 2B. 待實裝功能（多人連線後）
+## 2B. 多人連線待辦事項
 
-| 項目 | 說明 | 實裝時機 |
-|---|---|---|
-| 拆除模式僅限房主 | `V` 鍵拆除模式目前所有人可用，多人連線後需加 `world.isHost` 檢查，非房主按 V 無效 | PeerJS 多人連線骨架完成後 |
+| # | 項目 | 說明 | 狀態 |
+|---|---|---|---|
+| M0a | 正式帳號系統 | Email/OAuth Auth + player_profiles 表 + 登入 UI。詳見 `Docs/lobby-waitingroom-plan.md` Phase A | 🔴 優先 |
+| M0b | 等級系統 | 經驗值曲線 + 升級邏輯 + 結算寫回。Phase B | 🔴 Codex |
+| M0c | 好友系統 | friendships 表 + Edge Functions + friendManager.js。Phase C | 🔴 Codex |
+| M0d | 裝備系統 | player_equipment 表 + 升級規則。Phase D | 🔴 Codex |
+| M0e | 成就系統 | achievements 表 + 解鎖邏輯。Phase E | 🔴 Codex |
+| M0f | 排行榜 + 賽季稱號 | leaderboard 表 + 稱號規則。Phase F | 🔴 Codex |
+| M0g | 房間 DB 補強 | rooms/memberships 補欄位 + create-room/join-room/kick Edge Functions。Phase G | 🔴 優先 |
+| M0h | Lobby UI | 房間列表 + 建房 popup + 三 tab（公開/朋友/房間號碼）。Phase H | 🔴 Claude |
+| M0i | Waiting Room UI | 玩家卡片 + 聊天室 + 角色面板 + 踢人 + 開始遊戲。Phase I | 🔴 Claude |
+| M0j | 整合 main.js | splash→lobby→waitingRoom→遊戲 完整流程串接。Phase J | 🔴 Claude |
+| M1 | Supabase 房間自動清理 | `active` 超過 24h 沒人連 → 標 `completed`；`completed` 超過 24h → 刪除（CASCADE 帶走 memberships）。可用 Edge Function cron 或 pg_cron 實作 | 🔲 待做 |
+| M2 | consumed_nonces 定期清理 | 免費方案無 pg_cron，需 Edge Function 或手動清 `consumed_at` 超過 5 分鐘的 nonce | 🔲 待做 |
+| M3 | 拆除模式僅限房主 | `V` 鍵拆除模式目前所有人可用，多人連線後需加 `world.isHost` 檢查，非房主按 V 無效 | 🔲 待做 |
+| M4 | Host Migration + 斷線重連 | Phase 6：偵測 host 掉線 → join_order 選候選 → CAS 更新 DB → 新 host 初始化；3 秒 grace timer + reconnect token 綁 slot | 🔲 待做 |
+| M5 | 反作弊驗證 | Phase 7：方向制移動、rate limit、sequence_id 單調、庫存檢查、連通性 BFS、距離檢查、strike 系統 | 🔲 待做 |
+| M6 | 多人存檔改為 Supabase | 目前存 localStorage（僅 host 本地），正式版需考慮存到 Supabase 或讓所有玩家都能恢復 session | 🔲 待討論 |
+| M7 | Anonymous Auth 改正式帳號 | 目前用 Anonymous Sign-In，後續需支援 email/OAuth 以綁定玩家身份 | 🔲 待討論 |
+
+> 實作細節見 `Docs/multiplayer-implementation-plan.md` Phase 6-7。
 
 ---
 
