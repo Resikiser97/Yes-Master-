@@ -1,8 +1,26 @@
 # CHANGELOG.md — 版本歷史
 
-> 版本：v0.0.14.12
+> 版本：v0.0.14.13
 > 類型：**只增不改**（歷史紀錄，永遠往上加，最新在最上方，不回頭改舊條目）。
 > 條目格式：`## vX.Y.Z.W - YYYY-MM-DD`，下分「新增 / 修復 / 調整」。
+
+---
+
+## v0.0.14.13 - 2026-06-27
+
+### 新增
+- **白天 Phase**：新增真實 `day` 階段（60 秒），流程改為 `prep(30s)→day(60s)→night(60s)→...`；卡片選完後也給 prep→day；HUD 顯示「白天」金色倒數。
+- **N 鍵支援白天**：`prep` 中按 N 跳白天；`day` 中按 N 跳夜晚。
+
+### 修復
+- **P2 修復 Emoji 不顯示**：intent 系統重寫後（手動鎖機制）一併修正。
+- **Party Bar Emoji 立刻消失**：手動意圖加入 `intentManual` 30 秒鎖，期間 auto-detect 無法覆蓋。
+- **🦵 不應自動出現**：移除 `destroy` 從 auto-detect；🦵 和 ⚠️ 現在都只能手動輪盤選擇。
+- **挖礦耐久扣法**：從連續累積（`damage * dt`）改為離散敲擊模型（每 `1/hitsPerSec` 秒整數扣 `miningPower`）。
+
+### 調整
+- `intentManual: false` 加入 `createPlayerState` 與 stateSync 序列化。
+- `config/gameConfig.js` 中 `daySecondsUi` 更名為 `daySeconds`，移除「MVP 不真的跑」備注。
 
 ---
 

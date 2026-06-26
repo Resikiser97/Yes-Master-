@@ -5,7 +5,7 @@
  * @exports     serializeSnapshot, serializeDelta, applySnapshot, applyDelta
  * @depends     game/world.js, game/coreSnapshot.js
  * @sourceOfTruth Docs/game-architecture-plan.md「Multiplayer 架構 → State Sync」
- * @version     v0.0.14.11
+ * @version     v0.0.14.13
  */
 import { GAME_CONFIG } from '../../config/gameConfig.js';
 import { createWorld, attachPlayerAlias, ensurePlayer, createPlayerState } from '../game/world.js';
@@ -178,6 +178,7 @@ function serializePlayer(player) {
     online: player.online !== false,
     intent: player.intent ?? null,
     intentAt: player.intentAt ?? 0,
+    intentManual: player.intentManual ?? false,
   };
 }
 

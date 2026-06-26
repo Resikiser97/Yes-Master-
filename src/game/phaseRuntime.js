@@ -5,13 +5,14 @@
  * @exports     initPhaseState, updatePhase
  * @depends     config/gameConfig.js、config/waves.js、src/logic/waveGen.js、src/logic/spawnPosition.js、src/logic/rng.js
  * @sourceOfTruth Docs/waveplan.md「晝夜節奏」「怪物生成安全規則」「夜晚加時賽/狂暴模式」
- * @version     v0.0.14.1
+ * @version     v0.0.14.13
  *
  * phase 轉換：
- *   prep（30s 或按 N）→ night（60s，分批出怪）
+ *   prep（30s）→ day（60s，可建造/挖礦，無敵人）→ night（60s，分批出怪）
  *   night 結束有怪殘留 → overtime（30s，每 5s 攻擊翻倍）
  *   overtime 結束有怪 → gameover
- *   怪全滅（night 或 overtime 中）→ waveClear → stage++ → prep
+ *   怪全滅（night 或 overtime 中）→ waveClear → stage++ → prep → day → ...
+ *   cardOffer 選完 → prep → day → ...
  *   world.coreHp <= 0 → gameover（任何 phase 皆可觸發）
  */
 
@@ -56,7 +57,8 @@ export function updatePhase(world, dt, cfg = GAME_CONFIG) {
     return;
   }
 
-  if (world.phase === 'prep')     _updatePrep(world, dt, cfg);
+  if (world.phase === 'prep')          _updatePrep(world, dt, cfg);
+  else if (world.phase === 'day')      _updateDay(world, dt, cfg);
   else if (world.phase === 'night')    _updateNight(world, dt, cfg);
   else if (world.phase === 'overtime') _updateOvertime(world, dt, cfg);
 }
@@ -64,6 +66,18 @@ export function updatePhase(world, dt, cfg = GAME_CONFIG) {
 // ─── prep ────────────────────────────────────────────────────────────────────
 
 function _updatePrep(world, dt, cfg) {
+  world.phaseTimer = Math.max(0, world.phaseTimer - dt);
+  if (world.phaseTimer <= 0) _startDay(world, cfg);
+}
+
+// ─── day ─────────────────────────────────────────────────────────────────────
+
+function _startDay(world, cfg) {
+  world.phase      = 'day';
+  world.phaseTimer = cfg.phases.daySeconds;
+}
+
+function _updateDay(world, dt, cfg) {
   world.phaseTimer = Math.max(0, world.phaseTimer - dt);
   if (world.phaseTimer <= 0) _startNight(world, cfg);
 }

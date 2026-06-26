@@ -5,7 +5,7 @@
  * @exports     updateMining, collectDrops, tryDeposit, tryPlace, tryRemove, computeBuildPreview, updateRepair, damageCore, healCore, applyDebugAction, tryPlaceRect, tryRemoveRect, toggleBuildPlanMode, previewPlaceRect
  * @depends     config/gameConfig.js、config/blocks.js、src/game/coreSnapshot.js、src/game/combatRuntime.js、src/logic/mining.js、src/logic/mineGen.js、src/logic/inventory.js、src/logic/connectivity.js、src/logic/building.js、src/logic/coreHealth.js、src/logic/drops.js
  * @sourceOfTruth Docs/game-design-plan.md「操作輸入方式」「方塊系統」「遊戲內 UI 設計」
- * @version     v0.0.14.9
+ * @version     v0.0.14.13
  */
 
 import { GAME_CONFIG } from '../../config/gameConfig.js';
@@ -36,7 +36,7 @@ export function updateMining(world, isMining, dt, cfg = GAME_CONFIG, playerId = 
   // 停手或找不到目標：儲存當前進度，清空活動狀態
   const _saveAndClear = () => {
     if (m.targetKey && m.damage > 0) prog[m.targetKey] = m.damage;
-    m.targetKey = null; m.damage = 0; m.full = false;
+    m.targetKey = null; m.damage = 0; m.hitTimer = 0; m.full = false;
   };
 
   if (!isMining) { _saveAndClear(); return; }
@@ -51,11 +51,18 @@ export function updateMining(world, isMining, dt, cfg = GAME_CONFIG, playerId = 
     if (m.targetKey && m.damage > 0) prog[m.targetKey] = m.damage;
     m.targetKey = tk;
     m.damage = prog[tk] ?? 0;
+    m.hitTimer = 0;
     m.full = false;
   }
 
+  // 離散敲擊模型：每 1/hitsPerSec 秒觸發一次，每次扣 miningPower 點耐久
   const hitsPerSec = cfg.player.mineClicksPerSec.hold;
-  m.damage += miningDamagePerSecond(cfg.player.mining, hitsPerSec) * dt;
+  m.hitTimer = (m.hitTimer ?? 0) + dt;
+  const hits = Math.floor(m.hitTimer * hitsPerSec);
+  if (hits > 0) {
+    m.hitTimer -= hits / hitsPerSec;
+    m.damage += cfg.player.mining * hits;
+  }
 
   const need = durabilityToBreak(target.blockKey);
   if (m.damage < need) return;
@@ -261,8 +268,8 @@ export function applyDebugAction(world, action, cfg = GAME_CONFIG) {
     return { ok: true };
   }
   if (action === 'startNight') {
-    // prep 中立即觸發夜晚（phaseRuntime 在 phaseTimer<=0 時自動呼叫 _startNight）
-    if (world.phase === 'prep') world.phaseTimer = 0;
+    // prep → 立即跳白天；day → 立即跳夜晚（phaseTimer 歸零讓 phaseRuntime 自動觸發）
+    if (world.phase === 'prep' || world.phase === 'day') world.phaseTimer = 0;
     return { ok: true };
   }
   if (action === 'restartStage') {

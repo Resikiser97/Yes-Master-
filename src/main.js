@@ -13,7 +13,7 @@
  *              src/ui/splash.js、src/ui/mobileLayout.js、src/ui/uiState.js、
  *              src/net/netSession.js、src/net/inputBuffer.js、src/net/syncScheduler.js
  * @sourceOfTruth Docs/game-architecture-plan.md「MVP 開發範圍」
- * @version     v0.0.14.12
+ * @version     v0.0.14.13
  *
  * 手機模式：TouchControls + setupOrientationGuard + 動態 tilePx resize。
  * 電腦模式：Controls（鍵盤/滑鼠）+ resize 仍可動態縮放視窗。
@@ -394,22 +394,28 @@ export function boot() {
         // 寫入本地玩家意圖，下一幀 stateSync 廣播給隊友
         const _localP = world.players?.get(world.localPlayerId);
         if (_localP) {
-          // 手動意圖（Alt 輪盤）優先；無手動選擇時從行為自動偵測
           const _manual = controls.consumeManualIntent?.();
           if (_manual !== undefined) {
-            _localP.intent   = _manual;          // null = 清除
-            if (_manual) _localP.intentAt = Date.now();
+            // 手動（Alt 輪盤）：強制設定 30 秒，null = 清除
+            _localP.intent       = _manual;
+            _localP.intentAt     = _manual ? Date.now() : 0;
+            _localP.intentManual = !!_manual;
           } else {
-            const _intent =
-              controls.isMining()                                      ? 'mine'    :
-              controls.isRepairing?.()                                 ? 'repair'  :
-              world.buildDestroyMode                                   ? 'destroy' :
-              (world.buildPlanMode && world.selectedBlock)             ? 'build'   : null;
-            if (_intent && _intent !== _localP.intent) {
-              _localP.intent   = _intent;
-              _localP.intentAt = Date.now();
-            } else if (!_intent && _localP.intent !== 'warn') {
-              _localP.intent = null;  // 自動偵測不覆蓋手動設定的 ⚠️
+            // 手動鎖還在 30 秒內 → 不讓 auto-detect 覆蓋
+            const _manualLocked = _localP.intentManual && (Date.now() - (_localP.intentAt ?? 0)) < 30_000;
+            if (!_manualLocked) {
+              if (_localP.intentManual) _localP.intentManual = false; // 30 秒過期解鎖
+              // 🦵(destroy) 與 ⚠️(warn) 只能手動；自動偵測只有 mine/repair/build
+              const _intent =
+                controls.isMining()                                    ? 'mine'   :
+                controls.isRepairing?.()                               ? 'repair' :
+                (world.buildPlanMode && world.selectedBlock)           ? 'build'  : null;
+              if (_intent && _intent !== _localP.intent) {
+                _localP.intent   = _intent;
+                _localP.intentAt = Date.now();
+              } else if (!_intent) {
+                _localP.intent = null;
+              }
             }
           }
         }

@@ -5,7 +5,7 @@
  * @exports     Renderer
  * @depends     config/gameConfig.js
  * @sourceOfTruth Docs/game-design-plan.md「建築維度」「遊戲內 UI 設計」
- * @version     v0.0.14.12
+ * @version     v0.0.14.13
  *
  * 渲染層只「讀」world 狀態畫圖，不寫任何遊戲規則（鐵則 9）。
  */
@@ -610,15 +610,17 @@ export class Renderer {
     const num = (stage % 10) + 1;
     const stageInSet = stage % 10;
     const phase = world.phase ?? 'prep';
-    const phaseLabel = phase === 'prep' ? '準備中' : phase === 'night' ? '夜晚' : phase === 'overtime' ? '加時賽' : phase;
+    const phaseLabel = phase === 'prep' ? '準備中' : phase === 'day' ? '白天' : phase === 'night' ? '夜晚' : phase === 'overtime' ? '加時賽' : phase;
     const t = Math.max(0, world.phaseTimer ?? 0);
     const mm = String(Math.floor(t / 60)).padStart(2, '0');
     const ss = String(Math.floor(t % 60)).padStart(2, '0');
-    const timerColor = phase === 'night'
-      ? '#FF6B6B'
-      : phase === 'overtime'
-        ? (Date.now() % 1000 < 500 ? '#FF0000' : '#7A0000')
-        : '#FFF';
+    const timerColor = phase === 'day'
+      ? '#FFD700'
+      : phase === 'night'
+        ? '#FF6B6B'
+        : phase === 'overtime'
+          ? (Date.now() % 1000 < 500 ? '#FF0000' : '#7A0000')
+          : '#FFF';
 
     ctx.save();
     drawPanel(ctx, x, y, w, h, { bg: 'rgba(0,0,0,0.7)', border: '#666' });
@@ -1150,7 +1152,10 @@ export class Renderer {
     // stage 是「已清關數」（0-based），顯示用加 1 = 當前/下一波關卡號
     const waveNum = (world.stage ?? 0) + 1;
     if (world.phase === 'prep') {
-      return `第 ${waveNum} 關　準備中（${fmt1(world.phaseTimer)} s）　N 鍵開始夜晚　Q 鍵重試`;
+      return `第 ${waveNum} 關　準備中（${fmt1(world.phaseTimer)} s）　N 鍵跳白天　Q 鍵重試`;
+    }
+    if (world.phase === 'day') {
+      return `第 ${waveNum} 關　白天（${fmt1(world.phaseTimer)} s）　N 鍵開始夜晚　Q 鍵重試`;
     }
     if (world.phase === 'night') {
       return `第 ${waveNum} 關　夜晚 ${fmt1(world.nightElapsed)} s　敵人剩 ${world.enemies?.length ?? 0} 隻`;

@@ -5,7 +5,7 @@
  * @exports     Controls
  * @depends     （無；僅綁瀏覽器事件，不 import 其他模組）
  * @sourceOfTruth Docs/game-design-plan.md「操作輸入方式」
- * @version     v0.0.14.12
+ * @version     v0.0.14.13
  *
  * 輸入層只把操作「轉成資料」丟給上層，不在此做規則判定（鐵則 9）。
  * 模式：未選材料 = 挖礦模式（左鍵長按挖最近）；按快捷列數字選材料 = 建造模式（左鍵放置）。

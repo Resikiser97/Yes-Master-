@@ -5,12 +5,12 @@
  * @exports     GAME_CONFIG
  * @depends     （無）
  * @sourceOfTruth Docs/game-design-plan.md、Docs/game-architecture-plan.md、Docs/waveplan.md
- * @version     v0.0.14.12
+ * @version     v0.0.14.13
  */
 
 export const GAME_CONFIG = {
   // 版本同步點之一（見 .claude/instructions.md 版本號同步鐵則）
-  version: 'v0.0.14.12',
+  version: 'v0.0.14.13',
 
   // MVP 模式角標（單人 / 多人），方便錄影分辨測試版本
   mode: 'single', // 'single' | 'multi'
@@ -60,10 +60,10 @@ export const GAME_CONFIG = {
     maxFrameDeltaSeconds: 0.25, // 分頁卡住/切回時最多補 0.25 秒，避免一次追太多步
   },
 
-  // 晝夜節奏（秒）。MVP：白天無真實倒數，手動按鈕觸發進攻
+  // 晝夜節奏（秒）。流程：prep(30s) → day(60s) → night(60s) → [overtime] → waveClear → prep...
   phases: {
-    prepSeconds: 30,        // 開局準備
-    daySecondsUi: 60,       // 白天 UI 計時器（MVP 不真的跑，靠按鈕轉階段）
+    prepSeconds: 30,        // 開局/卡片後準備
+    daySeconds: 60,         // 白天（可建造/挖礦，無敵人）
     nightSeconds: 60,       // 晚上固定 60 秒
     overtimeSeconds: 30,    // 加時賽 30 秒
     overtimeDoubleEvery: 5, // 加時每 5 秒攻擊力 x2（5=x2…30=x64）
