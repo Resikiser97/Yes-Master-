@@ -5,7 +5,7 @@
  * @exports     sendFriendRequest, acceptFriendRequest, removeFriend, listFriends, listPendingRequests
  * @depends     config/gameConfig.js、src/net/supabaseClient.js
  * @sourceOfTruth Docs/lobby-waitingroom-plan.md Phase C
- * @version     v0.0.14.0
+ * @version     v0.0.14.1
  */
 
 import { GAME_CONFIG } from '../../config/gameConfig.js';

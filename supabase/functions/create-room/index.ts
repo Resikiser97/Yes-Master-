@@ -24,6 +24,8 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const room_id = body.room_id || crypto.randomUUID();
     const profile = await getPlayerProfile(supabase, user.id);
+    const password = typeof body.password === "string" ? body.password.trim() : "";
+    const password_hash = password ? await hashRoomPassword(room_id, password) : null;
     const room = await insertCompatible(supabase, "rooms", {
       room_id,
       owner_id: user.id,
@@ -33,7 +35,8 @@ serve(async (req) => {
       name: body.name ?? "Room",
       max_players: body.max_players ?? 4,
       current_players: 1,
-      password: body.password || null,
+      password_hash,
+      has_password: !!password_hash,
       min_level: body.min_level ?? 0,
       difficulty: body.difficulty ?? "normal",
       visibility: body.visibility ?? "public",
@@ -54,7 +57,7 @@ serve(async (req) => {
       updated_at: new Date().toISOString(),
     }, { onConflict: "room_id,user_id" });
 
-    return json(room);
+    return json(publicRoom(room));
   } catch (e) {
     return json({ error: (e as Error).message }, 500);
   }
@@ -65,6 +68,24 @@ function json(body: unknown, status = 200) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+async function hashRoomPassword(roomId: string, password: string) {
+  const secret = Deno.env.get("ROOM_PASSWORD_SECRET") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${roomId}:${password}`));
+  return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function publicRoom(room: Record<string, unknown>) {
+  const { password, password_hash, ...safe } = room;
+  return safe;
 }
 
 async function insertCompatible(supabase: any, table: string, row: Record<string, unknown>) {

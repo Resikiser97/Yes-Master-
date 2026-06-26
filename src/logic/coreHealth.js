@@ -5,7 +5,7 @@
  * @exports     clampCoreHp, applyHpMaxDelta, damageCoreHp, repairCoreHp, repairPerSecond
  * @depends     （無）
  * @sourceOfTruth Docs/game-design-plan.md「修復能力細節」、Docs/game-design-plan.md「方塊屬性加成」
- * @version     v0.0.14.0
+ * @version     v0.0.14.1
  */
 
 export function clampCoreHp(current, hpMax) {

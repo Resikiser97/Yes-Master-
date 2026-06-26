@@ -5,7 +5,7 @@
  * @exports     hpGrowthMultiplier, flatAttackAdd, buildSpawnSchedule, buildWave
  * @depends     config/waves.js、config/enemies.js、config/gameConfig.js、src/logic/rng.js
  * @sourceOfTruth Docs/waveplan.md（波次/成長/多人倍率/21-30 阻擋區）
- * @version     v0.0.14.0
+ * @version     v0.0.14.1
  *
  * ⚠️ 需 Codex 任務 A/B（enemies.js 的 hp/attack/moveSpeed）填完才能跑出有效數值。
  *    本檔只負責「邏輯」：把 base 值套成長/倍率，不在此寫死敵人數值。

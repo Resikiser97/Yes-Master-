@@ -5,7 +5,7 @@
  * @exports     CURRENT_SCHEMA_VERSION, needsMigration, migrate
  * @depends     config/gameConfig.js
  * @sourceOfTruth Docs/game-architecture-plan.md「Schema Versioning」
- * @version     v0.0.14.0
+ * @version     v0.0.14.1
  *
  * Migration 必須 idempotent：跑 1 次 = 跑 2 次 = 跑到一半重跑，結果相同（用覆寫不用累加）。
  */

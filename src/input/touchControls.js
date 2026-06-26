@@ -4,7 +4,7 @@
  * @summary     手機觸控輸入：8方向D-pad、動作按鍵（挖礦/修復/放置/拆除）、快捷列；介面與 Controls 完全相容
  * @exports     TouchControls
  * @depends     config/blocks.js、src/logic/inventory.js
- * @version     v0.0.14.0
+ * @version     v0.0.14.1
  *
  * 鐵則 9：只把操作「轉成資料」丟給上層，不在此做規則判定。
  * 介面與 Controls 完全相容，main.js 的 game loop 不需判斷輸入類型。

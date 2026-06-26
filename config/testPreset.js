@@ -6,7 +6,7 @@
  * @exports     TEST_PRESET_SAVE_KEY, buildTestConfig
  * @depends     config/gameConfig.js
  * @sourceOfTruth Docs/claude-codex-worklist.md、Docs/waveplan.md（難度與卡片基準值）
- * @version     v0.0.14.0
+ * @version     v0.0.14.1
  */
 
 export const TEST_PRESET_SAVE_KEY = 'yesmaster.save.test.v1';

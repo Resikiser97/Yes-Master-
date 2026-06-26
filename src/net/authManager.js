@@ -4,11 +4,13 @@
  * @summary     Authentication helpers: Google OAuth, anonymous sign-in, profile management
  * @exports     signInWithGoogle, signInAnonymously, signOut, getCurrentUser, onAuthStateChange, getProfile, ensureProfile, updateProfile
  * @depends     src/net/supabaseClient.js
- * @version     v0.0.14.0
+ * @version     v0.0.14.1
  */
 
 import { GAME_CONFIG } from '../../config/gameConfig.js';
 import { getSupabaseClient } from './supabaseClient.js';
+
+const profilePromises = new Map();
 
 export async function signInWithGoogle(cfg = GAME_CONFIG) {
   const supabase = await getSupabaseClient(cfg);
@@ -59,6 +61,16 @@ export async function getProfile(userId, cfg = GAME_CONFIG) {
 }
 
 export async function ensureProfile(user, cfg = GAME_CONFIG) {
+  if (!user?.id) throw new Error('missing user');
+  if (!profilePromises.has(user.id)) {
+    profilePromises.set(user.id, ensureProfileOnce(user, cfg).finally(() => {
+      profilePromises.delete(user.id);
+    }));
+  }
+  return profilePromises.get(user.id);
+}
+
+async function ensureProfileOnce(user, cfg) {
   const existing = await getProfile(user.id, cfg);
   if (existing) return existing;
 
@@ -74,6 +86,7 @@ export async function ensureProfile(user, cfg = GAME_CONFIG) {
     .insert({ user_id: user.id, display_name: displayName, avatar_id: avatarId })
     .select()
     .single();
+  if (error?.code === '23505') return getProfile(user.id, cfg);
   if (error) throw error;
   return data;
 }

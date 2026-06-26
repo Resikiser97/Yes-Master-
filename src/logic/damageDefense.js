@@ -5,7 +5,7 @@
  * @exports     defenseReduction, computeDamage
  * @depends     config/gameConfig.js（防禦係數 defenseK）
  * @sourceOfTruth Docs/game-design-plan.md「核心攻擊與防禦機制」
- * @version     v0.0.14.0
+ * @version     v0.0.14.1
  */
 
 import { GAME_CONFIG } from '../../config/gameConfig.js';

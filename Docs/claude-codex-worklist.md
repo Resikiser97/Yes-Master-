@@ -1,6 +1,6 @@
 # Claude ↔ Codex MVP 開工協作清單
-> 狀態：MVP 實作中（v0.0.8.0）
-> 最後更新：2026-06-24
+> 狀態：MVP 實作中（v0.0.14.1）
+> 最後更新：2026-06-26
 > 用途：單一交接看板。Claude 負責架構/純邏輯/骨架；Codex 負責數值/平衡填表。
 > 規則：**config/ 檔案就是雙方的交接介面**。Codex 把數值填進 config，Claude 的純邏輯層消費，互不踩線。
 
@@ -226,29 +226,132 @@
 
 ---
 
-## 2B. 多人連線待辦事項
+## 2B. M0 Multiplayer Lobby / WaitingRoom 整合追蹤 Plan
+
+> 來源整合：`Docs/integration-plan.md`、`Docs/lobby-waitingroom-plan.md`、`Docs/multiplayer-implementation-plan.md`、v0.0.14.0 實作審查。
+> 狀態標記：✅ 已可用 / 🟡 部分完成 / 🔴 阻塞或必修 / 🔲 未做 / 🧪 需要瀏覽器或 Supabase 實測。
+
+### M0 總結
+
+目前 v0.0.14.0 已有多人入口、登入 overlay、大廳 UI、等待室 UI、PeerJS 聊天骨架、部分 Supabase Edge Functions 與 Phase B-F 模組；但「正式帳號註冊、房間設定閉環、房間密碼、安全 token、WaitingRoom→遊戲 netSession 傳遞、client 權威同步」仍未完成。M0 不能視為完成，應拆成下列可追蹤項目逐一修。
+
+### M0A. 帳號 / Auth / Profile
+
+| # | 項目 | 實作現況 | 狀態 | 下一步 |
+|---|---|---|---|---|
+| M0A-1 | Google OAuth 登入 | `src/ui/authScreen.js` 有 Google 登入按鈕；`authManager.signInWithGoogle()` 已接 Supabase OAuth | 🟡 部分完成 | 🧪 需線上 Supabase + Chrome 驗 Google 回跳與 session persist |
+| M0A-2 | 訪客模式 | UI 有「訪客模式」並呼叫 anonymous sign-in；本地 `supabase/config.toml` 已開啟 anonymous | 🟡 部分完成 | 🧪 線上 Supabase Dashboard 也需開啟 Anonymous provider |
+| M0A-3 | Email 註冊 / 登入 | `lobby-waitingroom-plan.md` Phase A 要求 Email 登入/註冊；目前沒有 `signUp` / `signInWithPassword` UI | 🔲 未做 | 新增 email/password 註冊、登入、錯誤提示、回到 Lobby |
+| M0A-4 | player_profiles 自動建立 | `ensureProfile(user)` 已在登入後呼叫，會 insert profile | 🟡 部分完成 | 🧪 需 DB/RLS 驗證 insert/select/update 權限 |
+| M0A-5 | Profile DB migration / RLS | 計畫文件有 SQL；repo 目前沒有完整 migration，只看到局部 SQL/seed | 🔴 阻塞 | 補正式 migration：`player_profiles` + RLS policy |
+
+### M0B-F. 等級 / 好友 / 裝備 / 成就 / 排行榜
+
+| # | 項目 | 實作現況 | 狀態 | 下一步 |
+|---|---|---|---|---|
+| M0B | 等級系統 | `config/levelConfig.js`、`src/game/levelSystem.js` 已存在 | 🟡 部分完成 | 補結算寫回 profile 的整合測試 |
+| M0C | 好友系統 | `src/net/friendManager.js`、等待室加好友按鈕已存在 | 🟡 部分完成 | 補 friendships migration/RLS；補接受好友 UI 或流程 |
+| M0D | 裝備系統 | `config/equipmentConfig.js`、`src/game/equipmentSystem.js`、角色面板讀取已存在 | 🟡 部分完成 | 補 `player_equipment` migration/RLS；補升級入口或標記為後續功能 |
+| M0E | 成就系統 | `config/achievements.js`、`src/game/achievementSystem.js`、`supabase/seed_achievements.sql` 已存在 | 🟡 部分完成 | 補 `achievements/player_achievements` migration/RLS；補解鎖寫回驗證 |
+| M0F | 排行榜 + 賽季稱號 | `config/seasonConfig.js`、`src/game/leaderboardSystem.js`、角色面板讀取已存在 | 🟡 部分完成 | 補 leaderboard migration/RLS；補提交分數時機與測試 |
+
+### M0G. 房間 DB / Edge Functions / 安全
+
+| # | 項目 | 實作現況 | 狀態 | 下一步 |
+|---|---|---|---|---|
+| M0G-1 | rooms / memberships 基礎表 | `Docs/multiplayer-implementation-plan.md` 要求完整 schema；repo 目前只有 `alter_rooms_phase_g.sql` 局部補欄位 | 🔴 阻塞 | 補完整 migration：`rooms`、`room_memberships`、`consumed_nonces`、索引、RLS |
+| M0G-2 | create-room Edge Function | 已支援 name/max_players/password_hash/has_password/min_level/difficulty/visibility/current_players，新建房不再寫明文 password | 🟡 部分完成 | 補欄位驗證與 visibility constraint；🧪 需部署後驗 Edge Function payload |
+| M0G-3 | join-room Edge Function | 已檢查 hash/舊明文密碼 fallback、等級、人數上限、game_started，並 upsert membership | 🟡 部分完成 | 補 private/friends visibility 邏輯；🧪 需 Supabase 驗錯密碼/滿房/等級不足 |
+| M0G-4 | 房間密碼安全 | 新建房間已改寫 `password_hash/has_password`；join-room 支援 hash 驗證與舊明文 fallback | 🟡 部分完成 | 🧪 需部署 Edge Function + SQL 後驗密碼房 |
+| M0G-5 | room_join_token 安全 | `issue-room-join-token` / `verify-room-join-token` 已要求 membership 存在 | 🟡 部分完成 | 🧪 需 Supabase 實測非成員不能取 token |
+| M0G-6 | kick-player Edge Function | 已新增 `kick-player`，UI 改呼叫 roomManager `kickPlayer()` | 🟡 部分完成 | 🧪 需雙瀏覽器驗 host 踢人與人數同步 |
+| M0G-7 | leave-room / current_players | 已新增 `leave-room`，WaitingRoom 退出改呼叫 roomManager `leaveRoom()` | 🟡 部分完成 | 🧪 需驗 host/client 退出與房間狀態 |
+| M0G-8 | start-room / game_started | 已新增 `start-room`，host 開始遊戲前寫 `game_started=true` | 🟡 部分完成 | 🧪 需驗開始後房間不再出現在列表 |
+
+> 2026-06-26 live test note: frontend flow can reach Auth, Lobby, create-room, WaitingRoom, and PeerJS host setup. Online Supabase is not yet deployed with this round's SQL / Edge Functions: missing `rooms.current_players`, `rooms.has_password`, `room_memberships.role`, `room_memberships.is_host`; `start-room` preflight fails. Frontend fallbacks are in place for old schema, but full P0/P1 acceptance requires deploying SQL + Edge Functions.
+
+### M0H. Lobby UI
+
+| # | 項目 | 實作現況 | 狀態 | 下一步 |
+|---|---|---|---|---|
+| M0H-1 | Splash 多人入口 | `src/ui/splash.js` 已新增「多人模式」按鈕 | ✅ 已做 | 🧪 瀏覽器檢查入口與返回流程 |
+| M0H-2 | Lobby overlay / 三 tab | `src/ui/lobby.js` 有公開/朋友/房間號碼 tab 與 3 秒 polling；`listRooms()` 已只列 public、未開始、未滿房 | 🟡 部分完成 | 🧪 瀏覽器驗 tab 切換與輪詢；後續改掉 alert 錯誤提示 |
+| M0H-3 | 朋友 tab | 已用 `listFriends()` 過濾 owner_id | 🟡 部分完成 | 依 friendships/RLS 實測；若未有接受好友 UI，朋友 tab 很難形成資料 |
+| M0H-4 | 房間 ID 加入 | 已改為傳 `joinRoom({ room_id, password })` | 🟡 部分完成 | 🧪 需 Supabase 驗正確/錯誤密碼 |
+| M0H-5 | 公開列表加入密碼房 | 已依 `has_password` 彈出密碼輸入，並顯示 lock 標記 | 🟡 部分完成 | 🧪 需部署 `has_password` 欄位後驗證 |
+| M0H-6 | 建房 popup | 已補密碼、最低等級、visibility、difficulty 並傳給 createRoom | 🟡 部分完成 | 🧪 需瀏覽器檢查 UI 與 Edge payload |
+| M0H-7 | 房間列表資訊 | 顯示人數、名稱、等級限制、難度 | 🟡 部分完成 | 補房主名稱、鎖房、已開始/滿房 disable、錯誤提示不用 alert |
+
+### M0I. Waiting Room UI
+
+| # | 項目 | 實作現況 | 狀態 | 下一步 |
+|---|---|---|---|---|
+| M0I-1 | 玩家 slot 卡片 | `waitingRoom.js` 已依 `max_players` render slot、host crown、等級 | 🟡 部分完成 | 🧪 需建 2/3/4 人房檢查 slot 數量 |
+| M0I-2 | PeerJS 聊天 | WaitingRoom 建 host/client session，CHAT host relay | 🟡 部分完成 | 🧪 需雙瀏覽器測聊天；避免 host 自己重複顯示訊息 |
+| M0I-3 | 角色面板 | `characterPopup.js` 已讀 profile/equipment/rank | 🟡 部分完成 | 補六數值顯示；DB/RLS 實測 |
+| M0I-4 | 加好友 | 綠色按鈕呼叫 `sendFriendRequest()` | 🟡 部分完成 | 補自加好友防呆、已是好友/已 pending 顯示、接受好友流程 |
+| M0I-5 | 踢人 | UI 已改走 `kickPlayer()` Edge Function，仍會透過 PeerJS 發 KICK | 🟡 部分完成 | 🧪 需雙瀏覽器驗證 |
+| M0I-6 | 退出房間 | UI 已改走 `leaveRoom()` Edge Function；host 退出會關閉房間 | 🟡 部分完成 | 🧪 需驗 host/client 退出 |
+| M0I-7 | 開始遊戲 | host 已先呼叫 `startRoom()`，成功後才 broadcast GAME_START | 🟡 部分完成 | 🧪 需雙瀏覽器驗證 |
+| M0I-8 | netSession 傳遞 | `_launchGame()` 已設定 `_keepAlive`，main.js 會 reuse WaitingRoom session | 🟡 部分完成 | 🧪 需雙瀏覽器驗證 session 未重建 |
+
+### M0J. main.js / 多人遊戲內整合
+
+| # | 項目 | 實作現況 | 狀態 | 下一步 |
+|---|---|---|---|---|
+| M0J-1 | onStart 第三參數 netInfo | `world.roomId` 已改用 `netInfo?.roomId ?? netLaunch.roomId` | 🟡 部分完成 | 🧪 需從 Lobby 進遊戲驗 world.roomId |
+| M0J-2 | WaitingRoom netSession reuse | main reuse 分支已重新掛 host input / client state sync callback | 🟡 部分完成 | 🧪 需雙瀏覽器驗不重建 session |
+| M0J-3 | Client 更新分支 | client 判斷已改用合併後 `netRole` | 🟡 部分完成 | 🧪 需驗 client 不跑本地權威 update |
+| M0J-4 | Host sync / client sync | `syncScheduler`、`stateSync` 已有 | 🟡 部分完成 | 🧪 雙瀏覽器測 host 建造/波次/client 同步 |
+| M0J-5 | 多人 gameplay 完整 session | 有 inputBuffer、stateSync、world.players 基礎 | 🟡 部分完成 | 需 2 人實測：移動、挖礦、建造、夜晚、卡片、存檔 |
+
+### M0 修復順序
+
+1. **P0：可進房與可開始遊戲**
+   - 修 `joinRoom` 密碼傳遞、建房欄位、`netSession` 保留、`main.js netRole`、`world.roomId`。
+   - 新增 `startRoom()` 或最小 Edge Function，開始遊戲時寫 `game_started=true`。
+
+2. **P1：房間安全與資料一致**
+   - 修 token 必須檢查 membership。
+   - 新增/改用 `kick-player`、`leave-room`，重算 `current_players`。
+   - `listRooms()` 過濾已開始、滿房、非 public 房間。
+
+3. **P2：正式帳號與 DB/RLS**
+   - 補完整 Supabase migrations：profiles/friendships/equipment/achievements/leaderboard/rooms/memberships/consumed_nonces。
+   - 實作 Email 註冊/登入；決定 Anonymous Auth 是否保留。
+
+4. **P3：Phase B-F 實際閉環**
+   - 驗證等級/好友/裝備/成就/排行榜 DB 寫回。
+   - 補 UI 缺口：接受好友、裝備升級、結算提交。
+
+5. **P4：多人長線功能**
+   - Host Migration、斷線重連、房間清理、nonce 清理、多人 Supabase 存檔。
+
+### M0 可測項目
+
+| 測試 | 是否需要 Chrome / Supabase | 目標 |
+|---|---|---|
+| Node import smoke / unit tests | 否 | 確認新增函式不破壞現有 module import |
+| `joinRoom` payload / roomManager API mock | 否 | 確認 password、startRoom、kick/leave payload 正確 |
+| Splash → Lobby UI | 是，Chrome | 確認多人入口、返回、三 tab 不報錯 |
+| Google OAuth / Anonymous Auth | 是，Chrome + Supabase | 確認 session、profile 建立 |
+| 建房 / 密碼房 / 滿房 / 等級不足 | 是，Chrome + Supabase | 驗 Edge Function 行為 |
+| WaitingRoom 聊天 / KICK / GAME_START | 是，雙瀏覽器 | 驗 PeerJS 與等待室互動 |
+| 遊戲內 state sync | 是，雙瀏覽器 | 驗 client 不跑本地權威邏輯、只套 host state |
+
+### M1-M7 後續多人項目
 
 | # | 項目 | 說明 | 狀態 |
 |---|---|---|---|
-| M0a | 正式帳號系統 | Email/OAuth Auth + player_profiles 表 + 登入 UI。詳見 `Docs/lobby-waitingroom-plan.md` Phase A | 🔴 優先 |
-| M0b | 等級系統 | 經驗值曲線 + 升級邏輯 + 結算寫回。Phase B | ✅ Codex |
-| M0c | 好友系統 | friendships 表 + Edge Functions + friendManager.js。Phase C | ✅ Codex |
-| M0d | 裝備系統 | player_equipment 表 + 升級規則。Phase D | ✅ Codex |
-| M0e | 成就系統 | achievements 表 + 解鎖邏輯。Phase E | ✅ Codex |
-| M0f | 排行榜 + 賽季稱號 | leaderboard 表 + 稱號規則。Phase F | ✅ Codex |
-| M0g | 房間 DB 補強 | rooms/memberships 補欄位 + create-room/join-room/kick Edge Functions。Phase G | 🔴 優先 |
-| M0h | Lobby UI | 房間列表 + 建房 popup + 三 tab（公開/朋友/房間號碼）。Phase H | 🔴 Claude |
-| M0i | Waiting Room UI | 玩家卡片 + 聊天室 + 角色面板 + 踢人 + 開始遊戲。Phase I | 🔴 Claude |
-| M0j | 整合 main.js | splash→lobby→waitingRoom→遊戲 完整流程串接。Phase J | 🔴 Claude |
 | M1 | Supabase 房間自動清理 | `active` 超過 24h 沒人連 → 標 `completed`；`completed` 超過 24h → 刪除（CASCADE 帶走 memberships）。可用 Edge Function cron 或 pg_cron 實作 | 🔲 待做 |
 | M2 | consumed_nonces 定期清理 | 免費方案無 pg_cron，需 Edge Function 或手動清 `consumed_at` 超過 5 分鐘的 nonce | 🔲 待做 |
-| M3 | 拆除模式僅限房主 | `V` 鍵拆除模式目前所有人可用，多人連線後需加 `world.isHost` 檢查，非房主按 V 無效 | 🔲 待做 |
+| M3 | 拆除模式僅限房主 | 多人連線後需加權限策略；目前規劃模式/拆除模式仍需確認誰可用 | 🔲 待做 |
 | M4 | Host Migration + 斷線重連 | Phase 6：偵測 host 掉線 → join_order 選候選 → CAS 更新 DB → 新 host 初始化；3 秒 grace timer + reconnect token 綁 slot | 🔲 待做 |
-| M5 | 反作弊驗證 | Phase 7：方向制移動、rate limit、sequence_id 單調、庫存檢查、連通性 BFS、距離檢查、strike 系統 | 🔲 待做 |
-| M6 | 多人存檔改為 Supabase | 目前存 localStorage（僅 host 本地），正式版需考慮存到 Supabase 或讓所有玩家都能恢復 session | 🔲 待討論 |
-| M7 | Anonymous Auth 改正式帳號 | 目前用 Anonymous Sign-In，後續需支援 email/OAuth 以綁定玩家身份 | 🔲 待討論 |
+| M5 | 反作弊驗證 | Phase 7：方向制移動、rate limit、sequence_id 單調、庫存檢查、連通性 BFS、距離檢查、strike 系統 | 🟡 部分完成 |
+| M6 | 多人存檔改為 Supabase | 目前多人仍偏 localStorage / host 本地；正式版需 Supabase active save 或結算存檔策略 | 🔲 待討論 |
+| M7 | Anonymous Auth 改正式帳號 | 目前 UI 有 Anonymous，但正式身份仍應支援 email/OAuth 綁定 | 🔲 待討論 |
 
-> 實作細節見 `Docs/multiplayer-implementation-plan.md` Phase 6-7。
+> M0 的具體修復以本節為準；舊 `Docs/integration-plan.md` 目前只能視為歷史整合草稿，不再代表完成狀態。
 
 ---
 

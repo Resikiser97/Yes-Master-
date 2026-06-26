@@ -1,10 +1,25 @@
 # CHANGELOG.md — 版本歷史
 
-> 版本：v0.0.14.0
+> 版本：v0.0.14.1
 > 類型：**只增不改**（歷史紀錄，永遠往上加，最新在最上方，不回頭改舊條目）。
 > 條目格式：`## vX.Y.Z.W - YYYY-MM-DD`，下分「新增 / 修復 / 調整」。
 
 ---
+
+## v0.0.14.1 - 2026-06-26
+
+### 修復
+- **多人 Lobby / WaitingRoom P0+P1 修復**：房間 ID 加入會傳遞密碼；公開列表密碼房加入前會要求輸入密碼；建房 popup 補齊密碼、最低等級、公開性與難度傳遞。
+- **WaitingRoom → 遊戲 netSession 傳遞**：開始遊戲前保留已建立的 PeerJS session，進遊戲後重新掛接 host input / client state sync callback，避免重複建連線或 client 本地跑權威邏輯。
+- **房間資料一致性**：新增 `start-room`、`kick-player`、`leave-room` Edge Functions；開始遊戲寫入 `game_started`，踢人/退出改走後端並同步 `current_players`。
+- **房間密碼與 token 安全**：新建房間改寫入 `password_hash` / `has_password`，join-room 支援 hash 驗證並保留舊明文欄位 fallback；`issue-room-join-token` / `verify-room-join-token` 必須確認玩家仍是房間成員。
+- **訪客模式本地設定**：`supabase/config.toml` 開啟 anonymous sign-in 以符合現有訪客 UI。
+- **實機驗收修補**：訪客登入避免 auth callback / button flow 雙重進入 Lobby；WaitingRoom member list 支援舊 DB 缺 `role/is_host` 欄位 fallback；缺欄位 fallback 會 cache 已降級欄位，避免輪詢持續噴 400。
+
+### 調整
+- `src/net/roomManager.js`：房間列表只查安全欄位並過濾已開始、滿房、非公開房；新增 `startRoom()`，`kickPlayer()` / `leaveRoom()` 改呼叫 Edge Function。
+- `src/main.js`：多人角色判斷統一使用 Lobby/URL 合併後的 `netRole`，`world.roomId` 使用 Lobby 傳入的 room id。
+- `tests/roomManager.test.js`：新增房間列表安全欄位、join payload、列表過濾純函式測試。
 
 ## v0.0.14.0 - 2026-06-26
 

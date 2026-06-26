@@ -5,7 +5,7 @@
  * @exports     createInputValidator
  * @depends     logic/building.js, logic/connectivity.js
  * @sourceOfTruth Docs/game-architecture-plan.md「反作弊／輸入驗證機制 → 各 Event 驗證規則」
- * @version     v0.0.14.0
+ * @version     v0.0.14.1
  */
 import { validatePlacement, validateRemoval } from '../logic/building.js';
 import { key } from '../logic/connectivity.js';

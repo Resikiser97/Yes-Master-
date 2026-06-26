@@ -34,9 +34,9 @@ serve(async (req) => {
     const { data: member } = await supabase
       .from("room_memberships").select("*").eq("room_id", room_id).eq("user_id", user.id).single();
 
-    if (join_type === "reconnect") {
-      if (!member) return new Response(JSON.stringify({ error: "not a member" }), { status: 403, headers: corsHeaders });
-      if (slot_id && member.slot_id !== slot_id) return new Response(JSON.stringify({ error: "slot mismatch" }), { status: 403, headers: corsHeaders });
+    if (!member) return new Response(JSON.stringify({ error: "not a room member" }), { status: 403, headers: corsHeaders });
+    if (join_type === "reconnect" && slot_id && member.slot_id !== slot_id) {
+      return new Response(JSON.stringify({ error: "slot mismatch" }), { status: 403, headers: corsHeaders });
     }
 
     // Generate nonce and token

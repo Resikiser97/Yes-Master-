@@ -59,9 +59,7 @@ serve(async (req) => {
     // Check player not kicked (membership exists)
     const { data: member } = await supabase
       .from("room_memberships").select("slot_id").eq("room_id", payload.room_id).eq("user_id", payload.uid).single();
-    if (!member && payload.join_type === "reconnect") {
-      return new Response(JSON.stringify({ error: "not a member" }), { status: 403, headers: corsHeaders });
-    }
+    if (!member) return new Response(JSON.stringify({ error: "not a member" }), { status: 403, headers: corsHeaders });
 
     return new Response(JSON.stringify({
       verified: true,

@@ -5,7 +5,7 @@
  * @exports     CARDS, CARD_OFFER_RULES
  * @depends     （無）
  * @sourceOfTruth Docs/bosscard.md（唯一卡片主檔）
- * @version     v0.0.14.0
+ * @version     v0.0.14.1
  *
  * tier：'weak'（偏弱/功能）| 'standard'（標準）| 'strong'（偏強）
  * type：'resource' | 'ability' | 'core' | 'archetype'

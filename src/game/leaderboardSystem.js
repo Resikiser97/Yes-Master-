@@ -5,7 +5,7 @@
  * @exports     submitScore, getLeaderboard, getPlayerRank, getSeasonTitle
  * @depends     config/gameConfig.js、config/seasonConfig.js、src/net/supabaseClient.js
  * @sourceOfTruth Docs/lobby-waitingroom-plan.md Phase F、config/seasonConfig.js
- * @version     v0.0.14.0
+ * @version     v0.0.14.1
  */
 
 import { GAME_CONFIG } from '../../config/gameConfig.js';

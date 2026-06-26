@@ -24,15 +24,17 @@ serve(async (req) => {
     const { room_id, password } = await req.json();
     if (!room_id) return json({ error: "missing room_id" }, 400);
 
-    const { data: room, error: roomErr } = await supabase
-      .from("rooms")
-      .select("room_id,status,max_players,min_level,password")
-      .eq("room_id", room_id)
-      .eq("status", "active")
-      .single();
-    if (roomErr || !room) return json({ error: "room not found or inactive" }, 404);
+    const room = await getRoomCompatible(supabase, room_id);
+    if (!room) return json({ error: "room not found or inactive" }, 404);
+    if (room.game_started === true) return json({ error: "遊戲已開始" }, 403);
 
-    if (room.password && room.password !== password) return json({ error: "密碼錯誤" }, 403);
+    const passwordText = typeof password === "string" ? password.trim() : "";
+    if (room.password_hash) {
+      const inputHash = passwordText ? await hashRoomPassword(room_id, passwordText) : null;
+      if (room.password_hash !== inputHash) return json({ error: "密碼錯誤" }, 403);
+    } else if (room.password && room.password !== passwordText) {
+      return json({ error: "密碼錯誤" }, 403);
+    }
 
     const profile = await getPlayerProfile(supabase, user.id);
     const minLevel = Number(room.min_level ?? 0);
@@ -91,7 +93,10 @@ serve(async (req) => {
       (query: any) => query.eq("room_id", room_id),
     );
 
-    return json({ membership });
+    return json({
+      membership,
+      room: publicRoom({ ...room, current_players: currentPlayers ?? 1 }),
+    });
   } catch (e) {
     return json({ error: (e as Error).message }, 500);
   }
@@ -102,6 +107,44 @@ function json(body: unknown, status = 200) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+async function getRoomCompatible(supabase: any, roomId: string) {
+  const columns = ["room_id", "status", "max_players", "min_level", "password_hash", "password", "game_started", "visibility"];
+  let selected = columns;
+  const removed = new Set<string>();
+  for (;;) {
+    const { data, error } = await supabase
+      .from("rooms")
+      .select(selected.join(","))
+      .eq("room_id", roomId)
+      .eq("status", "active")
+      .single();
+    if (!error) return data;
+    if (error.code === "PGRST116") return null;
+    const missing = missingColumn(error) ?? selected.find((column) => (error.message ?? "").includes(column));
+    if (!missing || removed.has(missing) || !selected.includes(missing)) throw error;
+    removed.add(missing);
+    selected = selected.filter((column) => column !== missing);
+  }
+}
+
+async function hashRoomPassword(roomId: string, password: string) {
+  const secret = Deno.env.get("ROOM_PASSWORD_SECRET") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${roomId}:${password}`));
+  return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function publicRoom(room: Record<string, unknown>) {
+  const { password, password_hash, ...safe } = room;
+  return safe;
 }
 
 async function upsertCompatible(supabase: any, table: string, row: Record<string, unknown>, options: Record<string, unknown>) {

@@ -13,7 +13,7 @@
  *              src/ui/splash.js、src/ui/mobileLayout.js、src/ui/uiState.js、
  *              src/net/netSession.js、src/net/inputBuffer.js、src/net/syncScheduler.js
  * @sourceOfTruth Docs/game-architecture-plan.md「MVP 開發範圍」
- * @version     v0.0.14.0
+ * @version     v0.0.14.1
  *
  * 手機模式：TouchControls + setupOrientationGuard + 動態 tilePx resize。
  * 電腦模式：Controls（鍵盤/滑鼠）+ resize 仍可動態縮放視窗。
@@ -22,7 +22,7 @@
 import { GAME_CONFIG } from '../config/gameConfig.js';
 import { BLOCKS } from '../config/blocks.js';
 import { buildTestConfig } from '../config/testPreset.js';
-import { createWorld, updateCameraFollow } from './game/world.js';
+import { createWorld, ensurePlayer, updateCameraFollow } from './game/world.js';
 import { startGameLoop } from './game/gameLoop.js';
 import { Renderer } from './render/renderer.js';
 import { Controls } from './input/controls.js';
@@ -107,10 +107,13 @@ export function boot() {
       badge.style.display = inputMode === 'touch' ? '' : 'none';
     }
 
+    const netRoomId = netInfo?.roomId ?? netLaunch.roomId;
+    const netRole = netInfo?.role ?? netLaunch.role;
+
     // 8. World
-    const savedWorld = netLaunch.role === 'client' ? null : loadWorld(cfg);
+    const savedWorld = netRole === 'client' ? null : loadWorld(cfg);
     let world = savedWorld ?? createWorld(cfg);
-    world.roomId = netLaunch.roomId ?? null;
+    world.roomId = netRoomId ?? null;
     ensureUiState(world);
     world.uiHitRects ??= [];
 
@@ -188,9 +191,6 @@ export function boot() {
     let clientSync = null;
     let inputSequenceId = 0;
 
-    const netRoomId = netInfo?.roomId ?? netLaunch.roomId;
-    const netRole = netInfo?.role ?? netLaunch.role;
-
     if (cfg.mode === 'multi' && netRoomId && !netSession) {
       if (netRole === 'host') {
         inputBuffer = createInputBuffer({ cfg });
@@ -228,10 +228,19 @@ export function boot() {
       if (netRole === 'host') {
         inputBuffer = createInputBuffer({ cfg });
         netSession._onChat = null;
+        netSession._onInput = (playerId, input) => inputBuffer.push(playerId, input);
+        netSession._onPeerReady = (peerId) => hostSync?.sendSnapshotTo(peerId, world);
+        for (const session of netSession.peers?.values?.() ?? []) ensurePlayer(world, session.slotId, cfg);
         hostSync = createHostSyncScheduler({ session: netSession });
         console.info('[net] host reusing waitingRoom session', netSession.peerId);
       } else {
         clientSync = createClientSyncApplier({ worldRef, cfg });
+        netSession._onMessage = (message) => {
+          if (clientSync?.handle(message)) {
+            world = worldRef.current;
+            prevPhase = world.phase;
+          }
+        };
         console.info('[net] client reusing waitingRoom session', netSession.slotId);
       }
     } else if (cfg.mode === 'multi') {
@@ -254,7 +263,7 @@ export function boot() {
       update: (dt) => {
         if (worldRef.current !== world) world = worldRef.current;
 
-        if (cfg.mode === 'multi' && netLaunch.role === 'client') {
+        if (cfg.mode === 'multi' && netRole === 'client') {
           syncLocalInputUi({ controls, renderer, world, cfg, inputMode });
           const debugActions = controls.consumeDebugActions()
             .filter((action) => action !== 'resetSave');

@@ -4,7 +4,7 @@
  * @summary     登入/訪客 overlay — Google OAuth + 匿名登入
  * @exports     showAuthScreen
  * @depends     src/net/authManager.js
- * @version     v0.0.14.0
+ * @version     v0.0.14.1
  */
 
 import { signInWithGoogle, signInAnonymously, getCurrentUser, ensureProfile, onAuthStateChange } from '../net/authManager.js';
@@ -44,6 +44,16 @@ export async function showAuthScreen(onAuthed) {
     style: `color:${GOLD_DIM};font-size:11px;min-height:16px;text-align:center;`,
   });
 
+  let settled = false;
+  let sub = null;
+  const finishAuth = async (user) => {
+    if (settled) return;
+    settled = true;
+    await ensureProfile(user);
+    sub?.unsubscribe?.();
+    _dismiss(overlay, () => onAuthed(user));
+  };
+
   const googleBtn = _btn('Google 登入');
   googleBtn.style.borderColor = GOLD;
   googleBtn.style.color = GOLD;
@@ -64,11 +74,11 @@ export async function showAuthScreen(onAuthed) {
     guestBtn.disabled = true;
     try {
       const user = await signInAnonymously();
-      await ensureProfile(user);
-      _dismiss(overlay, () => onAuthed(user));
+      await finishAuth(user);
     } catch (err) {
       statusEl.textContent = '失敗: ' + (err.message || err);
       guestBtn.disabled = false;
+      settled = false;
     }
   });
 
@@ -83,13 +93,12 @@ export async function showAuthScreen(onAuthed) {
   document.body.appendChild(overlay);
   requestAnimationFrame(() => { overlay.style.opacity = '1'; });
 
-  const sub = await onAuthStateChange(async (user) => {
+  sub = await onAuthStateChange(async (user) => {
     if (user) {
-      sub.unsubscribe();
-      await ensureProfile(user);
-      _dismiss(overlay, () => onAuthed(user));
+      await finishAuth(user);
     }
   });
+  if (settled) sub?.unsubscribe?.();
 }
 
 function _dismiss(overlay, cb) {

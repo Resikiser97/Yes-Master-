@@ -4,7 +4,7 @@
  * @summary     多人會話入口：依 role 啟動 peerHost 或 peerClient，回傳統一 session 介面；parseNetLaunch 解析 URL 參數
  * @exports     createNetSession, parseNetLaunch
  * @depends     net/protocol.js, net/peerHost.js, net/peerClient.js
- * @version     v0.0.14.0
+ * @version     v0.0.14.1
  */
 import { GAME_CONFIG } from '../../config/gameConfig.js';
 import { MSG, makeMessage } from './protocol.js';
@@ -31,12 +31,10 @@ export async function createNetSession({
       if (world) world.localPlayerId = payload.slotId;
     },
   });
-  return {
-    ...client,
-    sendInput(input) {
-      client.send(makeMessage(MSG.INPUT, input));
-    },
+  client.sendInput = (input) => {
+    client.send(makeMessage(MSG.INPUT, input));
   };
+  return client;
 }
 
 export function parseNetLaunch(search = globalThis.location?.search ?? '') {

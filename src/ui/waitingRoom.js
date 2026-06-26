@@ -4,11 +4,11 @@
  * @summary     等待室：玩家 slot 卡片 + PeerJS 聊天 + 開始遊戲
  * @exports     showWaitingRoom
  * @depends     src/net/authManager.js, src/net/supabaseClient.js, src/net/peerHost.js, src/net/peerClient.js, src/net/protocol.js, src/net/friendManager.js, src/ui/characterPopup.js
- * @version     v0.0.14.0
+ * @version     v0.0.14.1
  */
 
 import { getCurrentUser, getProfile } from '../net/authManager.js';
-import { getSupabaseClient } from '../net/supabaseClient.js';
+import { getRoomMembers, kickPlayer, leaveRoom, startRoom } from '../net/roomManager.js';
 import { startPeerHost } from '../net/peerHost.js';
 import { startPeerClient } from '../net/peerClient.js';
 import { MSG, makeMessage } from '../net/protocol.js';
@@ -24,7 +24,7 @@ const BROWN_BORDER = 'rgba(139,90,43,0.5)';
 let pollTimer = null;
 let netSession = null;
 
-export async function showWaitingRoom({ roomId, roomName, role, inputMode, diffMode, onStart, onBack }) {
+export async function showWaitingRoom({ roomId, roomName, role, inputMode, diffMode, maxPlayers = 4, onStart, onBack }) {
   _cleanup();
 
   const user = await getCurrentUser();
@@ -111,10 +111,7 @@ export async function showWaitingRoom({ roomId, roomName, role, inputMode, diffM
     _cleanup();
     overlay.style.opacity = '0';
     try {
-      const supabase = await getSupabaseClient();
-      if (user) {
-        await supabase.from('room_memberships').delete().eq('room_id', roomId).eq('user_id', user.id);
-      }
+      await leaveRoom(roomId);
     } catch (e) { /* best effort */ }
     setTimeout(() => { overlay.remove(); if (onBack) onBack(); }, 400);
   });
@@ -127,11 +124,21 @@ export async function showWaitingRoom({ roomId, roomName, role, inputMode, diffM
     });
     startBtn.addEventListener('mouseover', () => { startBtn.style.background = 'rgba(212,160,23,0.3)'; });
     startBtn.addEventListener('mouseout', () => { startBtn.style.background = 'rgba(212,160,23,0.15)'; });
-    startBtn.addEventListener('click', () => {
-      if (netSession) {
-        netSession.broadcast(makeMessage(MSG.GAME_START, { diffMode: diffMode || 'normal' }));
+    startBtn.addEventListener('click', async () => {
+      if (startBtn._busy) return;
+      startBtn._busy = true;
+      startBtn.textContent = '啟動中...';
+      try {
+        await startRoom(roomId);
+        if (netSession) {
+          netSession.broadcast(makeMessage(MSG.GAME_START, { diffMode: diffMode || 'normal' }));
+        }
+        _launchGame(overlay, diffMode || 'normal', inputMode, roomId, role, onStart);
+      } catch (err) {
+        startBtn._busy = false;
+        startBtn.textContent = '開始遊戲';
+        _addChat(chatLogEl, '系統', '開始遊戲失敗: ' + (err.message || err));
       }
-      _launchGame(overlay, diffMode || 'normal', inputMode, roomId, role, onStart);
     });
     bottomBar.appendChild(startBtn);
   }
@@ -184,12 +191,8 @@ export async function showWaitingRoom({ roomId, roomName, role, inputMode, diffM
   // --- Poll members ---
   async function refreshMembers() {
     try {
-      const supabase = await getSupabaseClient();
-      const { data: members } = await supabase
-        .from('room_memberships')
-        .select('user_id, display_name, player_level, role')
-        .eq('room_id', roomId);
-      _renderSlots(slotsArea, members || [], 4, role, roomId, netSession, chatLogEl, onBack);
+      const members = await getRoomMembers(roomId);
+      _renderSlots(slotsArea, members || [], maxPlayers, role, roomId, netSession, chatLogEl, onBack);
     } catch (e) { /* silent */ }
   }
 
@@ -198,6 +201,7 @@ export async function showWaitingRoom({ roomId, roomName, role, inputMode, diffM
 }
 
 function _launchGame(overlay, diffMode, inputMode, roomId, role, onStart) {
+  if (netSession) netSession._keepAlive = true;
   _cleanup();
   overlay.style.opacity = '0';
   setTimeout(() => {
@@ -261,8 +265,7 @@ function _renderSlots(container, members, maxSlots, myRole, roomId, net, chatLog
                 setTimeout(() => targetSession.conn.close?.(), 200);
               }
             }
-            const supabase = await getSupabaseClient();
-            await supabase.from('room_memberships').delete().eq('room_id', roomId).eq('user_id', m.user_id);
+            await kickPlayer(roomId, m.user_id);
             _addChat(chatLogEl, '系統', `已踢出 ${m.display_name}`);
           } catch (e) {
             _addChat(chatLogEl, '系統', '踢出失敗');

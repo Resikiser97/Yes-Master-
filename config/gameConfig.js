@@ -1,16 +1,16 @@
-﻿/**
+/**
  * @file        gameConfig.js
  * @module      config
  * @summary     全域遊戲設定與專案版本號（單一數值來源，遵守 Magic Number 禁令）
  * @exports     GAME_CONFIG
  * @depends     （無）
  * @sourceOfTruth Docs/game-design-plan.md、Docs/game-architecture-plan.md、Docs/waveplan.md
- * @version     v0.0.14.0
+ * @version     v0.0.14.1
  */
 
 export const GAME_CONFIG = {
   // 版本同步點之一（見 .claude/instructions.md 版本號同步鐵則）
-  version: 'v0.0.14.0',
+  version: 'v0.0.14.1',
 
   // MVP 模式角標（單人 / 多人），方便錄影分辨測試版本
   mode: 'single', // 'single' | 'multi'

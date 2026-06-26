@@ -4,16 +4,15 @@
  * @summary     PeerJS 客戶端（非房主玩家）：加入房間、取 room_join_token、連線房主、完成 auth handshake
  * @exports     startPeerClient
  * @depends     net/protocol.js, net/peerRuntime.js, net/roomManager.js
- * @version     v0.0.14.0
+ * @version     v0.0.14.1
  */
 import { GAME_CONFIG } from '../../config/gameConfig.js';
 import { MSG, decode, encode, makeMessage } from './protocol.js';
 import { createPeer, waitForPeerOpen } from './peerRuntime.js';
-import { getRoom, issueRoomJoinToken, joinRoom } from './roomManager.js';
+import { getRoom, issueRoomJoinToken } from './roomManager.js';
 
 export async function startPeerClient({ roomId, cfg = GAME_CONFIG, token = null, onMessage = null, onAuthed = null } = {}) {
   if (!roomId) throw new Error('roomId is required');
-  await joinRoom(roomId, cfg);
   const room = await getRoom(roomId, cfg);
   const hostPeerId = room.current_host_peer_id;
   if (!hostPeerId) throw new Error('room has no host peer id');
@@ -34,6 +33,10 @@ export async function startPeerClient({ roomId, cfg = GAME_CONFIG, token = null,
       if (conn.open === false) return;
       conn.send(encode(message));
     },
+    sendInput(input) {
+      client.send(makeMessage(MSG.INPUT, input));
+    },
+    _onMessage: onMessage,
     close() {
       conn.close?.();
       peer.destroy?.();
@@ -65,7 +68,7 @@ export async function startPeerClient({ roomId, cfg = GAME_CONFIG, token = null,
         client.send(makeMessage(MSG.PONG, { t: message.payload?.t ?? Date.now() }));
         return;
       }
-      onMessage?.(message);
+      client._onMessage?.(message);
     });
     conn.on('error', reject);
   });

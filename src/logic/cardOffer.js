@@ -5,7 +5,7 @@
  * @exports     generateOffer
  * @depends     config/cards.js
  * @sourceOfTruth Docs/bosscard.md「出卡規則」
- * @version     v0.0.14.0
+ * @version     v0.0.14.1
  */
 
 import { CARDS, CARD_OFFER_RULES } from '../../config/cards.js';

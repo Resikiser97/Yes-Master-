@@ -5,7 +5,7 @@
  * @exports     startPeerHost
  * @depends     net/protocol.js, net/peerRuntime.js, net/roomManager.js, net/strikeTracker.js, game/world.js
  * @sourceOfTruth Docs/game-architecture-plan.md「P2P 安全限制 → Handshake 流程」
- * @version     v0.0.14.0
+ * @version     v0.0.14.1
  */
 import { GAME_CONFIG } from '../../config/gameConfig.js';
 import { ensurePlayer } from '../game/world.js';
@@ -40,6 +40,8 @@ export async function startPeerHost({ roomId, cfg = GAME_CONFIG, world = null, o
       for (const session of peers.values()) session.conn.close?.();
       peer.destroy?.();
     },
+    _onInput: onInput,
+    _onPeerReady: onPeerReady,
     reserveSlot(verified) {
       if (verified.slot_id) return verified.slot_id;
       return `p${nextSlot++}`;
@@ -67,7 +69,7 @@ export async function startPeerHost({ roomId, cfg = GAME_CONFIG, world = null, o
           const session = { conn, uid: verified.uid, slotId, connectedAt: Date.now(), lastPongAt: Date.now() };
           peers.set(conn.peer, session);
           sendConn(conn, makeMessage(MSG.AUTH_OK, { slotId, peerId, hostEpoch: message.payload?.hostEpoch ?? 1 }));
-          onPeerReady?.(conn.peer, session);
+          host._onPeerReady?.(conn.peer, session);
         } catch (error) {
           sendConn(conn, makeMessage(MSG.AUTH_FAIL, { reason: error.message }));
           conn.close?.();
@@ -77,7 +79,7 @@ export async function startPeerHost({ roomId, cfg = GAME_CONFIG, world = null, o
 
       const session = peers.get(conn.peer);
       if (message.type === MSG.INPUT) {
-        onInput?.(session.slotId, message.payload, conn.peer);
+        host._onInput?.(session.slotId, message.payload, conn.peer);
       } else if (message.type === MSG.CHAT) {
         host._onChat?.(message);
       } else if (message.type === MSG.PONG) {

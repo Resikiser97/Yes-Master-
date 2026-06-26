@@ -1,11 +1,11 @@
-﻿/**
+/**
  * @file        renderer.js
  * @module      render（渲染層，非純邏輯）
  * @summary     將世界狀態畫到 canvas：鏡頭捲動 + 地底/網格/礦山/背景泥土/前景方塊/核心/玩家/HUD
  * @exports     Renderer
  * @depends     config/gameConfig.js
  * @sourceOfTruth Docs/game-design-plan.md「建築維度」「遊戲內 UI 設計」
- * @version     v0.0.14.0
+ * @version     v0.0.14.1
  *
  * 渲染層只「讀」world 狀態畫圖，不寫任何遊戲規則（鐵則 9）。
  */

@@ -1,6 +1,6 @@
 # project_summary.md — 專案現況快照
 
-> 版本：v0.0.14.0
+> 版本：v0.0.14.1
 > 類型：**代碼優先**（隨專案現況更新）。
 > ⚠️ 與 `Docs/project_summary.md`（原始設計草稿）不同：本檔是**版本化的現況快照**。
 
@@ -11,7 +11,7 @@
 - **正式遊戲名**：**Yes, Master!**
 - **副標 / 世界觀名**：哥布林的信仰（只能作為 subtitle / lore，不是主遊戲標題；英文名不要寫成 Goblin's Faith）。
 - **這是什麼**：Yes, Master! — 1–4 人合作塔防瀏覽器遊戲（哥布林守核心、人族來襲）。
-- **現在版本**：v0.0.14.0
+- **現在版本**：v0.0.14.1
 - **當前狀態**：MVP 單機可動 + 多人大廳。移動 / 挖礦 / 背包 / 塔內資源 / 掉落物自動撿取 / 跟隨鏡頭 / 初版建造 / 核心數值回饋 / 核心 HP 與修復 / 核心戰鬥 / 正式波次晝夜 / 卡片選擇（hover + tier 中文化）/ localStorage 存檔 / 新手教學提示 / debug 浮層（` 鍵）/ 測試難度 preset（1~30 關強化開局）/ **動態 canvas 縮放（動態 tilePx）** / **手機三欄觸控 UI（左 HUD+D-pad、中 canvas+圖示快捷列、右 Debug Tool+動作鍵）** / **⚙ debug 按鈕（鍵盤+觸控皆有）** / **PWA manifest + iOS/Android 安裝引導畫面** / **手機 3×3 放置方向選擇器** / **電擊攻擊 VFX（固定 bolt points，多重連鎖分叉閃電）** / **攻擊範圍圈（lazy OffscreenCanvas）** / **快捷列方塊圖示（手機版圖示 + 鍵盤 HUD 小圖示）** / **sprite 基礎設施 + 素材整理（13 張圖重命名、52 張裁剪輸出）** / **規劃模式（B 鍵拖拽建造 + 資源預檢）+ 拆除模式（V 鍵材質選擇性拆除）** / **快捷列 10 格 + 滑鼠點擊** / **梯子無限方塊** / **挖礦進度條持久化** / **多人大廳（Auth + Lobby + WaitingRoom + PeerJS 聊天）+ 等級/好友/裝備/成就/排行榜系統** 已成完整循環。
 - **下一步（最多 4 條）**：
   1. 整合已裁剪 spritesheet 到角色/敵人/核心動畫（哥布林走路/挖礦、敵人走路、核心受擊/低血）。
@@ -56,6 +56,7 @@
 - v0.0.12.0 VFX / 範圍 / 圖示收尾：電擊 VFX 改為攻擊時固定生成 `bolts`；攻擊範圍圈改用正式 `coreAttackAnchors()` 可視化聯集；新增 T debug 暫停；整理 13 張素材、裁剪 52 張 sprites、產生真正透明且置中的 hotbar 方塊 sheet。
 
 - v0.0.14.0 多人大廳 + Phase B-G 系統：新增登入畫面（Google OAuth + 訪客）、Lobby UI（房間列表三 tab + 建房）、WaitingRoom UI（PeerJS 即時聊天 + 玩家卡片 + 加好友/踢人 + 開始遊戲廣播）、角色面板 popup、等級/好友/裝備/成就/排行榜後端模組、房間 DB 補強（密碼/等級/滿員檢查）、Edge Function 更新、netSession 傳遞避免重複建立 PeerJS 連線。
+- v0.0.14.1 多人大廳 P0+P1 修復：修正房間密碼傳遞、建房欄位、房間列表安全欄位與過濾；新增 start-room/kick-player/leave-room Edge Functions；開始遊戲保留 WaitingRoom PeerJS session 並在 main.js 重新掛接多人 callback；join token 必須驗 membership；本地 Supabase anonymous sign-in 開啟。
 
 ### 已知問題
 - 🔴 緊急：（無）

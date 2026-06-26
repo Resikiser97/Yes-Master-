@@ -5,7 +5,7 @@
  * @exports     createHostMigrationController
  * @depends     net/roomManager.js
  * @sourceOfTruth Docs/game-architecture-plan.md「Host Migration」章節
- * @version     v0.0.14.0
+ * @version     v0.0.14.1
  */
 import { getRoom, updateHostPeer } from './roomManager.js';
 

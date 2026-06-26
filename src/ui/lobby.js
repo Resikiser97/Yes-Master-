@@ -4,7 +4,7 @@
  * @summary     多人大廳：房間列表（公開/朋友/房間號碼 tab）+ 建房 popup
  * @exports     showLobby
  * @depends     src/net/roomManager.js, src/net/authManager.js, src/net/friendManager.js, src/ui/waitingRoom.js
- * @version     v0.0.14.0
+ * @version     v0.0.14.1
  */
 
 import { listRooms, createRoom, joinRoom } from '../net/roomManager.js';
@@ -112,12 +112,20 @@ export async function showLobby(inputMode, onStart) {
     const rid = roomIdInput.value.trim();
     if (!rid) return;
     try {
-      const result = await joinRoom(rid);
+      const result = await joinRoom({ room_id: rid, password: pwdInput.value.trim() || null });
       _cleanup();
       overlay.style.opacity = '0';
       setTimeout(() => {
         overlay.remove();
-        showWaitingRoom({ roomId: rid, roomName: rid.slice(0, 8), role: 'client', inputMode, onStart, onBack: () => showLobby(inputMode, onStart) });
+        showWaitingRoom({
+          roomId: rid,
+          roomName: rid.slice(0, 8),
+          role: 'client',
+          inputMode,
+          maxPlayers: result?.room?.max_players ?? 4,
+          onStart,
+          onBack: () => showLobby(inputMode, onStart),
+        });
       }, 400);
     } catch (err) {
       alert(err.message || '加入失敗');
@@ -196,6 +204,9 @@ function _roomCard(room, overlay, inputMode, onStart) {
   const row1 = _el('div', { style: 'display:flex;gap:12px;align-items:center;' });
   row1.appendChild(_el('span', { textContent: `${room.current_players ?? '?'}/${room.max_players ?? 4} 人`, style: `color:${GOLD};font-size:13px;font-weight:bold;` }));
   row1.appendChild(_el('span', { textContent: room.name || 'Room', style: `color:#eee;font-size:13px;` }));
+  if (room.has_password) {
+    row1.appendChild(_el('span', { textContent: 'LOCK', style: `color:${GOLD_DIM};font-size:10px;letter-spacing:1px;border:1px solid ${GOLD_BORDER};padding:1px 4px;` }));
+  }
   const row2 = _el('div', { style: 'display:flex;gap:12px;' });
   row2.appendChild(_el('span', { textContent: `等級限制:${room.min_level > 0 ? room.min_level : '無'}`, style: `color:${GOLD_DIM};font-size:11px;` }));
   row2.appendChild(_el('span', { textContent: room.difficulty === 'test' ? '測試' : '簡單', style: `color:${GOLD_DIM};font-size:11px;` }));
@@ -206,7 +217,12 @@ function _roomCard(room, overlay, inputMode, onStart) {
     if (card._joining) return;
     card._joining = true;
     try {
-      await joinRoom(room.room_id);
+      const password = room.has_password ? await _askRoomPassword(room.name || 'Room') : null;
+      if (password === false) {
+        card._joining = false;
+        return;
+      }
+      await joinRoom({ room_id: room.room_id, password });
       _cleanup();
       overlay.style.opacity = '0';
       setTimeout(() => {
@@ -216,6 +232,7 @@ function _roomCard(room, overlay, inputMode, onStart) {
           roomName: room.name || 'Room',
           role: 'client',
           inputMode,
+          maxPlayers: room.max_players ?? 4,
           onStart,
           onBack: () => showLobby(inputMode, onStart),
         });
@@ -246,6 +263,12 @@ function _showCreateRoomPopup(overlay, inputMode, onStart) {
     style: `padding:8px 12px;background:rgba(255,255,255,0.08);border:1px solid ${GOLD_BORDER};color:${GOLD};font-size:13px;outline:none;`,
   });
 
+  const passwordInput = _el('input', {
+    placeholder: '房間密碼（可空白）',
+    type: 'password',
+    style: `padding:8px 12px;background:rgba(255,255,255,0.08);border:1px solid ${GOLD_BORDER};color:${GOLD};font-size:13px;outline:none;`,
+  });
+
   const playerSelect = _el('select', {
     style: `padding:8px 12px;background:#222;border:1px solid ${GOLD_BORDER};color:${GOLD};font-size:13px;outline:none;`,
   });
@@ -261,6 +284,24 @@ function _showCreateRoomPopup(overlay, inputMode, onStart) {
   [{ v: 'normal', t: '正式難度' }, { v: 'test', t: '測試模式' }].forEach(({ v, t }) => {
     diffSelect.appendChild(_el('option', { value: v, textContent: t }));
   });
+
+  const minLevelInput = _el('input', {
+    placeholder: '最低等級（0 = 不限制）',
+    type: 'number',
+    min: '0',
+    max: '999',
+    value: '0',
+    style: `padding:8px 12px;background:rgba(255,255,255,0.08);border:1px solid ${GOLD_BORDER};color:${GOLD};font-size:13px;outline:none;`,
+  });
+
+  const visibilitySelect = _el('select', {
+    style: `padding:8px 12px;background:#222;border:1px solid ${GOLD_BORDER};color:${GOLD};font-size:13px;outline:none;`,
+  });
+  [
+    { v: 'public', t: '公開房間' },
+    { v: 'friends', t: '朋友房間' },
+    { v: 'private', t: '私人房間' },
+  ].forEach(({ v, t }) => visibilitySelect.appendChild(_el('option', { value: v, textContent: t })));
 
   const btnRow = _el('div', { style: 'display:flex;gap:12px;justify-content:center;margin-top:8px;' });
   const confirmBtn = _btn('建立');
@@ -285,6 +326,10 @@ function _showCreateRoomPopup(overlay, inputMode, onStart) {
       const result = await createRoom({
         name: nameInput.value.trim() || 'Room',
         maxPlayers: parseInt(playerSelect.value),
+        password: passwordInput.value.trim() || null,
+        minLevel: Math.max(0, parseInt(minLevelInput.value, 10) || 0),
+        difficulty: diffSelect.value,
+        visibility: visibilitySelect.value,
       });
       const roomId = result?.room_id || result?.room?.room_id;
       popup.remove();
@@ -298,6 +343,7 @@ function _showCreateRoomPopup(overlay, inputMode, onStart) {
           role: 'host',
           inputMode,
           diffMode: diffSelect.value,
+          maxPlayers: parseInt(playerSelect.value),
           onStart,
           onBack: () => showLobby(inputMode, onStart),
         });
@@ -310,8 +356,42 @@ function _showCreateRoomPopup(overlay, inputMode, onStart) {
   });
 
   btnRow.append(confirmBtn, cancelBtn);
-  popup.append(nameInput, playerSelect, diffSelect, btnRow);
+  popup.append(nameInput, passwordInput, playerSelect, minLevelInput, diffSelect, visibilitySelect, btnRow);
   document.body.appendChild(popup);
+}
+
+function _askRoomPassword(roomName) {
+  return new Promise((resolve) => {
+    const popup = _el('div', {
+      style: `position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#111;border:2px solid ${GOLD};padding:20px;z-index:10000;min-width:280px;display:flex;flex-direction:column;gap:12px;`,
+    });
+    popup.appendChild(_el('div', {
+      textContent: `${roomName} 需要密碼`,
+      style: `color:${GOLD};font-size:14px;font-weight:bold;text-align:center;`,
+    }));
+    const input = _el('input', {
+      placeholder: '輸入房間密碼',
+      type: 'password',
+      style: `padding:8px 12px;background:rgba(255,255,255,0.08);border:1px solid ${GOLD_BORDER};color:${GOLD};font-size:13px;outline:none;`,
+    });
+    const row = _el('div', { style: 'display:flex;gap:10px;justify-content:center;' });
+    const ok = _btn('加入');
+    const cancel = _btn('取消');
+    const done = (value) => {
+      popup.remove();
+      resolve(value);
+    };
+    ok.addEventListener('click', () => done(input.value.trim() || null));
+    cancel.addEventListener('click', () => done(false));
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') done(input.value.trim() || null);
+      if (e.key === 'Escape') done(false);
+    });
+    row.append(ok, cancel);
+    popup.append(input, row);
+    document.body.appendChild(popup);
+    input.focus();
+  });
 }
 
 function _cleanup() {

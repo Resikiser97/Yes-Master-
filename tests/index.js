@@ -16,6 +16,7 @@ import './saveManager.test.js';
 import './uiState.test.js';
 import './multiplayerState.test.js';
 import './multiplayerInput.test.js';
+import './roomManager.test.js';
 
 function fakeRng(value = 0) {
   return { next: () => value };
@@ -196,4 +197,4 @@ testRestartStageClearsCombatPhase();
 testDebugTogglePause();
 testCoreCombatCreatesFixedVfxBolts();
 
-console.log('All tests passed (v0.0.12.0)');
+console.log('All tests passed (v0.0.14.1)');

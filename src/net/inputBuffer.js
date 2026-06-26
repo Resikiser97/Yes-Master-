@@ -4,7 +4,7 @@
  * @summary     房主端 Input buffer：佇列收集各玩家 Input Event，drain() 時驗證後路由至 actions / phaseRuntime；另提供 serializeControls（client 端打包 Input）與 applyInput（單步套用）
  * @exports     createInputBuffer, serializeControls, applyInput
  * @depends     logic/playerMovement.js, game/world.js, game/actions.js, game/phaseRuntime.js, net/validation.js
- * @version     v0.0.14.0
+ * @version     v0.0.14.1
  */
 import { movePlayer } from '../logic/playerMovement.js';
 import { ensurePlayer } from '../game/world.js';
