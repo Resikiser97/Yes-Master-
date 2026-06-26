@@ -5,7 +5,7 @@
  * @exports     Renderer
  * @depends     config/gameConfig.js
  * @sourceOfTruth Docs/game-design-plan.md「建築維度」「遊戲內 UI 設計」
- * @version     v0.0.14.11
+ * @version     v0.0.14.12
  *
  * 渲染層只「讀」world 狀態畫圖，不寫任何遊戲規則（鐵則 9）。
  */
@@ -18,6 +18,24 @@ import { SPRITE_SHEETS, getFrameRect } from '../../config/sprites.js';
 import { coreAttackAnchors } from '../game/combatRuntime.js';
 import { inventoryWeight } from '../logic/inventory.js';
 import { durabilityToBreak } from '../logic/mining.js';
+
+const INTENT_EMOJI = { mine: '⛏️', build: '🧱', destroy: '🦵', repair: '🔧', warn: '⚠️' };
+
+const WHEEL_ITEMS = [
+  { intent: 'mine',    emoji: '⛏️', angle: Math.PI },        // 左
+  { intent: 'repair',  emoji: '🔧', angle: -Math.PI / 2 },   // 上
+  { intent: 'build',   emoji: '🧱', angle: 0 },              // 右
+  { intent: 'destroy', emoji: '🦵', angle: Math.PI / 2 },    // 下
+];
+
+function _wheelHoveredIntent(dx, dy, dist) {
+  if (dist < 20) return 'warn';
+  const a = Math.atan2(dy, dx);
+  if (a > -Math.PI / 4 && a <= Math.PI / 4)          return 'build';   // 右
+  if (a > Math.PI / 4  && a <= 3 * Math.PI / 4)      return 'destroy'; // 下
+  if (a > 3 * Math.PI / 4 || a <= -3 * Math.PI / 4) return 'mine';    // 左
+  return 'repair'; // 上
+}
 
 const fmtItems = (obj) => {
   const parts = Object.entries(obj)
@@ -203,6 +221,7 @@ export class Renderer {
       this._drawVersionLabel();
       this._drawExitButton();
     }
+    this._drawIntentWheel(world);
     if (world.phase === 'gameover') this._drawGameOverOverlay(world);
     if (world.phase === 'cardOffer') this._drawCardOffer(world);
     if (world.firstGame && world.tutorialTimer > 0) this._drawTutorialHint(world);
@@ -470,9 +489,6 @@ export class Renderer {
     let cardX = Math.round((vw - totalW) / 2);
     const cardY = 8;
     const fatigueMax = Number(this.cfg.player?.fatigueMax ?? 120);
-
-    const INTENT_EMOJI = { mine: '⛏️', build: '🧱', destroy: '🦵', repair: '🔧', warn: '⚠️' };
-
     ctx.save();
     for (const p of others) {
       const fatigue = Number(p.fatigue ?? 0);
@@ -534,6 +550,53 @@ export class Renderer {
 
       cardX += cardW + gap;
     }
+    ctx.restore();
+  }
+
+  _drawIntentWheel(world) {
+    const ws = world.intentWheel;
+    if (!ws) return;
+    const { cx, cy, mx, my } = ws;
+    const dx = mx - cx, dy = my - cy;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const hovered = _wheelHoveredIntent(dx, dy, dist);
+    const R = 62;
+    const ctx = this.ctx;
+    ctx.save();
+    // background disc
+    ctx.fillStyle = 'rgba(0,0,0,0.62)';
+    ctx.beginPath();
+    ctx.arc(cx, cy, R + 28, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    // directional items
+    for (const item of WHEEL_ITEMS) {
+      const ex = cx + Math.cos(item.angle) * R;
+      const ey = cy + Math.sin(item.angle) * R;
+      if (hovered === item.intent) {
+        ctx.fillStyle = 'rgba(255,230,80,0.28)';
+        ctx.beginPath();
+        ctx.arc(ex, ey, 22, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.font = '20px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(item.emoji, ex, ey);
+    }
+    // center item ⚠️
+    if (hovered === 'warn') {
+      ctx.fillStyle = 'rgba(255,80,80,0.28)';
+      ctx.beginPath();
+      ctx.arc(cx, cy, 20, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.font = '18px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('⚠️', cx, cy);
     ctx.restore();
   }
 
@@ -1401,6 +1464,14 @@ export class Renderer {
         this.ctx.strokeStyle = 'rgba(255,255,255,0.75)';
         this.ctx.lineWidth = 1;
         this.ctx.stroke();
+      }
+      // 意圖 Emoji 浮在角色頭上（30 秒有效）
+      const emoji = INTENT_EMOJI[player.intent];
+      if (emoji && (Date.now() - (player.intentAt ?? 0)) < 30_000) {
+        this.ctx.font = `${Math.round(t * 0.7)}px sans-serif`;
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'bottom';
+        this.ctx.fillText(emoji, x * t + t / 2, y * t - t * 0.15);
       }
     }
   }

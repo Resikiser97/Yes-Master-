@@ -5,7 +5,7 @@
  * @exports     Controls
  * @depends     （無；僅綁瀏覽器事件，不 import 其他模組）
  * @sourceOfTruth Docs/game-design-plan.md「操作輸入方式」
- * @version     v0.0.14.1
+ * @version     v0.0.14.12
  *
  * 輸入層只把操作「轉成資料」丟給上層，不在此做規則判定（鐵則 9）。
  * 模式：未選材料 = 挖礦模式（左鍵長按挖最近）；按快捷列數字選材料 = 建造模式（左鍵放置）。
@@ -39,6 +39,11 @@ export class Controls {
     this.pendingCardChoice = null; // null | 0 | 1 | 2（玩家點選的卡片索引）
     this.uiHitRects = [];          // Canvas HUD 命中區，由 renderer/main 每幀同步
     this.pendingUiClick = null;    // 本幀待處理 UI 點擊 id
+    this._altHeld = false;             // Alt 鍵目前是否按住
+    this.intentWheelActive = false;    // Alt+左鍵按下後輪盤開啟中
+    this._altCenter = null;            // { x, y } 左鍵按下瞬間的滑鼠位置（輪盤圓心）
+    this._wheelEverOut = false;        // 輪盤開啟後是否曾離開死區（>=30px）
+    this.pendingManualIntent = undefined; // 滑鼠放開後選定的意圖（undefined=未觸發）
     this._onKeyDown = (e) => this._handleKey(e, true);
     this._onKeyUp = (e) => this._handleKey(e, false);
     this._onPointerDown = (e) => this._handlePointerDown(e);
@@ -62,6 +67,11 @@ export class Controls {
   consumeBuildPlanToggle() { const v = this.pendingBuildPlanToggle; this.pendingBuildPlanToggle = false; return v; }
   consumeDestroyToggle() { const v = this.pendingDestroyToggle; this.pendingDestroyToggle = false; return v; }
   consumeDragRect() { const v = this.pendingDragRect; this.pendingDragRect = null; return v; }
+  consumeManualIntent() { const v = this.pendingManualIntent; this.pendingManualIntent = undefined; return v; }
+  getIntentWheelState() {
+    if (!this.intentWheelActive || !this._altCenter) return null;
+    return { cx: this._altCenter.x, cy: this._altCenter.y, mx: this.mouse.x, my: this.mouse.y };
+  }
 
   attach() {
     if (this.bound || typeof window === 'undefined') return;
@@ -105,6 +115,13 @@ export class Controls {
     this.target?.focus?.({ preventScroll: true });
     this._syncPointer(e);
     e.preventDefault?.();
+    // Alt + 左鍵 → 開啟意圖輪盤，攔截後續所有操作
+    if (e.button === 0 && this._altHeld) {
+      this.intentWheelActive = true;
+      this._altCenter = { x: this.mouse.x, y: this.mouse.y };
+      this._wheelEverOut = false;
+      return;
+    }
     const uiHit = this._hitTestUi(this.mouse.x, this.mouse.y);
     if (uiHit) {
       if (e.button === 0) this.pendingUiClick = uiHit.id;
@@ -142,6 +159,15 @@ export class Controls {
   }
 
   _handlePointerUp(e) {
+    // 輪盤開啟中：滑鼠放開 → 計算意圖並送出（Alt 不需要鬆開）
+    if (this.intentWheelActive) {
+      this._syncPointer(e);
+      this.intentWheelActive = false;
+      this.pendingManualIntent = this._computeWheelIntent();
+      this._altCenter = null;
+      this._wheelEverOut = false;
+      return;
+    }
     this.mining = false;
     if (this.dragging && this.dragStart) {
       this._syncPointer(e);
@@ -182,10 +208,27 @@ export class Controls {
   _syncPointer(e) {
     this.mouse.x = e.offsetX ?? this.mouse.x;
     this.mouse.y = e.offsetY ?? this.mouse.y;
+    // 輪盤開啟中：追蹤是否曾離開死區
+    if (this.intentWheelActive && this._altCenter) {
+      const dx = this.mouse.x - this._altCenter.x;
+      const dy = this.mouse.y - this._altCenter.y;
+      if (Math.sqrt(dx * dx + dy * dy) >= 30) this._wheelEverOut = true;
+    }
   }
 
   _handleKey(event, isDown) {
     // 建造快捷鍵 / 退出（只在 keydown 處理）
+    if (event.code === 'AltLeft' || event.code === 'AltRight') {
+      event.preventDefault();
+      this._altHeld = isDown;
+      // Alt 放開時若輪盤還開著 → 取消，不送出任何意圖
+      if (!isDown && this.intentWheelActive) {
+        this.intentWheelActive = false;
+        this._altCenter = null;
+        this._wheelEverOut = false;
+      }
+      return;
+    }
     if (isDown) {
       if (event.code === 'Escape') { this.setSelectedSlot(null); event.preventDefault(); return; }
       const debugAction = keyToDebugAction(event);
@@ -224,6 +267,22 @@ export class Controls {
     if (isDown) this.keys.add(dir);
     else this.keys.delete(dir);
     this.handlers.move?.(this.getMoveVector());
+  }
+
+  _computeWheelIntent() {
+    if (!this._altCenter) return null;
+    const dx = this.mouse.x - this._altCenter.x;
+    const dy = this.mouse.y - this._altCenter.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    // 從未離開死區（30px）= 無意間按下 Alt → 取消，不送出任何意圖
+    if (!this._wheelEverOut) return null;
+    // 曾離開死區但放開時回到中心 → ⚠️
+    if (dist < 20) return 'warn';
+    const a = Math.atan2(dy, dx);
+    if (a > -Math.PI / 4 && a <= Math.PI / 4)          return 'build';   // 右
+    if (a > Math.PI / 4  && a <= 3 * Math.PI / 4)      return 'destroy'; // 下
+    if (a > 3 * Math.PI / 4 || a <= -3 * Math.PI / 4) return 'mine';    // 左
+    return 'repair'; // 上
   }
 }
 
