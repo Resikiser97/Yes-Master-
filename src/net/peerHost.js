@@ -5,7 +5,7 @@
  * @exports     startPeerHost
  * @depends     net/protocol.js, net/peerRuntime.js, net/roomManager.js, net/strikeTracker.js, game/world.js
  * @sourceOfTruth Docs/game-architecture-plan.md「P2P 安全限制 → Handshake 流程」
- * @version     v0.0.14.4
+ * @version     v0.0.14.5
  */
 import { GAME_CONFIG } from '../../config/gameConfig.js';
 import { ensurePlayer } from '../game/world.js';
@@ -31,6 +31,11 @@ export async function startPeerHost({ roomId, cfg = GAME_CONFIG, world = null, o
     isHost: () => true,
     broadcast(message) {
       for (const session of peers.values()) sendConn(session.conn, message);
+    },
+    broadcastExcept(excludePeer, message) {
+      for (const [peerId, session] of peers) {
+        if (peerId !== excludePeer) sendConn(session.conn, message);
+      }
     },
     sendTo(id, message) {
       const session = peers.get(id) ?? [...peers.values()].find((item) => item.slotId === id);
@@ -81,7 +86,7 @@ export async function startPeerHost({ roomId, cfg = GAME_CONFIG, world = null, o
       if (message.type === MSG.INPUT) {
         host._onInput?.(session.slotId, message.payload, conn.peer);
       } else if (message.type === MSG.CHAT) {
-        host._onChat?.(message);
+        host._onChat?.(message, conn.peer);
       } else if (message.type === MSG.PONG) {
         session.lastPongAt = Date.now();
       } else if (message.type === MSG.PING) {

@@ -4,7 +4,7 @@
  * @summary     等待室：玩家 slot 卡片 + PeerJS 聊天 + 開始遊戲
  * @exports     showWaitingRoom
  * @depends     src/net/authManager.js, src/net/supabaseClient.js, src/net/peerHost.js, src/net/peerClient.js, src/net/protocol.js, src/net/friendManager.js, src/ui/characterPopup.js
- * @version     v0.0.14.2
+ * @version     v0.0.14.5
  */
 
 import { getCurrentUser, getProfile } from '../net/authManager.js';
@@ -163,9 +163,9 @@ export async function showWaitingRoom({ roomId, roomName, role, inputMode, diffM
           refreshMembers();
         },
       });
-      netSession._onChat = (msg) => {
+      netSession._onChat = (msg, senderPeer) => {
         _addChat(chatLogEl, msg.payload.from, msg.payload.text);
-        netSession.broadcast(msg);
+        netSession.broadcastExcept(senderPeer, msg);
       };
       _addChat(chatLogEl, '系統', '等待玩家加入...');
     } else {
