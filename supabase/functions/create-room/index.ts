@@ -23,6 +23,7 @@ serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const room_id = body.room_id || crypto.randomUUID();
+    const profile = await getPlayerProfile(supabase, user.id);
     const room = await insertCompatible(supabase, "rooms", {
       room_id,
       owner_id: user.id,
@@ -31,14 +32,23 @@ serve(async (req) => {
       host_epoch: 1,
       name: body.name ?? "Room",
       max_players: body.max_players ?? 4,
+      current_players: 1,
+      password: body.password || null,
+      min_level: body.min_level ?? 0,
+      difficulty: body.difficulty ?? "normal",
+      visibility: body.visibility ?? "public",
+      game_started: false,
     });
 
     await upsertCompatible(supabase, "room_memberships", {
       room_id,
       user_id: user.id,
       slot_id: "p1",
+      role: "host",
       is_host: true,
       join_order: 0,
+      display_name: profile.display_name,
+      player_level: profile.level,
       online: true,
       disconnected_at: null,
       updated_at: new Date().toISOString(),
@@ -63,6 +73,19 @@ async function insertCompatible(supabase: any, table: string, row: Record<string
 
 async function upsertCompatible(supabase: any, table: string, row: Record<string, unknown>, options: Record<string, unknown>) {
   return mutateCompatible(row, (payload) => supabase.from(table).upsert(payload, options).select().single());
+}
+
+async function getPlayerProfile(supabase: any, userId: string) {
+  const { data, error } = await supabase
+    .from("player_profiles")
+    .select("display_name,level")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  return {
+    display_name: data?.display_name ?? "Goblin",
+    level: data?.level ?? 1,
+  };
 }
 
 async function mutateCompatible(row: Record<string, unknown>, run: (payload: Record<string, unknown>) => Promise<any>) {

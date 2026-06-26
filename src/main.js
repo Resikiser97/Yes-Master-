@@ -44,11 +44,17 @@ export function boot() {
 
   const canvas = document.getElementById('game');
 
-  showSplashScreen((diffMode, inputMode) => {
+  showSplashScreen((diffMode, inputMode, netInfo) => {
     // 1. 確定 cfg
     let cfg = diffMode === 'test' ? buildTestConfig(GAME_CONFIG) : GAME_CONFIG;
     const netLaunch = parseNetLaunch();
-    if (netLaunch.mode === 'multi') {
+    if (netInfo) {
+      cfg = {
+        ...cfg,
+        mode: 'multi',
+        net: { ...cfg.net, roomId: netInfo.roomId, role: netInfo.role },
+      };
+    } else if (netLaunch.mode === 'multi') {
       cfg = {
         ...cfg,
         mode: 'multi',
@@ -171,19 +177,22 @@ export function boot() {
     }
     let lastRenderMs = 0;
     let prevPhase = world.phase;
-    let netSession = null;
+    let netSession = netInfo?.netSession ?? null;
     let inputBuffer = null;
     let hostSync = null;
     let clientSync = null;
     let inputSequenceId = 0;
 
-    if (cfg.mode === 'multi' && netLaunch.roomId) {
-      if (netLaunch.role === 'host') {
+    const netRoomId = netInfo?.roomId ?? netLaunch.roomId;
+    const netRole = netInfo?.role ?? netLaunch.role;
+
+    if (cfg.mode === 'multi' && netRoomId && !netSession) {
+      if (netRole === 'host') {
         inputBuffer = createInputBuffer({ cfg });
         createNetSession({
           cfg,
           role: 'host',
-          roomId: netLaunch.roomId,
+          roomId: netRoomId,
           world,
           onInput: (playerId, input) => inputBuffer.push(playerId, input),
           onPeerReady: (peerId) => hostSync?.sendSnapshotTo(peerId, world),
@@ -197,7 +206,7 @@ export function boot() {
         createNetSession({
           cfg,
           role: 'client',
-          roomId: netLaunch.roomId,
+          roomId: netRoomId,
           world,
           onMessage: (message) => {
             if (clientSync?.handle(message)) {
@@ -209,6 +218,16 @@ export function boot() {
           netSession = session;
           console.info('[net] client ready', session.slotId);
         }).catch((err) => console.warn('[net] client start failed', err));
+      }
+    } else if (cfg.mode === 'multi' && netSession) {
+      if (netRole === 'host') {
+        inputBuffer = createInputBuffer({ cfg });
+        netSession._onChat = null;
+        hostSync = createHostSyncScheduler({ session: netSession });
+        console.info('[net] host reusing waitingRoom session', netSession.peerId);
+      } else {
+        clientSync = createClientSyncApplier({ worldRef, cfg });
+        console.info('[net] client reusing waitingRoom session', netSession.slotId);
       }
     } else if (cfg.mode === 'multi') {
       console.warn('[net] missing room id; use ?mode=multi&role=host|client&room=ROOM_ID');

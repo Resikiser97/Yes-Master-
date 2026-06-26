@@ -69,6 +69,8 @@ export async function startPeerHost({ roomId, cfg = GAME_CONFIG, world = null, o
       const session = peers.get(conn.peer);
       if (message.type === MSG.INPUT) {
         onInput?.(session.slotId, message.payload, conn.peer);
+      } else if (message.type === MSG.CHAT) {
+        host._onChat?.(message);
       } else if (message.type === MSG.PONG) {
         session.lastPongAt = Date.now();
       } else if (message.type === MSG.PING) {

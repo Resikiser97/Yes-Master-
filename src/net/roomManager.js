@@ -23,11 +23,27 @@ export async function listRooms(cfg = GAME_CONFIG) {
   return data ?? [];
 }
 
-export async function createRoom({ name = 'Room', room_id = roomId(), maxPlayers = 4 } = {}, cfg = GAME_CONFIG) {
+export async function createRoom({
+  name = 'Room',
+  room_id = roomId(),
+  maxPlayers = 4,
+  password = null,
+  minLevel = 0,
+  difficulty = 'normal',
+  visibility = 'public',
+} = {}, cfg = GAME_CONFIG) {
   const supabase = await getSupabaseClient(cfg);
   await ensureSupabaseUser(cfg);
   const { data, error } = await supabase.functions.invoke('create-room', {
-    body: { room_id, name, max_players: maxPlayers },
+    body: {
+      room_id,
+      name,
+      max_players: maxPlayers,
+      password,
+      min_level: minLevel,
+      difficulty,
+      visibility,
+    },
   });
   if (error) throw error;
   if (data?.error) throw new Error(data.error);
@@ -35,14 +51,16 @@ export async function createRoom({ name = 'Room', room_id = roomId(), maxPlayers
 }
 
 export async function joinRoom(room_id, cfg = GAME_CONFIG) {
+  const roomId = typeof room_id === 'object' ? room_id.room_id : room_id;
+  const password = typeof room_id === 'object' ? room_id.password : null;
   const supabase = await getSupabaseClient(cfg);
   const user = await ensureSupabaseUser(cfg);
   const { data, error } = await supabase.functions.invoke('join-room', {
-    body: { room_id },
+    body: { room_id: roomId, password },
   });
   if (error) throw error;
   if (data?.error) throw new Error(data.error);
-  return { room_id, user, membership: data.membership ?? data };
+  return { room_id: roomId, user, membership: data.membership ?? data };
 }
 
 export async function leaveRoom(room_id, cfg = GAME_CONFIG) {
@@ -62,6 +80,28 @@ export async function getRoom(room_id, cfg = GAME_CONFIG) {
   const { data, error } = await supabase.from('rooms').select('*').eq('room_id', room_id).single();
   if (error) throw error;
   return data;
+}
+
+export async function getRoomMembers(roomId, cfg = GAME_CONFIG) {
+  const supabase = await getSupabaseClient(cfg);
+  const { data, error } = await supabase
+    .from('room_memberships')
+    .select('user_id, slot_id, display_name, player_level, role, is_host, online')
+    .eq('room_id', roomId)
+    .order('join_order', { ascending: true });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function kickPlayer(roomId, userId, cfg = GAME_CONFIG) {
+  const supabase = await getSupabaseClient(cfg);
+  const { error } = await supabase
+    .from('room_memberships')
+    .delete()
+    .eq('room_id', roomId)
+    .eq('user_id', userId);
+  if (error) throw error;
+  return { ok: true };
 }
 
 export async function updateHostPeer(room_id, peerId, cfg = GAME_CONFIG) {

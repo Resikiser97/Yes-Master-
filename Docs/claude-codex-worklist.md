@@ -231,11 +231,11 @@
 | # | 項目 | 說明 | 狀態 |
 |---|---|---|---|
 | M0a | 正式帳號系統 | Email/OAuth Auth + player_profiles 表 + 登入 UI。詳見 `Docs/lobby-waitingroom-plan.md` Phase A | 🔴 優先 |
-| M0b | 等級系統 | 經驗值曲線 + 升級邏輯 + 結算寫回。Phase B | 🔴 Codex |
-| M0c | 好友系統 | friendships 表 + Edge Functions + friendManager.js。Phase C | 🔴 Codex |
-| M0d | 裝備系統 | player_equipment 表 + 升級規則。Phase D | 🔴 Codex |
-| M0e | 成就系統 | achievements 表 + 解鎖邏輯。Phase E | 🔴 Codex |
-| M0f | 排行榜 + 賽季稱號 | leaderboard 表 + 稱號規則。Phase F | 🔴 Codex |
+| M0b | 等級系統 | 經驗值曲線 + 升級邏輯 + 結算寫回。Phase B | ✅ Codex |
+| M0c | 好友系統 | friendships 表 + Edge Functions + friendManager.js。Phase C | ✅ Codex |
+| M0d | 裝備系統 | player_equipment 表 + 升級規則。Phase D | ✅ Codex |
+| M0e | 成就系統 | achievements 表 + 解鎖邏輯。Phase E | ✅ Codex |
+| M0f | 排行榜 + 賽季稱號 | leaderboard 表 + 稱號規則。Phase F | ✅ Codex |
 | M0g | 房間 DB 補強 | rooms/memberships 補欄位 + create-room/join-room/kick Edge Functions。Phase G | 🔴 優先 |
 | M0h | Lobby UI | 房間列表 + 建房 popup + 三 tab（公開/朋友/房間號碼）。Phase H | 🔴 Claude |
 | M0i | Waiting Room UI | 玩家卡片 + 聊天室 + 角色面板 + 踢人 + 開始遊戲。Phase I | 🔴 Claude |

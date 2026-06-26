@@ -21,23 +21,38 @@ serve(async (req) => {
     );
     if (authErr || !user) return json({ error: "unauthorized" }, 401);
 
-    const { room_id } = await req.json();
+    const { room_id, password } = await req.json();
     if (!room_id) return json({ error: "missing room_id" }, 400);
 
     const { data: room, error: roomErr } = await supabase
       .from("rooms")
-      .select("room_id,status")
+      .select("room_id,status,max_players,min_level,password")
       .eq("room_id", room_id)
       .eq("status", "active")
       .single();
     if (roomErr || !room) return json({ error: "room not found or inactive" }, 404);
 
+    if (room.password && room.password !== password) return json({ error: "密碼錯誤" }, 403);
+
+    const profile = await getPlayerProfile(supabase, user.id);
+    const minLevel = Number(room.min_level ?? 0);
+    if (minLevel > 0 && profile.level < minLevel) return json({ error: "等級不足" }, 403);
+
     const { data: existing } = await supabase
       .from("room_memberships")
-      .select("slot_id,join_order")
+      .select("slot_id,join_order,role,is_host")
       .eq("room_id", room_id)
       .eq("user_id", user.id)
       .maybeSingle();
+
+    if (!existing) {
+      const { count, error: countErr } = await supabase
+        .from("room_memberships")
+        .select("user_id", { count: "exact", head: true })
+        .eq("room_id", room_id);
+      if (countErr) throw countErr;
+      if ((count ?? 0) >= Number(room.max_players ?? 4)) return json({ error: "房間已滿" }, 403);
+    }
 
     const { data: latestMember } = await supabase
       .from("room_memberships")
@@ -54,12 +69,27 @@ serve(async (req) => {
       room_id,
       user_id: user.id,
       slot_id: slotId,
-      is_host: false,
+      role: existing?.role ?? (existing?.is_host ? "host" : "player"),
+      is_host: existing?.is_host ?? false,
       join_order: joinOrder,
+      display_name: profile.display_name,
+      player_level: profile.level,
       online: true,
       disconnected_at: null,
       updated_at: new Date().toISOString(),
     }, { onConflict: "room_id,user_id" });
+
+    const { count: currentPlayers, error: currentPlayersErr } = await supabase
+      .from("room_memberships")
+      .select("user_id", { count: "exact", head: true })
+      .eq("room_id", room_id);
+    if (currentPlayersErr) throw currentPlayersErr;
+    await updateCompatible(
+      supabase,
+      "rooms",
+      { current_players: currentPlayers ?? 1 },
+      (query: any) => query.eq("room_id", room_id),
+    );
 
     return json({ membership });
   } catch (e) {
@@ -76,6 +106,23 @@ function json(body: unknown, status = 200) {
 
 async function upsertCompatible(supabase: any, table: string, row: Record<string, unknown>, options: Record<string, unknown>) {
   return mutateCompatible(row, (payload) => supabase.from(table).upsert(payload, options).select().single());
+}
+
+async function updateCompatible(supabase: any, table: string, row: Record<string, unknown>, where: (query: any) => any) {
+  return mutateCompatible(row, (payload) => where(supabase.from(table).update(payload)).select().single());
+}
+
+async function getPlayerProfile(supabase: any, userId: string) {
+  const { data, error } = await supabase
+    .from("player_profiles")
+    .select("display_name,level")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  return {
+    display_name: data?.display_name ?? "Goblin",
+    level: data?.level ?? 1,
+  };
 }
 
 async function mutateCompatible(row: Record<string, unknown>, run: (payload: Record<string, unknown>) => Promise<any>) {

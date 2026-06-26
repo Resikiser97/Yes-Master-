@@ -14,6 +14,7 @@
 
 import { isTouchDevice, isStandalone, getSavedInputMode, saveInputMode } from './mobileLayout.js';
 import { showPwaTutorial, shouldShowPwaTutorial } from './pwaTutorial.js';
+import { showLobby } from './lobby.js';
 
 export function showSplashScreen(onStart) {
   if (isTouchDevice() && !isStandalone() && shouldShowPwaTutorial()) {
@@ -99,6 +100,19 @@ function _buildSplashDOM(onStart) {
 
   diffWrap.appendChild(makeDiffBtn('正式難度', 'normal'));
   diffWrap.appendChild(makeDiffBtn('測試模式  1~30 關', 'test'));
+
+  const multiBtn = document.createElement('button');
+  multiBtn.textContent = '多人模式';
+  multiBtn.style.cssText = 'padding:10px 28px;background:transparent;border:1px solid rgba(212,160,23,0.45);color:#D4A017;font-size:13px;letter-spacing:2px;cursor:pointer;transition:background 0.2s,border-color 0.2s;outline:none;';
+  multiBtn.addEventListener('mouseover', () => { multiBtn.style.background = 'rgba(212,160,23,0.12)'; multiBtn.style.borderColor = '#D4A017'; });
+  multiBtn.addEventListener('mouseout',  () => { multiBtn.style.background = 'transparent'; multiBtn.style.borderColor = 'rgba(212,160,23,0.45)'; });
+  multiBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    saveInputMode(selectedInput);
+    splash.style.opacity = '0';
+    setTimeout(() => { splash.remove(); showLobby(selectedInput, onStart); }, 800);
+  }, { once: true });
+  diffWrap.appendChild(multiBtn);
 
   if (!document.getElementById('_splash-style')) {
     const s = document.createElement('style');

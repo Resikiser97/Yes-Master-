@@ -17,6 +17,9 @@ export const MSG = Object.freeze({
   STRIKE: 'strike',
   KICK: 'kick',
   HOST_MIGRATION: 'host_migration',
+  CHAT: 'chat',
+  GAME_START: 'game_start',
+  PLAYER_INFO: 'player_info',
 });
 
 export function makeMessage(type, payload = {}, meta = {}) {
