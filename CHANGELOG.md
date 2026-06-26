@@ -1,10 +1,22 @@
 # CHANGELOG.md — 版本歷史
 
-> 版本：v0.0.14.2
+> 版本：v0.0.14.3
 > 類型：**只增不改**（歷史紀錄，永遠往上加，最新在最上方，不回頭改舊條目）。
 > 條目格式：`## vX.Y.Z.W - YYYY-MM-DD`，下分「新增 / 修復 / 調整」。
 
 ---
+
+## v0.0.14.3 - 2026-06-26
+
+### 修復
+- **Google OAuth profile fallback**：`getProfile()` 改用 `.maybeSingle()`，避免新 Google 使用者尚未有 `player_profiles` 時噴 406；`ensureProfile()` 會建立缺失 profile，並把舊 `Goblin/default` profile 補成 Google 名稱與頭像。
+- **登入流程 race**：Auth callback 只有在 `ensureProfile()` 成功後才 settle；profile 建立失敗時顯示錯誤並允許重試，避免 UI 進入疑似訪客狀態。
+- **多人正式登入保護**：`roomManager` / `friendManager` 改用 `requireSupabaseUser()`，多人房間與好友流程沒有登入時直接報 `not signed in`，不再靜默建立 anonymous guest。
+- **Supabase Auth redirect**：線上 Auth `site_url` / allow-list 對齊 Vercel 正式站 `https://yes-master-delta.vercel.app`，並保留 localhost/127.0.0.1 測試網址。
+
+### 調整
+- `supabaseClient.js` 新增 `requireSupabaseUser()`；`ensureSupabaseUser()` 保留給單機成就 / 裝備 / 排行榜等允許訪客 fallback 的舊流程。
+- Live repair：補建一筆已 Google OAuth 成功但缺失的 `player_profiles`，驗證新 profile 建立路徑。
 
 ## v0.0.14.2 - 2026-06-26
 

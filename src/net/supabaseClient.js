@@ -4,7 +4,7 @@
  * @summary     Lazy Supabase browser client 單例；動態 import 避免 Node 測試環境載入 https 模組
  * @exports     getSupabaseClient, requireSupabaseUser, ensureSupabaseUser
  * @depends     config/gameConfig.js
- * @version     v0.0.14.1
+ * @version     v0.0.14.3
  */
 
 import { GAME_CONFIG } from '../../config/gameConfig.js';

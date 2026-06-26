@@ -22,3 +22,8 @@ For gameplay or balance-sensitive work, also read:
 - `Docs/simulation/README.md`
 
 Do not rely only on chat history. Use `Docs/source-map.md` as the source map for where project knowledge lives.
+
+## Commit 規則
+
+**絕對禁止自行 Commit。** 任何 git commit / push 動作必須等開發者明確同意後才執行。
+完成工作後，輸出 sync 報告，等開發者說「可以 commit」才執行。

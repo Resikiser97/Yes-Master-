@@ -1,6 +1,6 @@
 # ARCH.md — 架構全貌
 
-> 版本：v0.0.14.2
+> 版本：v0.0.14.3
 > 類型：**代碼優先**（文件描述錯了，以代碼為準去改本檔）。
 > 用途：給任何新 AI 30 秒建立系統全貌；細節以 `src/` / `config/` 與 `Docs/game-architecture-plan.md` 為準。
 
@@ -157,10 +157,10 @@ UI / Overlay 層（src/ui/*）
 
 | 檔案 | 職責 |
 |---|---|
-| `supabaseClient.js` | Lazy Supabase browser client 單例；`getSupabaseClient()` / `ensureSupabaseUser()` |
-| `authManager.js` | Auth：Google OAuth / 匿名登入 / player_profiles CRUD |
-| `friendManager.js` | 好友邀請 / 接受 / 刪除 / 列表 |
-| `roomManager.js` | 房間 CRUD + Edge Function 呼叫（含 `getRoomMembers` / `startRoom` / `kickPlayer` / `leaveRoom` / `heartbeatRoom` / `issueRoomJoinToken`） |
+| `supabaseClient.js` | Lazy Supabase browser client 單例；`getSupabaseClient()` / `ensureSupabaseUser()` / `requireSupabaseUser()` |
+| `authManager.js` | Auth：Google OAuth / 匿名登入 / player_profiles CRUD；Google profile 缺失時自動建立/補齊 |
+| `friendManager.js` | 好友邀請 / 接受 / 刪除 / 列表；必須已有登入 session |
+| `roomManager.js` | 房間 CRUD + Edge Function 呼叫（含 `getRoomMembers` / `startRoom` / `kickPlayer` / `leaveRoom` / `heartbeatRoom` / `issueRoomJoinToken`）；必須已有登入 session |
 | `protocol.js` | 訊息類型常數（MSG.*）與 encode / decode / makeMessage |
 | `peerRuntime.js` | PeerJS 動態載入（esm.sh lazy singleton）+ `createPeer` / `waitForPeerOpen` |
 | `peerHost.js` | PeerJS 房主端：連線管理、auth handshake、Input 接收、MSG.CHAT 轉發 |

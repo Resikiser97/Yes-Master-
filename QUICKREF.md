@@ -1,6 +1,6 @@
 # QUICKREF.md — 每次啟動速查表
 
-> 版本：v0.0.14.2
+> 版本：v0.0.14.3
 > 類型：**代碼優先**（文件描述錯了，以代碼為準去改本檔）。
 > ⚠️ MVP 單機可動 + 多人大廳：移動/挖礦/背包/塔內資源/掉落物自動撿取/跟隨鏡頭/初版建造/核心數值回饋/核心 HP 與修復/debug 核心戰鬥/正式波次/晝夜/卡片選擇（hover+tier中文）/localStorage 存檔/新手教學提示/**debug 浮層（` 鍵）/測試難度 preset（1~30 關）/手機三欄觸控 UI（左 HUD+D-pad、中 canvas+1~0 快捷列、右 Debug Tool+動作鍵）/動態 canvas 縮放/**PWA manifest + iOS/Android 安裝引導畫面**/**手機 3×3 放置方向選擇器**/**電擊攻擊 VFX + 範圍圈**/**快捷列方塊圖示（手機+鍵盤 HUD）**/**sprite 載入基礎設施 + 素材整理**/**規劃模式（B 鍵拖拽建造+資源預檢）+ 拆除模式（V 鍵材質選擇性拆除）**/**快捷列 10 格（1~0）+ 滑鼠點擊**/**梯子無限方塊**/**挖礦進度條持久化**/**多人大廳（Lobby + Auth + Waiting Room + PeerJS 聊天）+ 等級/好友/裝備/成就/排行榜系統**已成完整循環。
 
@@ -44,10 +44,10 @@
 | `src/game/equipmentSystem.js` | 裝備 CRUD：getEquipment / upgradeEquipment / applyEquipBonus |
 | `src/game/achievementSystem.js` | 成就檢查與解鎖 |
 | `src/game/leaderboardSystem.js` | 排行榜提交/查詢/賽季稱號 |
-| `src/net/supabaseClient.js` | Lazy Supabase browser client 單例 |
-| `src/net/authManager.js` | Auth：Google OAuth / 匿名登入 / profile CRUD |
-| `src/net/friendManager.js` | 好友系統：邀請/接受/刪除/列表 |
-| `src/net/roomManager.js` | 房間 CRUD + Edge Function 呼叫（含 getRoomMembers / startRoom / kickPlayer / leaveRoom / heartbeatRoom / issueRoomJoinToken） |
+| `src/net/supabaseClient.js` | Lazy Supabase browser client 單例；`requireSupabaseUser()` 用於正式多人，不會自動匿名 |
+| `src/net/authManager.js` | Auth：Google OAuth / 匿名登入 / profile CRUD；Google profile 缺失時自動建立/補齊 |
+| `src/net/friendManager.js` | 好友系統：邀請/接受/刪除/列表；必須已有登入 session |
+| `src/net/roomManager.js` | 房間 CRUD + Edge Function 呼叫（含 getRoomMembers / startRoom / kickPlayer / leaveRoom / heartbeatRoom / issueRoomJoinToken）；必須已有登入 session |
 | `src/net/protocol.js` | MSG.* 常數 + encode / decode / makeMessage |
 | `src/net/peerRuntime.js` | PeerJS lazy 載入 + createPeer / waitForPeerOpen |
 | `src/net/peerHost.js` | PeerJS 房主端：連線管理 / auth handshake / Input 接收 / CHAT 轉發 |
@@ -85,6 +85,7 @@
 | Supabase `rooms` | `last_seen_at` | 房間最後活動時間（heartbeat 更新） | v0.0.14.2 新增 |
 | Supabase `rooms` | `completed_at` | 房間完成/關閉時間（leave-room / cleanup 寫入） | v0.0.14.2 新增 |
 | Supabase `room_memberships` | `last_seen_at` | 成員最後 heartbeat 時間 | v0.0.14.2 新增 |
+| Supabase `player_profiles` | `user_id` / `display_name` / `avatar_id` | Google OAuth 後的遊戲 profile；缺失時由 `ensureProfile()` 建立或補齊 | v0.0.14.3 修補 |
 | Supabase（存檔） | TODO | TODO | 接多人時填 |
 | Supabase（帳號） | TODO | TODO | 接多人時填 |
 
@@ -120,6 +121,9 @@
 | 手機虛擬按鈕蓋在 canvas 上會遮擋 HUD/debug，且 iOS/Android 可能叫出原生 tap highlight | 手機橫向使用三欄 layout：左右灰色操作區放 HUD/D-pad/Debug Tool/動作鍵，中間只放 canvas 與快捷列；所有 touch button 要加 `preventDefault()`、`touch-action:none`、`-webkit-tap-highlight-color:transparent` |
 | 手機模式若直接改全域 `GAME_CONFIG.render.drawCanvasHud` 會污染桌面模式 | `main.js` 進 touch mode 時 clone cfg/render/map，再設 `drawCanvasHud=false`；桌面 renderer 仍照常畫 `_drawHud` |
 | **[部署前必修]** debug 功能預設開啟，全域暴露 app 狀態 | 正式 build 前必須：① `debug.enabled=false`、`debug.hotkeys=false`；② `window.__YES_MASTER__` 只在 `debug.enabled` 時掛載；③ 手機 debug panel（`_buildDebugPanel`）只在 debug 下建立。未來若導入 build pipeline 再做 build-time strip，目前開發期維持開啟 |
+| Supabase `.single()` 查不到資料會回 406，容易把「尚未建立 profile」誤判成登入失敗 | 對可能不存在的單筆資料用 `.maybeSingle()`；登入後一律 `ensureProfile(user)`，必要時建立/補齊 `player_profiles` |
+| 多人流程底層若呼叫 `ensureSupabaseUser()`，沒有 session 時會靜默建立 anonymous guest | 多人房間與好友流程一律用 `requireSupabaseUser()`；沒有登入就回登入流程，不要自動訪客化 |
+| Supabase Auth `site_url` 若留 localhost，Vercel OAuth 成功後會回跳錯誤網址 | 線上 `site_url` 用 `https://yes-master-delta.vercel.app`；localhost/127.0.0.1 只放 redirect allow-list |
 
 > Debug hotkeys（`config/gameConfig.js debug.enabled && debug.hotkeys`）：H 扣核心血、J 回核心血、K 補塔內測試資源、L 生成 1 敵人、P 生成 5 敵人、C 直接開抽卡面板、T 暫停/恢復 gameplay update、X 清除 localStorage 存檔並重新整理（回新局）、**` 鍵切換 debug 浮層**（右上角疊加，顯示 tick/phase/drops/coreHp 等即時狀態）。手機模式另有右上 ⚙ Debug Tool，掛在右側灰欄，與 canvas debug overlay 可同時存在。
 

@@ -1,6 +1,6 @@
 # MAIN.md — 函式級參考
 
-> 版本：v0.0.14.0
+> 版本：v0.0.14.3
 > 類型：**代碼優先**（文件描述錯了，以代碼為準去改本檔）。
 > ⚠️ MVP 單機可動 + 多人大廳：移動/挖礦/背包/塔內資源/掉落物自動撿取/跟隨鏡頭/初版建造/核心數值回饋/核心 HP 與修復/核心戰鬥/正式波次晝夜/卡片選擇（hover+tier中文）/localStorage 存檔/新手教學提示/**debug 浮層（` 鍵）+ T 暫停**/**測試難度 preset（1~30 關）**/**手機觸控 UI + 動態 canvas 縮放**/**固定 bolt 電擊 VFX + 正式攻擊範圍可視化**/**快捷列圖示（手機 + 鍵盤 HUD）**/**sprite 基礎設施**/**規劃模式（B 鍵拖拽建造+資源預檢）+ 拆除模式（V 鍵材質選擇性拆除）**/**快捷列 10 格（1~0）+ 滑鼠點擊**/**梯子無限方塊**/**挖礦進度條持久化**/**多人大廳（Auth + Lobby + WaitingRoom + PeerJS 聊天）+ 等級/好友/裝備/成就/排行榜系統**已成完整循環。
 > 規則：新增 / 刪除函式必須同步本檔（見 `.claude/instructions.md` 開發鐵則）。
@@ -298,8 +298,8 @@ config/* 為靜態資料，被 logic 層 import。
 | `signOut(cfg?)` | 登出 |
 | `getCurrentUser(cfg?)` | 取得目前登入使用者 |
 | `onAuthStateChange(callback, cfg?)` | 監聽登入狀態變化 |
-| `getProfile(userId, cfg?)` | 查詢玩家 profile |
-| `ensureProfile(user, cfg?)` | 確保 profile 存在（不存在則建立） |
+| `getProfile(userId, cfg?)` | 查詢玩家 profile；用 `.maybeSingle()`，不存在回 `null` 不噴 406 |
+| `ensureProfile(user, cfg?)` | 確保 profile 存在；Google 使用者缺失或仍是 `Goblin/default` 時建立/補齊名稱與頭像 |
 | `updateProfile(updates, cfg?)` | 更新 profile |
 
 ### `src/net/friendManager.js`
@@ -327,7 +327,8 @@ config/* 為靜態資料，被 logic 層 import。
 | 函式 | 職責 |
 |---|---|
 | `getSupabaseClient(cfg?)` | 取得 lazy singleton Supabase client（browser only） |
-| `ensureSupabaseUser(cfg?)` | 確保已登入（否則匿名登入） |
+| `ensureSupabaseUser(cfg?)` | 確保已登入（否則匿名登入）；僅用於允許訪客 fallback 的舊功能 |
+| `requireSupabaseUser(cfg?)` | 要求已有登入 session；多人房間 / 好友流程使用，沒有登入則丟 `not signed in` |
 
 ### `src/net/protocol.js`
 

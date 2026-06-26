@@ -135,7 +135,8 @@ project_summary：[已更新 | 無需變動] → 一句話說明
 
 ## 5. 不可違反的開發鐵則
 
-1. **Magic Number 禁令**：數值只能放在 `config/`，邏輯層不准寫死數字。
+1. **絕對禁止自行 Commit / Push**：任何 `git commit` / `git push` 動作必須等開發者明確同意後才執行。完成工作後輸出 sync 報告，等開發者說「可以 commit」才動手。
+2. **Magic Number 禁令**：數值只能放在 `config/`，邏輯層不准寫死數字。
 2. **不准用名稱字串做邏輯判斷**（如 `name.includes('蠍王')），要在 config 為該對象加專屬欄位來判斷。
 3. **UI 文字一律走語言包** `t('key')`，不准硬寫字串。
 4. **改函式必同步 MAIN.md**：新增 / 刪除函式必須同步更新 `MAIN.md`。
@@ -160,7 +161,7 @@ project_summary：[已更新 | 無需變動] → 一句話說明
 - commit message 規範：盡量用「一句話說明解決了什麼問題」。
 ```
 
-> 注意：除非開發者明確要求，否則不要 commit / push（先輸出 sync 報告等確認）。
+> **鐵則：絕對不得自行 commit / push。** 必須等開發者明確說「可以 commit」才執行（見第 5 節第 1 條）。
 
 ---
 

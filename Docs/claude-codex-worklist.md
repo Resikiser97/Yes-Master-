@@ -1,5 +1,5 @@
 # Claude ↔ Codex MVP 開工協作清單
-> 狀態：MVP 實作中（v0.0.14.2）
+> 狀態：MVP 實作中（v0.0.14.3）
 > 最後更新：2026-06-26
 > 用途：單一交接看板。Claude 負責架構/純邏輯/骨架；Codex 負責數值/平衡填表。
 > 規則：**config/ 檔案就是雙方的交接介面**。Codex 把數值填進 config，Claude 的純邏輯層消費，互不踩線。
@@ -239,11 +239,11 @@
 
 | # | 項目 | 實作現況 | 狀態 | 下一步 |
 |---|---|---|---|---|
-| M0A-1 | Google OAuth 登入 | `src/ui/authScreen.js` 有 Google 登入按鈕；`authManager.signInWithGoogle()` 已接 Supabase OAuth | 🟡 部分完成 | 🧪 需線上 Supabase + Chrome 驗 Google 回跳與 session persist |
-| M0A-2 | 訪客模式 | UI 有「訪客模式」並呼叫 anonymous sign-in；本地 `supabase/config.toml` 已開啟 anonymous | 🟡 部分完成 | 🧪 線上 Supabase Dashboard 也需開啟 Anonymous provider |
+| M0A-1 | Google OAuth 登入 | `src/ui/authScreen.js` 有 Google 登入按鈕；Supabase Auth `site_url` 已對齊 Vercel；live Vercel 已驗證 Google callback 可回正式站 | ✅ 已可用 | 後續補正式 sign-out / account menu |
+| M0A-2 | 訪客模式 | UI 仍有「訪客模式」並呼叫 anonymous sign-in；但多人房間 / 好友流程已改用 `requireSupabaseUser()`，不再底層靜默建立 anonymous guest | 🟡 部分完成 | 決定正式版是否保留手動訪客入口，或只允許單機/測試使用 |
 | M0A-3 | Email 註冊 / 登入 | `lobby-waitingroom-plan.md` Phase A 要求 Email 登入/註冊；目前沒有 `signUp` / `signInWithPassword` UI | 🔲 未做 | 新增 email/password 註冊、登入、錯誤提示、回到 Lobby |
-| M0A-4 | player_profiles 自動建立 | `ensureProfile(user)` 已在登入後呼叫，會 insert profile | 🟡 部分完成 | 🧪 需 DB/RLS 驗證 insert/select/update 權限 |
-| M0A-5 | Profile DB migration / RLS | 計畫文件有 SQL；repo 目前沒有完整 migration，只看到局部 SQL/seed | 🔴 阻塞 | 補正式 migration：`player_profiles` + RLS policy |
+| M0A-4 | player_profiles 自動建立 | `ensureProfile(user)` 已在登入後呼叫；`getProfile()` 改 `.maybeSingle()`；Google 使用者缺 profile 或仍是 `Goblin/default` 時會建立/補齊名稱與頭像 | ✅ 已可用 | 補 automated auth/profile regression test（需 mock Supabase client） |
+| M0A-5 | Profile DB migration / RLS | 線上 DB 已確認 `player_profiles` 欄位與 RLS policy（select true / insert auth.uid=user_id / update auth.uid=user_id）可用；repo 仍缺正式完整 migration | 🟡 部分完成 | 補正式 migration：`player_profiles` + RLS policy，避免只靠線上既有狀態 |
 
 ### M0B-F. 等級 / 好友 / 裝備 / 成就 / 排行榜
 
@@ -273,6 +273,8 @@
 > 2026-06-26 deploy prep note: local SQL now includes the missing `rooms.current_players`, `room_memberships.role`, and `room_memberships.is_host` columns in both `supabase/alter_rooms_phase_g.sql` and the formal migration `supabase/migrations/20260626_phase_g_room_columns.sql`. Remaining work is Supabase CLI deploy, secrets setup, live Playwright acceptance, and cleanup of `Codex Live Test` / `Codex Start Test` active rooms.
 >
 > 2026-06-26 deploy acceptance note: Supabase CLI deployed Phase G migration, `ROOM_PASSWORD_SECRET` / `ROOM_TOKEN_SECRET`, and Edge Functions (`create-room`, `join-room`, `issue-room-join-token`, `verify-room-join-token`, `start-room`, `kick-player`, `leave-room`, `update-host-peer`). Playwright live acceptance on `http://127.0.0.1:5500/` passed Splash → Auth → anonymous session → Lobby → create password room → WaitingRoom → start game. Google OAuth redirects to Google Accounts. `rooms` and `room_memberships` missing-column 400s are gone. Cleaned active `Codex Live Test%` / `Codex Start Test%` rooms and memberships. Still needs double-browser client join/chat/kick/leave/GAME_START acceptance.
+>
+> 2026-06-26 Auth/Profile hotfix note: Supabase Auth `site_url` / redirect allow-list 已改為 Vercel 正式站優先並保留 localhost 測試網址；修正 Google OAuth 新玩家缺 `player_profiles` 時 `.single()` 406 導致疑似訪客狀態；`roomManager` / `friendManager` 改用 `requireSupabaseUser()`，多人與好友流程不再靜默 anonymous sign-in。Live Vercel 已確認新版 `authManager.js` / `roomManager.js` 部署。
 
 ### M0H. Lobby UI
 
@@ -357,7 +359,7 @@
 
 > M0 的具體修復以本節為準；舊 `Docs/integration-plan.md` 目前只能視為歷史整合草稿，不再代表完成狀態。
 
-### Data Retention Policy（v0.0.14.2）
+### Data Retention Policy（v0.0.14.3）
 
 | 資料表 | 保留規則 | 說明 |
 |---|---|---|
@@ -366,7 +368,7 @@
 | `room_memberships` | active room 使用中保留；completed/deleted room 連帶刪除 | cleanup-rooms 刪房時一併刪 |
 | `consumed_nonces` | 後續需定期清理 `consumed_at` 超過 5-10 分鐘的 token nonce | 🔲 待實作 |
 
-### 已完成單瀏覽器 / Supabase 驗收項目（v0.0.14.2）
+### 已完成單瀏覽器 / Supabase 驗收項目（v0.0.14.3）
 
 | 項目 | 說明 |
 |---|---|
@@ -376,7 +378,7 @@
 | ✅ cleanup-rooms 手動呼叫 | Playwright 關閉後等待 stale 門檻，手動呼叫 cleanup；測試房轉為 `completed`、`current_players=0` |
 | ✅ stale / empty 狀態 | live DB 查驗 `active_empty_rooms=0`、`online_stale_memberships=0` |
 
-### 仍待人工 / 雙瀏覽器驗收項目（v0.0.14.2）
+### 仍待人工 / 雙瀏覽器驗收項目（v0.0.14.3）
 
 | 項目 | 說明 |
 |---|---|
