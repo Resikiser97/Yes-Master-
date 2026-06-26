@@ -5,12 +5,12 @@
  * @exports     GAME_CONFIG
  * @depends     （無）
  * @sourceOfTruth Docs/game-design-plan.md、Docs/game-architecture-plan.md、Docs/waveplan.md
- * @version     v0.0.14.7
+ * @version     v0.0.14.8
  */
 
 export const GAME_CONFIG = {
   // 版本同步點之一（見 .claude/instructions.md 版本號同步鐵則）
-  version: 'v0.0.14.7',
+  version: 'v0.0.14.8',
 
   // MVP 模式角標（單人 / 多人），方便錄影分辨測試版本
   mode: 'single', // 'single' | 'multi'
@@ -100,7 +100,7 @@ export const GAME_CONFIG = {
     moveSpeed: 50,     // 移動能力值；基準 50 = 5 格/秒
     moveSpeedPerTilePerSecond: 10, // 格/秒 = moveSpeed / 10
     // 挖礦輸入次數上限（與挖掘數值無關）
-    mineClicksPerSec: { click: 10, hold: 5 },
+    mineClicksPerSec: { click: 10, hold: 10 },
   },
 
   // 技能點：每點 +10%，最高 10 級

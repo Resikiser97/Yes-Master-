@@ -1,8 +1,19 @@
 # CHANGELOG.md — 版本歷史
 
-> 版本：v0.0.14.7
+> 版本：v0.0.14.8
 > 類型：**只增不改**（歷史紀錄，永遠往上加，最新在最上方，不回頭改舊條目）。
 > 條目格式：`## vX.Y.Z.W - YYYY-MM-DD`，下分「新增 / 修復 / 調整」。
+
+---
+
+## v0.0.14.8 - 2026-06-26
+
+### 修復
+- **P2 看不到核心攻擊 VFX（閃電）**：`world.vfx`（timer + bolts）未加入 `serializeSnapshot` / `serializeDelta` / `applyPartialState`，Host 產生的閃電特效從未同步給客戶端。修法：三處均加入 `vfx` 序列化與反序列化。
+
+### 調整
+- **挖礦長按速度**：`mineClicksPerSec.hold` 從 5 改為 10，與單擊上限一致，長按挖礦效率加倍。
+- **挖礦不消耗疲勞**：確認 `updateMining` 本就不扣 fatigue（只有 `updateRepair` 才消耗），無需修改。
 
 ---
 

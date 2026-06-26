@@ -5,7 +5,7 @@
  * @exports     serializeSnapshot, serializeDelta, applySnapshot, applyDelta
  * @depends     game/world.js, game/coreSnapshot.js
  * @sourceOfTruth Docs/game-architecture-plan.md「Multiplayer 架構 → State Sync」
- * @version     v0.0.14.6
+ * @version     v0.0.14.8
  */
 import { GAME_CONFIG } from '../../config/gameConfig.js';
 import { createWorld, attachPlayerAlias, ensurePlayer, createPlayerState } from '../game/world.js';
@@ -49,6 +49,13 @@ export function serializeSnapshot(world) {
     pendingCardOffer: world.pendingCardOffer ? world.pendingCardOffer.map(c => ({ ...c, effect: { ...(c.effect ?? {}) } })) : null,
     mineProgress: { ...(world.mineProgress ?? {}) },
     clock: { ...(world.clock ?? {}) },
+    vfx: {
+      timer: world.vfx?.timer ?? 0,
+      bolts: (world.vfx?.bolts ?? []).map(b => ({
+        chainIdx: b.chainIdx,
+        points: (b.points ?? []).map(p => ({ x: p.x, y: p.y })),
+      })),
+    },
   };
 }
 
@@ -73,6 +80,7 @@ export function serializeDelta(prevSnapshot, world) {
     combat: snapshot.combat,
     pendingCardOffer: snapshot.pendingCardOffer,
     clock: snapshot.clock,
+    vfx: snapshot.vfx,
   };
 }
 
@@ -142,6 +150,15 @@ function applyPartialState(world, state, cfg) {
     world.pendingCardOffer = state.pendingCardOffer ? state.pendingCardOffer.map(c => ({ ...c })) : null;
   }
   if (state.clock) world.clock = { ...world.clock, ...state.clock };
+  if (state.vfx) {
+    world.vfx = {
+      timer: state.vfx.timer ?? 0,
+      bolts: (state.vfx.bolts ?? []).map(b => ({
+        chainIdx: b.chainIdx,
+        points: (b.points ?? []).map(p => ({ x: p.x, y: p.y })),
+      })),
+    };
+  }
 }
 
 function serializePlayer(player) {
