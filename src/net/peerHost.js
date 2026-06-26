@@ -5,7 +5,7 @@
  * @exports     startPeerHost
  * @depends     net/protocol.js, net/peerRuntime.js, net/roomManager.js, net/strikeTracker.js, game/world.js
  * @sourceOfTruth Docs/game-architecture-plan.md「P2P 安全限制 → Handshake 流程」
- * @version     v0.0.14.1
+ * @version     v0.0.14.4
  */
 import { GAME_CONFIG } from '../../config/gameConfig.js';
 import { ensurePlayer } from '../game/world.js';
@@ -65,7 +65,7 @@ export async function startPeerHost({ roomId, cfg = GAME_CONFIG, world = null, o
           const verified = await verifyRoomJoinToken(message.payload?.token, cfg);
           if (roomId && verified.room_id !== roomId) throw new Error('room mismatch');
           const slotId = host.reserveSlot(verified);
-          ensurePlayer(world, slotId, cfg);
+          if (world) ensurePlayer(world, slotId, cfg);
           const session = { conn, uid: verified.uid, slotId, connectedAt: Date.now(), lastPongAt: Date.now() };
           peers.set(conn.peer, session);
           sendConn(conn, makeMessage(MSG.AUTH_OK, { slotId, peerId, hostEpoch: message.payload?.hostEpoch ?? 1 }));

@@ -1,10 +1,17 @@
 # CHANGELOG.md — 版本歷史
 
-> 版本：v0.0.14.3
+> 版本：v0.0.14.4
 > 類型：**只增不改**（歷史紀錄，永遠往上加，最新在最上方，不回頭改舊條目）。
 > 條目格式：`## vX.Y.Z.W - YYYY-MM-DD`，下分「新增 / 修復 / 調整」。
 
 ---
+
+## v0.0.14.4 - 2026-06-26
+
+### 修復
+- **Waiting Room 連線失敗 / 聊天無效**：`peerHost.js` 在 Waiting Room 階段 `world` 為 `null` 時，客戶端 auth 成功後執行 `ensurePlayer(null, slotId)` → `null.players` → AUTH_FAIL 回傳給客戶端 → 顯示「連線失敗」且 P2P 聊天全部失效。修法：加 `if (world)` 判斷，Waiting Room 階段跳過 `ensurePlayer`。
+- **leave-room Edge Function 500**：`mutateCompatible` 遇到 PGRST116（update 0 筆，例如 `current_host_uid` 不匹配或房間已關閉）時直接 throw → 500。修法：加 `PGRST116` early return，視為已完成靜默成功。
+- **AI 協作規則新增**：`CLAUDE.md`、`.claude/instructions.md`、`.codex/AGENTS.md` 加入「絕對禁止自行 Commit / Push，必須等開發者明確同意」鐵則。
 
 ## v0.0.14.3 - 2026-06-26
 

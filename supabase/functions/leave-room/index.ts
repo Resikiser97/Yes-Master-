@@ -104,6 +104,8 @@ async function mutateCompatible(row: Record<string, unknown>, run: (payload: Rec
   for (;;) {
     const { data, error } = await run(payload);
     if (!error) return data;
+    // PGRST116 = no rows matched the update — treat as success (already closed/updated)
+    if (error?.code === "PGRST116") return null;
     const missing = missingColumn(error);
     if (!missing || removed.has(missing) || !(missing in payload)) throw error;
     removed.add(missing);
