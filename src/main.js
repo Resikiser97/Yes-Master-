@@ -390,6 +390,22 @@ export function boot() {
         updateMining(world, controls.isMining(), dt, cfg);
         collectDrops(world, cfg);
         updateRepair(world, controls.isRepairing(), dt, cfg);
+
+        // 寫入本地玩家意圖，下一幀 stateSync 廣播給隊友
+        const _localP = world.players?.get(world.localPlayerId);
+        if (_localP) {
+          const _intent =
+            controls.isMining()                                      ? 'mine'    :
+            controls.isRepairing?.()                                 ? 'repair'  :
+            world.buildDestroyMode                                   ? 'destroy' :
+            (world.buildPlanMode && world.selectedBlock)             ? 'build'   : null;
+          if (_intent && _intent !== _localP.intent) {
+            _localP.intent   = _intent;
+            _localP.intentAt = Date.now();
+          } else if (!_intent) {
+            _localP.intent = null;
+          }
+        }
         updatePhase(world, dt, cfg);
         updateEnemies(world, dt);
         updateCoreCombat(world, dt, cfg);

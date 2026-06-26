@@ -176,6 +176,8 @@ function serializePlayer(player) {
     slots: player.slots,
     fatigue: player.fatigue,
     online: player.online !== false,
+    intent: player.intent ?? null,
+    intentAt: player.intentAt ?? 0,
   };
 }
 

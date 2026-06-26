@@ -5,7 +5,7 @@
  * @exports     Renderer
  * @depends     config/gameConfig.js
  * @sourceOfTruth Docs/game-design-plan.md「建築維度」「遊戲內 UI 設計」
- * @version     v0.0.14.10
+ * @version     v0.0.14.11
  *
  * 渲染層只「讀」world 狀態畫圖，不寫任何遊戲規則（鐵則 9）。
  */
@@ -190,6 +190,7 @@ export class Renderer {
 
     if (this.cfg.render.drawCanvasHud !== false) {
       this._drawPlayerPanel(world);
+      this._drawPartyBar(world);
       this._drawWaveTimer(world);
       this._drawBackpack(world);
       this._drawCoreStatsPanel(world);
@@ -451,6 +452,87 @@ export class Renderer {
         ctx.fillText(label, startX, rowY);
         ctx.fillText(value, startX + 62, rowY);
       });
+    }
+    ctx.restore();
+  }
+
+  _drawPartyBar(world) {
+    const players = world.players;
+    if (!players || players.size <= 1) return;
+    const localId = world.localPlayerId;
+    const others = [...players.values()].filter(p => p.id !== localId);
+    if (others.length === 0) return;
+
+    const ctx = this.ctx;
+    const { width: vw } = this.viewport;
+    const cardW = 160, cardH = 50, gap = 8;
+    const totalW = others.length * cardW + (others.length - 1) * gap;
+    let cardX = Math.round((vw - totalW) / 2);
+    const cardY = 8;
+    const fatigueMax = Number(this.cfg.player?.fatigueMax ?? 120);
+
+    const INTENT_EMOJI = { mine: '⛏️', build: '🧱', destroy: '🦵', repair: '🔧', warn: '⚠️' };
+
+    ctx.save();
+    for (const p of others) {
+      const fatigue = Number(p.fatigue ?? 0);
+      const fatiguePct = fatigueMax > 0 ? fatigue / fatigueMax : 0;
+      const offline = p.online === false;
+
+      drawPanel(ctx, cardX, cardY, cardW, cardH, { bg: 'rgba(0,0,0,0.68)', border: offline ? '#555' : '#333' });
+
+      // intent emoji（卡片頂部上方，30 秒內有效）
+      const intentEmoji = INTENT_EMOJI[p.intent];
+      if (intentEmoji && (Date.now() - (p.intentAt ?? 0)) < 30_000) {
+        ctx.font = '14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(intentEmoji, cardX + cardW / 2, cardY - 2);
+      }
+
+      // avatar circle
+      const avatarCx = cardX + 20;
+      const avatarCy = cardY + cardH / 2;
+      ctx.fillStyle = offline ? 'rgba(40,40,40,0.5)' : 'rgba(60,60,60,0.5)';
+      ctx.beginPath();
+      ctx.arc(avatarCx, avatarCy, 16, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = offline ? '#444' : '#555';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.font = '14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.globalAlpha = offline ? 0.4 : 1;
+      ctx.fillText('👺', avatarCx, avatarCy + 1);
+      ctx.globalAlpha = 1;
+
+      // right side
+      const rx = cardX + 44;
+      const nameY = cardY + 10;
+      const barY = cardY + 27;
+      const barW = cardW - 44 - 8;
+
+      // player id label (truncated)
+      ctx.font = '10px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillStyle = offline ? '#555' : '#AAA';
+      const label = String(p.id).slice(0, 12);
+      ctx.fillText(label, rx, nameY);
+
+      // fatigue bar
+      ctx.fillStyle = '#1e2330';
+      ctx.fillRect(rx, barY, barW, 10);
+      ctx.fillStyle = offline ? '#555' : '#4CAF50';
+      ctx.fillRect(rx, barY, Math.round(barW * Math.max(0, Math.min(1, fatiguePct))), 10);
+      ctx.font = 'bold 8px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#f3f7f0';
+      ctx.fillText(`${Math.round(fatigue)}/${Math.round(fatigueMax)}`, rx + barW / 2, barY + 5.5);
+
+      cardX += cardW + gap;
     }
     ctx.restore();
   }

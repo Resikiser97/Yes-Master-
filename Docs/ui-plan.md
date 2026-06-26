@@ -1,9 +1,9 @@
 # Yes, Master! — 遊戲內 UI 計劃書
 > 對應 mockup：`Docs/Gameplay UI.png`
 > 目標：1:1 還原 mockup 所有資訊區塊
-> 狀態：Planning
-> 最後更新：2026-06-25
-> 版本：v0.0.12.0
+> 狀態：實作中
+> 最後更新：2026-06-27
+> 版本：v0.0.14.11
 
 ---
 
@@ -851,7 +851,7 @@ if (this.cfg.render.drawCanvasHud !== false) {
 
 | 區塊 | 原因 | 實裝時機 |
 |---|---|---|
-| **B. 隊友列** | 需要 PeerJS 多人連線 `world.players[]` | 多人連線骨架完成後 |
+| **B. 隊友列** | ✅ v0.0.14.11 實裝（疲勞條 + 意圖 Emoji）；intent 同步已加入 stateSync | — |
 | **A. 裝備槽內容** | 需要裝備系統 `world.player.equipment` | 裝備系統實裝後 |
 | **A. 靈力條數值** | 需要 `world.player.spirit` 接入 | 靈動系統實裝後 |
 | **G-1. 經驗/卡片/金幣實際數據** | 需要 `world.totalXP` 等累計欄位 | 累計統計系統後 |

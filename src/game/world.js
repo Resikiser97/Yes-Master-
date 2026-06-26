@@ -51,6 +51,8 @@ export function createPlayerState(id = DEFAULT_PLAYER_ID, cfg = GAME_CONFIG, pos
     slots: cfg.player.backpackSlots,
     fatigue: cfg.player.fatigue,
     online: true,
+    intent: null,
+    intentAt: 0,
   };
 }
 
