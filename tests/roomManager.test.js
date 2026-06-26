@@ -5,6 +5,7 @@ import {
   ROOM_LIST_COLUMNS,
   ROOM_MEMBER_COLUMNS,
   buildCreateRoomBody,
+  buildHeartbeatRoomBody,
   buildJoinRoomBody,
   buildKickPlayerBody,
   buildLeaveRoomBody,
@@ -56,5 +57,42 @@ assert.equal(isListableRoom({ status: 'completed', visibility: 'public', current
 assert.equal(isListableRoom({ status: 'active', visibility: 'private', current_players: 1, max_players: 4 }), false);
 assert.equal(isListableRoom({ status: 'active', visibility: 'public', game_started: true, current_players: 1, max_players: 4 }), false);
 assert.equal(isListableRoom({ status: 'active', visibility: 'public', current_players: 4, max_players: 4 }), false);
+
+// --- v0.0.14.2: heartbeat body ---
+assert.deepEqual(buildHeartbeatRoomBody('room-h'), { room_id: 'room-h' });
+
+// --- v0.0.14.2: stale room filtering ---
+assert.equal(
+  isListableRoom({ status: 'active', visibility: 'public', current_players: 0, max_players: 4 }),
+  false,
+  'current_players=0 should be filtered'
+);
+assert.equal(
+  isListableRoom({
+    status: 'active', visibility: 'public', current_players: 2, max_players: 4,
+    last_seen_at: new Date(Date.now() - 120_000).toISOString(), // 2 min ago
+  }),
+  false,
+  'stale last_seen_at (>90s) should be filtered'
+);
+assert.equal(
+  isListableRoom({
+    status: 'active', visibility: 'public', current_players: 2, max_players: 4,
+    last_seen_at: new Date(Date.now() - 30_000).toISOString(), // 30s ago
+  }),
+  true,
+  'recent last_seen_at (<90s) should pass'
+);
+assert.equal(
+  isListableRoom({
+    status: 'active', visibility: 'public', current_players: 2, max_players: 4,
+    // no last_seen_at — compatible fallback
+  }),
+  true,
+  'missing last_seen_at should pass (backwards compatible)'
+);
+
+// ROOM_LIST_COLUMNS includes last_seen_at
+assert.equal(ROOM_LIST_COLUMNS.includes('last_seen_at'), true);
 
 console.log('roomManager tests passed');

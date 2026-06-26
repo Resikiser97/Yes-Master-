@@ -1,6 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 
+const HEARTBEAT_TIMEOUT_SECONDS = 60;
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -18,50 +20,36 @@ serve(async (req) => {
     const { room_id } = await req.json();
     if (!room_id) return json({ error: "missing room_id" }, 400);
 
+    // Verify user is a member of this room
     const { data: member, error: memberErr } = await supabase
       .from("room_memberships")
-      .select("is_host")
+      .select("user_id")
       .eq("room_id", room_id)
       .eq("user_id", user.id)
       .maybeSingle();
     if (memberErr) throw memberErr;
+    if (!member) return json({ error: "not a member of this room" }, 403);
 
-    if (member?.is_host) {
-      // Host leaves: close room, delete all memberships
-      const now = new Date().toISOString();
-      await updateCompatible(
-        supabase,
-        "rooms",
-        { status: "completed", current_players: 0, completed_at: now },
-        (query: any) => query.eq("room_id", room_id).eq("current_host_uid", user.id),
-      );
-      await supabase.from("room_memberships").delete().eq("room_id", room_id);
-      return json({ ok: true, current_players: 0, room_closed: true });
-    }
+    // Update membership presence
+    await updateCompatible(
+      supabase,
+      "room_memberships",
+      { online: true, disconnected_at: null, last_seen_at: new Date().toISOString() },
+      (query: any) => query.eq("room_id", room_id).eq("user_id", user.id),
+    );
 
-    // Client leaves: delete membership
-    const { error } = await supabase
-      .from("room_memberships")
-      .delete()
-      .eq("room_id", room_id)
-      .eq("user_id", user.id);
-    if (error) throw error;
+    // Update room last_seen_at
+    await updateCompatible(
+      supabase,
+      "rooms",
+      { last_seen_at: new Date().toISOString() },
+      (query: any) => query.eq("room_id", room_id),
+    );
 
-    const current_players = await refreshCurrentPlayers(supabase, room_id);
+    // Recalculate current_players: only online members with recent last_seen_at
+    const current_players = await refreshCurrentPlayersPresence(supabase, room_id);
 
-    // If no players left, mark room completed
-    if (current_players === 0) {
-      const now = new Date().toISOString();
-      await updateCompatible(
-        supabase,
-        "rooms",
-        { status: "completed", current_players: 0, completed_at: now },
-        (query: any) => query.eq("room_id", room_id).eq("status", "active"),
-      );
-      return json({ ok: true, current_players: 0, room_closed: true });
-    }
-
-    return json({ ok: true, current_players });
+    return json({ ok: true, current_players, room_closed: false });
   } catch (e) {
     const message = (e as Error).message;
     const status = message === "unauthorized" ? 401 : 500;
@@ -69,22 +57,46 @@ serve(async (req) => {
   }
 });
 
+async function refreshCurrentPlayersPresence(supabase: any, roomId: string) {
+  const cutoff = new Date(Date.now() - HEARTBEAT_TIMEOUT_SECONDS * 1000).toISOString();
+
+  // Count members that are online AND have recent last_seen_at
+  // Fallback: if last_seen_at column doesn't exist, just count online members
+  let current_players: number;
+  try {
+    const { count, error } = await supabase
+      .from("room_memberships")
+      .select("user_id", { count: "exact", head: true })
+      .eq("room_id", roomId)
+      .eq("online", true)
+      .gte("last_seen_at", cutoff);
+    if (error) throw error;
+    current_players = count ?? 0;
+  } catch {
+    // Fallback: count all online members (last_seen_at may not exist)
+    const { count, error: fallbackErr } = await supabase
+      .from("room_memberships")
+      .select("user_id", { count: "exact", head: true })
+      .eq("room_id", roomId)
+      .eq("online", true);
+    if (fallbackErr) throw fallbackErr;
+    current_players = count ?? 0;
+  }
+
+  await updateCompatible(
+    supabase,
+    "rooms",
+    { current_players },
+    (query: any) => query.eq("room_id", roomId),
+  );
+  return current_players;
+}
+
 async function requireUser(supabase: any, req: Request) {
   const authHeader = req.headers.get("Authorization") ?? "";
   const { data: { user }, error } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
   if (error || !user) throw new Error("unauthorized");
   return user;
-}
-
-async function refreshCurrentPlayers(supabase: any, roomId: string) {
-  const { count, error } = await supabase
-    .from("room_memberships")
-    .select("user_id", { count: "exact", head: true })
-    .eq("room_id", roomId);
-  if (error) throw error;
-  const current_players = count ?? 0;
-  await updateCompatible(supabase, "rooms", { current_players }, (query: any) => query.eq("room_id", roomId));
-  return current_players;
 }
 
 function json(body: unknown, status = 200) {

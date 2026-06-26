@@ -1,5 +1,5 @@
 # Claude ↔ Codex MVP 開工協作清單
-> 狀態：MVP 實作中（v0.0.14.1）
+> 狀態：MVP 實作中（v0.0.14.2）
 > 最後更新：2026-06-26
 > 用途：單一交接看板。Claude 負責架構/純邏輯/骨架；Codex 負責數值/平衡填表。
 > 規則：**config/ 檔案就是雙方的交接介面**。Codex 把數值填進 config，Claude 的純邏輯層消費，互不踩線。
@@ -347,7 +347,7 @@
 
 | # | 項目 | 說明 | 狀態 |
 |---|---|---|---|
-| M1 | Supabase 房間自動清理 | `active` 超過 24h 沒人連 → 標 `completed`；`completed` 超過 24h → 刪除（CASCADE 帶走 memberships）。可用 Edge Function cron 或 pg_cron 實作 | 🔲 待做 |
+| M1 | Supabase 房間自動清理 | `cleanup-rooms` Edge Function 已部署並以 `CLEANUP_SECRET` 手動呼叫驗收：stale memberships（>60s → offline）、empty active rooms → completed、completed >24h → 刪除。尚未接外部 cron | 🟡 部分完成 |
 | M2 | consumed_nonces 定期清理 | 免費方案無 pg_cron，需 Edge Function 或手動清 `consumed_at` 超過 5 分鐘的 nonce | 🔲 待做 |
 | M3 | 拆除模式僅限房主 | 多人連線後需加權限策略；目前規劃模式/拆除模式仍需確認誰可用 | 🔲 待做 |
 | M4 | Host Migration + 斷線重連 | Phase 6：偵測 host 掉線 → join_order 選候選 → CAS 更新 DB → 新 host 初始化；3 秒 grace timer + reconnect token 綁 slot | 🔲 待做 |
@@ -356,6 +356,37 @@
 | M7 | Anonymous Auth 改正式帳號 | 目前 UI 有 Anonymous，但正式身份仍應支援 email/OAuth 綁定 | 🔲 待討論 |
 
 > M0 的具體修復以本節為準；舊 `Docs/integration-plan.md` 目前只能視為歷史整合草稿，不再代表完成狀態。
+
+### Data Retention Policy（v0.0.14.2）
+
+| 資料表 | 保留規則 | 說明 |
+|---|---|---|
+| `player_profiles` | 正式帳號永久保留；anonymous guest profile 可後續清理 `last_seen` 超過 7-30 天 | 清理邏輯待實作 |
+| `rooms` | active：只保留有近期 online member 的房（cleanup-rooms 處理）；completed：保留 24h 後刪除 | cleanup-rooms 已實作 |
+| `room_memberships` | active room 使用中保留；completed/deleted room 連帶刪除 | cleanup-rooms 刪房時一併刪 |
+| `consumed_nonces` | 後續需定期清理 `consumed_at` 超過 5-10 分鐘的 token nonce | 🔲 待實作 |
+
+### 已完成單瀏覽器 / Supabase 驗收項目（v0.0.14.2）
+
+| 項目 | 說明 |
+|---|---|
+| ✅ Supabase migration | `rooms.last_seen_at`、`rooms.completed_at`、`room_memberships.last_seen_at` 已部署並查驗存在 |
+| ✅ Edge Functions | `room-heartbeat`、`cleanup-rooms`、`leave-room`、`create-room`、`join-room` 已部署；`cleanup-rooms` 使用 `--no-verify-jwt` 並由 `CLEANUP_SECRET` 保護 |
+| ✅ heartbeat request 200 | 建房 → WaitingRoom → 等 10-15 秒，確認 `room-heartbeat` 多次返回 200 |
+| ✅ cleanup-rooms 手動呼叫 | Playwright 關閉後等待 stale 門檻，手動呼叫 cleanup；測試房轉為 `completed`、`current_players=0` |
+| ✅ stale / empty 狀態 | live DB 查驗 `active_empty_rooms=0`、`online_stale_memberships=0` |
+
+### 仍待人工 / 雙瀏覽器驗收項目（v0.0.14.2）
+
+| 項目 | 說明 |
+|---|---|
+| 🧪 client 加入密碼房 | 雙瀏覽器 |
+| 🧪 chat | 雙瀏覽器 |
+| 🧪 kick | 雙瀏覽器 |
+| 🧪 client leave | 雙瀏覽器 |
+| 🧪 client 關 tab → cleanup 後 current_players 正確下降 | 雙瀏覽器 |
+| 🧪 host 關 tab → cleanup 後 room completed | 雙瀏覽器 |
+| 🧪 GAME_START 廣播 | 雙瀏覽器 |
 
 ---
 

@@ -1,6 +1,6 @@
 # ARCH.md — 架構全貌
 
-> 版本：v0.0.14.1
+> 版本：v0.0.14.2
 > 類型：**代碼優先**（文件描述錯了，以代碼為準去改本檔）。
 > 用途：給任何新 AI 30 秒建立系統全貌；細節以 `src/` / `config/` 與 `Docs/game-architecture-plan.md` 為準。
 
@@ -160,7 +160,7 @@ UI / Overlay 層（src/ui/*）
 | `supabaseClient.js` | Lazy Supabase browser client 單例；`getSupabaseClient()` / `ensureSupabaseUser()` |
 | `authManager.js` | Auth：Google OAuth / 匿名登入 / player_profiles CRUD |
 | `friendManager.js` | 好友邀請 / 接受 / 刪除 / 列表 |
-| `roomManager.js` | 房間 CRUD + Edge Function 呼叫（含 `getRoomMembers` / `startRoom` / `kickPlayer` / `leaveRoom` / `issueRoomJoinToken`） |
+| `roomManager.js` | 房間 CRUD + Edge Function 呼叫（含 `getRoomMembers` / `startRoom` / `kickPlayer` / `leaveRoom` / `heartbeatRoom` / `issueRoomJoinToken`） |
 | `protocol.js` | 訊息類型常數（MSG.*）與 encode / decode / makeMessage |
 | `peerRuntime.js` | PeerJS 動態載入（esm.sh lazy singleton）+ `createPeer` / `waitForPeerOpen` |
 | `peerHost.js` | PeerJS 房主端：連線管理、auth handshake、Input 接收、MSG.CHAT 轉發 |

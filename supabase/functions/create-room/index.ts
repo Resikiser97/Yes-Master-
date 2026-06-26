@@ -26,6 +26,7 @@ serve(async (req) => {
     const profile = await getPlayerProfile(supabase, user.id);
     const password = typeof body.password === "string" ? body.password.trim() : "";
     const password_hash = password ? await hashRoomPassword(room_id, password) : null;
+    const now = new Date().toISOString();
     const room = await insertCompatible(supabase, "rooms", {
       room_id,
       owner_id: user.id,
@@ -41,6 +42,8 @@ serve(async (req) => {
       difficulty: body.difficulty ?? "normal",
       visibility: body.visibility ?? "public",
       game_started: false,
+      last_seen_at: now,
+      completed_at: null,
     });
 
     await upsertCompatible(supabase, "room_memberships", {
@@ -54,7 +57,8 @@ serve(async (req) => {
       player_level: profile.level,
       online: true,
       disconnected_at: null,
-      updated_at: new Date().toISOString(),
+      last_seen_at: now,
+      updated_at: now,
     }, { onConflict: "room_id,user_id" });
 
     return json(publicRoom(room));

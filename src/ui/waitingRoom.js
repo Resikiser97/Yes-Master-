@@ -4,11 +4,11 @@
  * @summary     等待室：玩家 slot 卡片 + PeerJS 聊天 + 開始遊戲
  * @exports     showWaitingRoom
  * @depends     src/net/authManager.js, src/net/supabaseClient.js, src/net/peerHost.js, src/net/peerClient.js, src/net/protocol.js, src/net/friendManager.js, src/ui/characterPopup.js
- * @version     v0.0.14.1
+ * @version     v0.0.14.2
  */
 
 import { getCurrentUser, getProfile } from '../net/authManager.js';
-import { getRoomMembers, kickPlayer, leaveRoom, startRoom } from '../net/roomManager.js';
+import { getRoomMembers, kickPlayer, leaveRoom, startRoom, heartbeatRoom } from '../net/roomManager.js';
 import { startPeerHost } from '../net/peerHost.js';
 import { startPeerClient } from '../net/peerClient.js';
 import { MSG, makeMessage } from '../net/protocol.js';
@@ -22,7 +22,9 @@ const BROWN_BG = 'rgba(139,90,43,0.18)';
 const BROWN_BORDER = 'rgba(139,90,43,0.5)';
 
 let pollTimer = null;
+let heartbeatTimer = null;
 let netSession = null;
+let _tabCloseHandlers = null;
 
 export async function showWaitingRoom({ roomId, roomName, role, inputMode, diffMode, maxPlayers = 4, onStart, onBack }) {
   _cleanup();
@@ -198,6 +200,16 @@ export async function showWaitingRoom({ roomId, roomName, role, inputMode, diffM
 
   refreshMembers();
   pollTimer = setInterval(refreshMembers, 2000);
+
+  // --- Heartbeat every 10 seconds ---
+  const doHeartbeat = () => {
+    heartbeatRoom(roomId).catch(() => { /* best effort */ });
+  };
+  doHeartbeat(); // immediate first heartbeat
+  heartbeatTimer = setInterval(doHeartbeat, 10_000);
+
+  // --- Best-effort tab close handling ---
+  _tabCloseHandlers = _setupTabCloseHandlers(roomId);
 }
 
 function _launchGame(overlay, diffMode, inputMode, roomId, role, onStart) {
@@ -308,10 +320,75 @@ function _addChat(chatLog, from, text) {
 
 function _cleanup() {
   if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
+  if (_tabCloseHandlers) { _removeTabCloseHandlers(_tabCloseHandlers); _tabCloseHandlers = null; }
   if (netSession && !netSession._keepAlive) {
     netSession.close?.();
     netSession = null;
   }
+}
+
+/**
+ * Best-effort tab close / hide handling.
+ * Uses pagehide + visibilitychange to attempt leave-room notification.
+ * Cannot rely on async cleanup during unload — real guarantee comes from cleanup-rooms.
+ *
+ * Note on sendBeacon: Supabase Edge Functions require Authorization header
+ * which sendBeacon cannot carry. We use fetch with keepalive instead.
+ * This is inherently unreliable; the server-side cleanup-rooms is the safety net.
+ */
+function _setupTabCloseHandlers(roomId) {
+  // Snapshot Supabase config at setup time so it's available synchronously during unload
+  let _cachedUrl = null;
+  let _cachedKey = null;
+  let _cachedToken = null;
+
+  // Try to cache credentials immediately and on each heartbeat cycle
+  const cacheCredentials = async () => {
+    try {
+      const { GAME_CONFIG } = await import('../../config/gameConfig.js');
+      _cachedUrl = GAME_CONFIG.net?.supabaseUrl ?? null;
+      _cachedKey = GAME_CONFIG.net?.supabaseAnonKey ?? null;
+      const { getSupabaseClient } = await import('../net/supabaseClient.js');
+      const supabase = await getSupabaseClient();
+      const { data } = await supabase.auth.getSession();
+      _cachedToken = data?.session?.access_token ?? null;
+    } catch { /* best effort */ }
+  };
+  cacheCredentials();
+
+  const onPageHide = () => {
+    try {
+      if (_cachedUrl && _cachedKey && _cachedToken) {
+        fetch(`${_cachedUrl}/functions/v1/leave-room`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': _cachedKey,
+            'Authorization': `Bearer ${_cachedToken}`,
+          },
+          body: JSON.stringify({ room_id: roomId }),
+          keepalive: true,
+        }).catch(() => {});
+      }
+    } catch { /* never throw during unload */ }
+  };
+
+  const onVisibilityChange = () => {
+    if (document.visibilityState === 'hidden') {
+      onPageHide();
+    }
+  };
+
+  window.addEventListener('pagehide', onPageHide);
+  document.addEventListener('visibilitychange', onVisibilityChange);
+  return { onPageHide, onVisibilityChange, cacheCredentials };
+}
+
+function _removeTabCloseHandlers(handlers) {
+  if (!handlers) return;
+  window.removeEventListener('pagehide', handlers.onPageHide);
+  document.removeEventListener('visibilitychange', handlers.onVisibilityChange);
 }
 
 function _el(tag, props = {}) {

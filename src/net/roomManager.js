@@ -2,10 +2,10 @@
  * @file        roomManager.js
  * @module      net
  * @summary     Supabase rooms 表 CRUD + Edge Function 呼叫（token 申請/驗證、踢人、Host Migration peer 更新）
- * @exports     listRooms, createRoom, joinRoom, leaveRoom, getRoom, getRoomMembers, kickPlayer, startRoom, updateHostPeer, issueRoomJoinToken, verifyRoomJoinToken, ROOM_LIST_COLUMNS, ROOM_DETAIL_COLUMNS
+ * @exports     listRooms, createRoom, joinRoom, leaveRoom, getRoom, getRoomMembers, kickPlayer, startRoom, updateHostPeer, issueRoomJoinToken, verifyRoomJoinToken, heartbeatRoom, ROOM_LIST_COLUMNS, ROOM_DETAIL_COLUMNS
  * @depends     config/gameConfig.js、src/net/supabaseClient.js
  * @sourceOfTruth Docs/game-architecture-plan.md「存檔系統」「P2P 安全限制 → token 申請流程」
- * @version     v0.0.14.1
+ * @version     v0.0.14.2
  */
 
 import { GAME_CONFIG } from '../../config/gameConfig.js';
@@ -24,6 +24,7 @@ export const ROOM_LIST_COLUMNS = Object.freeze([
   'game_started',
   'has_password',
   'created_at',
+  'last_seen_at',
 ]);
 
 export const ROOM_DETAIL_COLUMNS = Object.freeze([
@@ -326,5 +327,44 @@ export function isListableRoom(room) {
   if (room.game_started === true) return false;
   const current = Number(room.current_players ?? 0);
   const max = Number(room.max_players ?? 4);
-  return current < max;
+  if (current <= 0) return false;
+  if (current >= max) return false;
+  // Filter stale rooms (no heartbeat for > 90 seconds)
+  if (room.last_seen_at) {
+    const age = Date.now() - new Date(room.last_seen_at).getTime();
+    if (age > 90_000) return false;
+  }
+  return true;
 }
+
+/**
+ * Send heartbeat for a room membership.
+ * @param {string} roomId
+ * @param {object} [cfg]
+ * @returns {Promise<{ok:boolean, current_players:number, room_closed?:boolean}>}
+ */
+export async function heartbeatRoom(roomId, cfg = GAME_CONFIG) {
+  const supabase = await getSupabaseClient(cfg);
+  await ensureSupabaseUser(cfg);
+  const { data, error } = await supabase.functions.invoke('room-heartbeat', {
+    body: buildHeartbeatRoomBody(roomId),
+  });
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+  return data ?? { ok: true };
+}
+
+/** Pure function: build heartbeat request body. */
+export function buildHeartbeatRoomBody(roomId) {
+  return { room_id: roomId };
+}
+
+/**
+ * Trigger server-side room cleanup (requires CLEANUP_SECRET).
+ * Not exported for UI use — CLI / cron only.
+ * Usage:
+ *   curl -X POST https://<project>.supabase.co/functions/v1/cleanup-rooms \
+ *     -H "x-cleanup-secret: <CLEANUP_SECRET>" \
+ *     -H "Content-Type: application/json" -d '{}'
+ */
+// export async function cleanupRooms(secret, cfg = GAME_CONFIG) { ... }

@@ -10,7 +10,7 @@
 
 export const GAME_CONFIG = {
   // 版本同步點之一（見 .claude/instructions.md 版本號同步鐵則）
-  version: 'v0.0.14.1',
+  version: 'v0.0.14.2',
 
   // MVP 模式角標（單人 / 多人），方便錄影分辨測試版本
   mode: 'single', // 'single' | 'multi'

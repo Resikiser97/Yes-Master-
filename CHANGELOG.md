@@ -1,10 +1,30 @@
 # CHANGELOG.md — 版本歷史
 
-> 版本：v0.0.14.1
+> 版本：v0.0.14.2
 > 類型：**只增不改**（歷史紀錄，永遠往上加，最新在最上方，不回頭改舊條目）。
 > 條目格式：`## vX.Y.Z.W - YYYY-MM-DD`，下分「新增 / 修復 / 調整」。
 
 ---
+
+## v0.0.14.2 - 2026-06-26
+
+### 新增
+- **Room Presence / Heartbeat 機制**：WaitingRoom 每 10 秒發送 heartbeat，更新 `room_memberships.last_seen_at` / `online` 與 `rooms.last_seen_at`；`current_players` 改以 online + 近 60 秒 heartbeat 計算。
+- **Edge Function: room-heartbeat**：驗證 auth user 為房間成員後更新 presence 並重算人數。
+- **Edge Function: cleanup-rooms**：需 `CLEANUP_SECRET` 授權；清理 stale memberships（>60s 無 heartbeat → offline）、空房（→ completed）、舊 completed 房（>24h → 刪除 memberships + room）。
+- **Best-effort tab close handling**：WaitingRoom 監聽 `pagehide` / `visibilitychange`，用 `fetch keepalive` 嘗試通知 leave-room；不可靠，真正保證靠 cleanup-rooms。
+- **DB migration**：`room_memberships.last_seen_at`、`rooms.last_seen_at`、`rooms.completed_at`（`supabase/migrations/20260626143000_room_presence_cleanup.sql`）。
+- **Live deploy acceptance**：v0.0.14.2 migration 已套用至線上 Supabase；`room-heartbeat` / `cleanup-rooms` / `leave-room` / `create-room` / `join-room` 已部署；單瀏覽器 live test 確認 heartbeat 200、start-room 成功、cleanup 後測試房 completed。
+
+### 修復
+- **leave-room 強化**：host 離開寫入 `completed_at`；client 離開後若 `current_players=0` 自動 complete 房間。
+- **Lobby stale room 過濾**：`isListableRoom` 過濾 `current_players<=0` 與 `last_seen_at` 超過 90 秒的房間。
+
+### 調整
+- `create-room` / `join-room` Edge Functions 新增 `last_seen_at`、`completed_at` 欄位寫入。
+- `ROOM_LIST_COLUMNS` 新增 `last_seen_at`，Lobby 列表 query 自動 select。
+- `roomManager.js` 新增 `heartbeatRoom()`、`buildHeartbeatRoomBody()` 純函式。
+- `tests/roomManager.test.js` 新增 heartbeat body 與 stale room 過濾測試。
 
 ## v0.0.14.1 - 2026-06-26
 

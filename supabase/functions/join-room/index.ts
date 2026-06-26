@@ -67,6 +67,7 @@ serve(async (req) => {
     const joinOrder = existing?.join_order ?? ((latestMember?.join_order ?? 0) + 1);
     const slotId = existing?.slot_id ?? `p${joinOrder + 1}`;
 
+    const now = new Date().toISOString();
     const membership = await upsertCompatible(supabase, "room_memberships", {
       room_id,
       user_id: user.id,
@@ -78,7 +79,8 @@ serve(async (req) => {
       player_level: profile.level,
       online: true,
       disconnected_at: null,
-      updated_at: new Date().toISOString(),
+      last_seen_at: now,
+      updated_at: now,
     }, { onConflict: "room_id,user_id" });
 
     const { count: currentPlayers, error: currentPlayersErr } = await supabase
@@ -89,7 +91,7 @@ serve(async (req) => {
     await updateCompatible(
       supabase,
       "rooms",
-      { current_players: currentPlayers ?? 1 },
+      { current_players: currentPlayers ?? 1, last_seen_at: now },
       (query: any) => query.eq("room_id", room_id),
     );
 
