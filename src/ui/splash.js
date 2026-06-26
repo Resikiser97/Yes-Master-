@@ -1,10 +1,9 @@
 /**
  * @file        splash.js
  * @module      ui
- * @summary     開場 Splash Screen；觸控裝置首先顯示 PWA 安裝引導，再選難度/輸入模式，呼叫 onStart(diffMode, inputMode)
+ * @summary     開場 Splash Screen；觸控裝置先顯示 PWA 引導，再選難度/輸入模式（onStart）或進入多人流程（showLobby）
  * @exports     showSplashScreen
- * @depends     src/ui/mobileLayout.js（isTouchDevice, isStandalone, getSavedInputMode, saveInputMode）
- *              src/ui/pwaTutorial.js（showPwaTutorial, shouldShowPwaTutorial）
+ * @depends     src/ui/mobileLayout.js, src/ui/pwaTutorial.js, src/ui/lobby.js
  * @version     v0.0.14.0
  *
  * diffMode:  'normal' = 正式難度；'test' = 測試難度 1~30 關

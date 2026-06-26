@@ -311,3 +311,104 @@ config/* 為靜態資料，被 logic 層 import。
 | `removeFriend(userId, cfg?)` | 刪除好友 |
 | `listFriends(cfg?)` | 列出已接受的好友 |
 | `listPendingRequests(cfg?)` | 列出待處理的好友邀請（sent + received） |
+
+### `src/net/roomManager.js`（補充）
+
+| 函式 | 職責 |
+|---|---|
+| `issueRoomJoinToken(params, cfg?)` | 呼叫 Edge Function 申請 join / reconnect 短效 token |
+| `verifyRoomJoinToken(token, cfg?)` | 呼叫 Edge Function 驗證 token（nonce consumed） |
+| `getRoomMembers(roomId, cfg?)` | 查詢房間成員列表 |
+| `kickPlayer(roomId, slotId, cfg?)` | 踢出玩家 |
+| `updateHostPeer(roomId, peerId, cfg?)` | Host Migration 後更新 current_host_peer_id |
+
+### `src/net/supabaseClient.js`
+
+| 函式 | 職責 |
+|---|---|
+| `getSupabaseClient(cfg?)` | 取得 lazy singleton Supabase client（browser only） |
+| `ensureSupabaseUser(cfg?)` | 確保已登入（否則匿名登入） |
+
+### `src/net/protocol.js`
+
+| 匯出 | 職責 |
+|---|---|
+| `MSG` | 訊息類型常數（AUTH / AUTH_OK / AUTH_FAIL / INPUT / SNAPSHOT / DELTA / CHAT / GAME_START / PLAYER_INFO / PING / PONG 等） |
+| `makeMessage(type, payload)` | 建立標準訊息物件 |
+| `encode(message)` / `decode(raw)` | 序列化 / 反序列化（JSON） |
+
+### `src/net/peerRuntime.js`
+
+| 函式 | 職責 |
+|---|---|
+| `loadPeerCtor()` | 動態 import PeerJS（esm.sh），lazy singleton |
+| `createPeer(cfg?)` | 建立 Peer 實例（套用 cfg.net peerJs 設定） |
+| `waitForPeerOpen(peer)` | Promise：等待 peer.open 事件 |
+
+### `src/net/netSession.js`
+
+| 函式 | 職責 |
+|---|---|
+| `createNetSession(options)` | 依 role（host/client）啟動 peerHost 或 peerClient，回傳統一 session 介面 |
+| `parseNetLaunch(search?)` | 解析 URL 參數：mode / role / roomId / token |
+
+### `src/net/peerClient.js`
+
+| 函式 | 職責 |
+|---|---|
+| `startPeerClient(options)` | 連線到房主 Peer、完成 auth handshake，回傳 client session |
+
+### `src/net/inputBuffer.js`
+
+| 函式 | 職責 |
+|---|---|
+| `createInputBuffer(options)` | 建立 per-player Input queue；`push(playerId, input)` / `drain(world, dt, onReject)` |
+| `serializeControls(controls, world, cfg, sequenceId, extra?)` | Client 端：把 controls 狀態打包成 Input Event |
+| `applyInput(world, playerId, input, dt, cfg)` | 單步套用已驗證的 Input 到 world |
+
+### `src/net/stateSync.js`
+
+| 函式 | 職責 |
+|---|---|
+| `serializeSnapshot(world)` | 全量序列化 world 狀態 |
+| `serializeDelta(prevSnapshot, world)` | 差量序列化（玩家 / 敵人 / phase / 戰鬥等動態欄位） |
+| `applySnapshot(world, snapshot, cfg?)` | 套用全量 snapshot 到 world |
+| `applyDelta(world, delta, cfg?)` | 套用差量（syncTick 舊的自動忽略） |
+
+### `src/net/syncScheduler.js`
+
+| 函式 | 職責 |
+|---|---|
+| `createHostSyncScheduler(options)` | 回傳 `{ afterHostTick(world) }`：每幀廣播 delta，每 5s 強制 full snapshot |
+| `createClientSyncApplier(options)` | 回傳 `{ handle(message) }`：處理 SNAPSHOT / DELTA 訊息 |
+
+### `src/net/validation.js`
+
+| 函式 | 職責 |
+|---|---|
+| `createInputValidator(options)` | 回傳驗證函式：檢查 sequenceId / move / action 合法性（place/remove/deposit 等） |
+
+### `src/net/strikeTracker.js`
+
+| 函式 | 職責 |
+|---|---|
+| `createStrikeTracker(options?)` | 回傳 `{ add(key, reason), get(key), reset(key) }`；add 達 maxStrikes 回傳 `kicked:true` |
+
+### `src/net/reconnect.js`
+
+| 函式 | 職責 |
+|---|---|
+| `createReconnectController(options)` | 回傳 `{ schedule(), cancel(), reconnect() }`：grace 期後自動申請 reconnect token |
+
+### `src/net/hostMigration.js`
+
+| 函式 | 職責 |
+|---|---|
+| `createHostMigrationController(options)` | 回傳 `{ check() }`：偵測到房主斷線後執行 CAS 更新 |
+
+### `src/ui/uiState.js`
+
+| 函式 | 職責 |
+|---|---|
+| `ensureUiState(world)` | 初始化 world.uiState（各面板 expanded 狀態） |
+| `applyUiClick(world, uiClick)` | 處理 playerPanel / corePanel 點擊切換 |

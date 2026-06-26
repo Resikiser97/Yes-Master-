@@ -1,3 +1,12 @@
+/**
+ * @file        hostMigration.js
+ * @module      net
+ * @summary     Host Migration controller：偵測到房主斷線後，candidate_host 執行 CAS 更新 current_host_peer_id
+ * @exports     createHostMigrationController
+ * @depends     net/roomManager.js
+ * @sourceOfTruth Docs/game-architecture-plan.md「Host Migration」章節
+ * @version     v0.0.14.0
+ */
 import { getRoom, updateHostPeer } from './roomManager.js';
 
 export function createHostMigrationController({ session, roomId, cfg, onPromote } = {}) {

@@ -5,7 +5,7 @@
  * @summary     等效 50 抽：以核心 attack/attackSpeed/hp 補足測試模式跳過的前期裝備與第 10 關強卡基準
  * @exports     TEST_PRESET_SAVE_KEY, buildTestConfig
  * @depends     config/gameConfig.js
- * @sourceOfTruth Docs/claude-codex-worklist.md「Step 11C」
+ * @sourceOfTruth Docs/claude-codex-worklist.md、Docs/waveplan.md（難度與卡片基準值）
  * @version     v0.0.14.0
  */
 

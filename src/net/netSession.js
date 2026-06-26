@@ -1,3 +1,11 @@
+/**
+ * @file        netSession.js
+ * @module      net
+ * @summary     多人會話入口：依 role 啟動 peerHost 或 peerClient，回傳統一 session 介面；parseNetLaunch 解析 URL 參數
+ * @exports     createNetSession, parseNetLaunch
+ * @depends     net/protocol.js, net/peerHost.js, net/peerClient.js
+ * @version     v0.0.14.0
+ */
 import { GAME_CONFIG } from '../../config/gameConfig.js';
 import { MSG, makeMessage } from './protocol.js';
 import { startPeerHost } from './peerHost.js';

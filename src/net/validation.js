@@ -1,3 +1,12 @@
+/**
+ * @file        validation.js
+ * @module      net
+ * @summary     房主端 Input 驗證器：sequenceId 防重放、速率限制、建造/拆除合法性（proxy 到 logic/building.js）
+ * @exports     createInputValidator
+ * @depends     logic/building.js, logic/connectivity.js
+ * @sourceOfTruth Docs/game-architecture-plan.md「反作弊／輸入驗證機制 → 各 Event 驗證規則」
+ * @version     v0.0.14.0
+ */
 import { validatePlacement, validateRemoval } from '../logic/building.js';
 import { key } from '../logic/connectivity.js';
 

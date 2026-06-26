@@ -1,3 +1,10 @@
+/**
+ * @file        uiState.js
+ * @module      ui
+ * @summary     world.uiState 初始化與面板展開/收合狀態切換（playerPanel / corePanel）
+ * @exports     ensureUiState, applyUiClick
+ * @version     v0.0.14.0
+ */
 export function ensureUiState(world) {
   world.uiState ??= { playerExpanded: false, backpackExpanded: true, coreExpanded: false };
   return world.uiState;

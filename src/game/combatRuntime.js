@@ -1,7 +1,7 @@
 ﻿/**
  * @file        combatRuntime.js
  * @module      game（狀態/orchestration 層，非渲染）
- * @summary     Step 6B：debug 敵人、追逐玩家、核心普攻/連鎖接入 world
+ * @summary     敵人生成（debug）、追逐移動、核心普攻/連鎖攻擊執行，結果寫入 world
  * @exports     spawnDebugEnemies, updateEnemies, updateCoreCombat
  * @depends     config/enemies.js、config/gameConfig.js、src/logic/combat.js、src/logic/connectivity.js
  * @sourceOfTruth Docs/game-design-plan.md「核心攻擊與防禦機制」

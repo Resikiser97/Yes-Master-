@@ -2,7 +2,7 @@
  * @file        authManager.js
  * @module      net
  * @summary     Authentication helpers: Google OAuth, anonymous sign-in, profile management
- * @exports     signInWithGoogle, signInAnonymously, signOut, getCurrentUser, getProfile, ensureProfile
+ * @exports     signInWithGoogle, signInAnonymously, signOut, getCurrentUser, onAuthStateChange, getProfile, ensureProfile, updateProfile
  * @depends     src/net/supabaseClient.js
  * @version     v0.0.14.0
  */

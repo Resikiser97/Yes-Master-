@@ -2,7 +2,7 @@
  * @file        world.js
  * @module      game（狀態/orchestration 層，非純邏輯、非渲染）
  * @summary     建立並持有 MVP 世界狀態（地圖/核心/兩深度層/核心數值/鏡頭/玩家），供渲染層讀取
- * @exports     createWorld, coreCenterTile, focusCamera
+ * @exports     DEFAULT_PLAYER_ID, coreCells, coreCenterTile, createPlayerState, attachPlayerAlias, ensurePlayer, playerCount, createWorld, updateCameraFollow, focusCamera
  * @depends     config/gameConfig.js、config/mines.js、src/game/coreSnapshot.js、src/logic/connectivity.js、src/logic/rng.js、src/logic/mineGen.js
  * @sourceOfTruth Docs/game-architecture-plan.md「核心地基系統」、game-design-plan.md「建築維度」
  * @version     v0.0.14.0

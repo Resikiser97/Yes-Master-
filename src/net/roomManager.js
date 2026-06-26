@@ -1,7 +1,11 @@
 /**
- * @file roomManager.js
- * @module net
- * @summary Supabase room helpers used by the PeerJS session layer.
+ * @file        roomManager.js
+ * @module      net
+ * @summary     Supabase rooms 表 CRUD + Edge Function 呼叫（token 申請/驗證、踢人、Host Migration peer 更新）
+ * @exports     listRooms, createRoom, joinRoom, leaveRoom, getRoom, getRoomMembers, kickPlayer, updateHostPeer, issueRoomJoinToken, verifyRoomJoinToken
+ * @depends     config/gameConfig.js、src/net/supabaseClient.js
+ * @sourceOfTruth Docs/game-architecture-plan.md「存檔系統」「P2P 安全限制 → token 申請流程」
+ * @version     v0.0.14.0
  */
 
 import { GAME_CONFIG } from '../../config/gameConfig.js';

@@ -1,3 +1,12 @@
+/**
+ * @file        peerHost.js
+ * @module      net
+ * @summary     PeerJS 房主端：建立 Peer、等待連線、auth handshake（verify token）、接收 Input Event、CHAT 轉發廣播
+ * @exports     startPeerHost
+ * @depends     net/protocol.js, net/peerRuntime.js, net/roomManager.js, net/strikeTracker.js, game/world.js
+ * @sourceOfTruth Docs/game-architecture-plan.md「P2P 安全限制 → Handshake 流程」
+ * @version     v0.0.14.0
+ */
 import { GAME_CONFIG } from '../../config/gameConfig.js';
 import { ensurePlayer } from '../game/world.js';
 import { MSG, decode, encode, makeMessage } from './protocol.js';

@@ -177,5 +177,5 @@ project_summary：[已更新 | 無需變動] → 一句話說明
 - [x] MAIN.md 角色：已定案 — `MAIN.md`=函式級參考；source map 移至 `Docs/source-map.md`。
 - [x] 版本號同步清單：已定案（開工前 4 份 .md，開工後加 gameConfig version）。
 - [x] 第 5（開發鐵則）、6（git）節：已填。
-- [ ] `QUICKREF.md` / `project_summary.md` / `ARCH.md` / `MAIN.md` 的程式碼相關 TODO：**開工後填**。
-- [ ] `.claude/skills/file-header.md` 的適用副檔名範圍（目前預設 .js）。
+- [x] `QUICKREF.md` / `project_summary.md` / `MAIN.md` 的版本同步與內容：已同步至 v0.0.14.0；`ARCH.md` 已補完整架構（見各檔）。
+- [x] `.claude/skills/file-header.md` 的適用副檔名範圍：已確認 `.js`（`src/**/*.js` + `config/**/*.js`），見該檔。

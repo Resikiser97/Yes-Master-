@@ -44,9 +44,23 @@
 | `src/game/equipmentSystem.js` | 裝備 CRUD：getEquipment / upgradeEquipment / applyEquipBonus |
 | `src/game/achievementSystem.js` | 成就檢查與解鎖 |
 | `src/game/leaderboardSystem.js` | 排行榜提交/查詢/賽季稱號 |
+| `src/net/supabaseClient.js` | Lazy Supabase browser client 單例 |
 | `src/net/authManager.js` | Auth：Google OAuth / 匿名登入 / profile CRUD |
 | `src/net/friendManager.js` | 好友系統：邀請/接受/刪除/列表 |
-| `src/net/roomManager.js` | 房間 CRUD + Edge Function 呼叫（含 getRoomMembers / kickPlayer） |
+| `src/net/roomManager.js` | 房間 CRUD + Edge Function 呼叫（含 getRoomMembers / kickPlayer / issueRoomJoinToken） |
+| `src/net/protocol.js` | MSG.* 常數 + encode / decode / makeMessage |
+| `src/net/peerRuntime.js` | PeerJS lazy 載入 + createPeer / waitForPeerOpen |
+| `src/net/peerHost.js` | PeerJS 房主端：連線管理 / auth handshake / Input 接收 / CHAT 轉發 |
+| `src/net/peerClient.js` | PeerJS 客戶端：連線 + auth handshake |
+| `src/net/netSession.js` | 多人會話入口（role → host 或 client） |
+| `src/net/inputBuffer.js` | Input buffer + drain() 路由；serializeControls（client 打包） |
+| `src/net/stateSync.js` | serializeSnapshot / serializeDelta / applySnapshot / applyDelta |
+| `src/net/syncScheduler.js` | 排程廣播 delta / full snapshot（5s 強制全量） |
+| `src/net/validation.js` | Input 驗證：sequenceId / 速率 / 建造合法性 |
+| `src/net/strikeTracker.js` | 反作弊 Strike 計數（uid+room+slot） |
+| `src/net/reconnect.js` | 斷線重連 controller（grace 期 + reconnect token） |
+| `src/net/hostMigration.js` | Host Migration controller（CAS 更新 current_host_peer_id） |
+| `src/ui/uiState.js` | world.uiState 初始化 + 面板展開/收合切換 |
 | `src/ui/authScreen.js` | 登入/訪客 overlay |
 | `src/ui/lobby.js` | 多人大廳 UI（房間列表 + 建房 + 三 tab） |
 | `src/ui/waitingRoom.js` | 等待室 UI（玩家卡片 + PeerJS 聊天 + 開始遊戲） |

@@ -1,3 +1,11 @@
+/**
+ * @file        strikeTracker.js
+ * @module      net
+ * @summary     反作弊 Strike 計數器：累積達 maxStrikes 回傳 kicked:true；key = auth.uid+room_id+slot_id
+ * @exports     createStrikeTracker
+ * @sourceOfTruth Docs/game-architecture-plan.md「反作弊／輸入驗證機制 → 違規分級處理」
+ * @version     v0.0.14.0
+ */
 export function createStrikeTracker({ maxStrikes = 5 } = {}) {
   const strikes = new Map();
   return {

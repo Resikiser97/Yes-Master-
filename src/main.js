@@ -1,15 +1,20 @@
 /**
  * @file        main.js
  * @module      bootstrap
- * @summary     MVP 進入點：splash 選難度+輸入模式後，動態計算 tilePx、建 renderer/controls、跑固定 timestep loop
+ * @summary     遊戲進入點：splash 選難度/模式後建立 renderer/controls 並跑固定 timestep loop；支援單機與多人（netSession）
  * @exports     boot
- * @depends     config/gameConfig.js、config/testPreset.js、src/game/world.js、src/game/gameLoop.js、
- *              src/render/renderer.js、src/input/controls.js、src/input/touchControls.js、
- *              src/ui/mobileLayout.js
+ * @depends     config/gameConfig.js、config/testPreset.js、config/blocks.js、config/sprites.js、
+ *              src/game/world.js、src/game/gameLoop.js、src/game/actions.js、src/game/combatRuntime.js、
+ *              src/game/phaseRuntime.js、src/game/coreSnapshot.js、
+ *              src/render/renderer.js、src/render/imageLoader.js、
+ *              src/input/controls.js、src/input/touchControls.js、
+ *              src/logic/playerMovement.js、
+ *              src/storage/saveManager.js、src/storage/saveLocal.js、
+ *              src/ui/splash.js、src/ui/mobileLayout.js、src/ui/uiState.js、
+ *              src/net/netSession.js、src/net/inputBuffer.js、src/net/syncScheduler.js
  * @sourceOfTruth Docs/game-architecture-plan.md「MVP 開發範圍」
  * @version     v0.0.14.0
  *
- * renderer、controls は splash 後に inputMode が確定してから生成。
  * 手機模式：TouchControls + setupOrientationGuard + 動態 tilePx resize。
  * 電腦模式：Controls（鍵盤/滑鼠）+ resize 仍可動態縮放視窗。
  */
