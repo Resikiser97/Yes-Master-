@@ -55,8 +55,8 @@ export async function getProfile(userId, cfg = GAME_CONFIG) {
     .from('player_profiles')
     .select('*')
     .eq('user_id', userId)
-    .single();
-  if (error && error.code !== 'PGRST116') throw error;
+    .maybeSingle();
+  if (error) throw error;
   return data;
 }
 
@@ -72,13 +72,16 @@ export async function ensureProfile(user, cfg = GAME_CONFIG) {
 
 async function ensureProfileOnce(user, cfg) {
   const existing = await getProfile(user.id, cfg);
-  if (existing) return existing;
+  const googleProfile = buildGoogleProfilePatch(user);
+  if (existing) {
+    if (shouldRefreshProfile(existing, googleProfile, user)) {
+      return updateProfileForUser(user.id, googleProfile, cfg);
+    }
+    return existing;
+  }
 
-  const displayName = user.user_metadata?.full_name
-    || user.user_metadata?.name
-    || user.email?.split('@')[0]
-    || 'Goblin';
-  const avatarId = user.user_metadata?.avatar_url || 'default';
+  const displayName = googleProfile.display_name || user.email?.split('@')[0] || 'Goblin';
+  const avatarId = googleProfile.avatar_id || 'default';
 
   const supabase = await getSupabaseClient(cfg);
   const { data, error } = await supabase
@@ -87,6 +90,41 @@ async function ensureProfileOnce(user, cfg) {
     .select()
     .single();
   if (error?.code === '23505') return getProfile(user.id, cfg);
+  if (error) throw error;
+  return data;
+}
+
+function buildGoogleProfilePatch(user) {
+  if (user?.app_metadata?.provider !== 'google' || user?.is_anonymous) return {};
+  return {
+    display_name: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || null,
+    avatar_id: user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
+  };
+}
+
+function shouldRefreshProfile(profile, patch, user) {
+  if (!patch.display_name && !patch.avatar_id) return false;
+  if (user?.is_anonymous) return false;
+  const hasDefaultName = !profile?.display_name || profile.display_name === 'Goblin';
+  const hasDefaultAvatar = !profile?.avatar_id || profile.avatar_id === 'default';
+  return hasDefaultName || hasDefaultAvatar;
+}
+
+async function updateProfileForUser(userId, patch, cfg) {
+  const supabase = await getSupabaseClient(cfg);
+  const payload = Object.fromEntries(
+    Object.entries({
+      display_name: patch.display_name,
+      avatar_id: patch.avatar_id,
+      updated_at: new Date().toISOString(),
+    }).filter(([, value]) => value)
+  );
+  const { data, error } = await supabase
+    .from('player_profiles')
+    .update(payload)
+    .eq('user_id', userId)
+    .select()
+    .single();
   if (error) throw error;
   return data;
 }

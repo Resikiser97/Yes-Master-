@@ -48,8 +48,8 @@ export async function showAuthScreen(onAuthed) {
   let sub = null;
   const finishAuth = async (user) => {
     if (settled) return;
-    settled = true;
     await ensureProfile(user);
+    settled = true;
     sub?.unsubscribe?.();
     _dismiss(overlay, () => onAuthed(user));
   };
@@ -95,7 +95,12 @@ export async function showAuthScreen(onAuthed) {
 
   sub = await onAuthStateChange(async (user) => {
     if (user) {
-      await finishAuth(user);
+      try {
+        await finishAuth(user);
+      } catch (err) {
+        statusEl.textContent = '登入失敗: ' + (err.message || err);
+        settled = false;
+      }
     }
   });
   if (settled) sub?.unsubscribe?.();
