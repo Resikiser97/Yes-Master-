@@ -65,7 +65,7 @@
 
 > 與 1 不同：Step 7 任務需要修改 `src/`。架構/骨架 Claude 已建好，Codex 填入實作。
 
-### Step 7A（出怪 + 晝夜狀態機）— 全部先做完再測
+### Step 7A（出怪 + 晝夜狀態機）✅ 已實作完成 — 全部先做完再測
 
 #### ① `_buildPendingSpawns`（`src/game/phaseRuntime.js`）
 把 `buildWave` 的 `{ enemies, schedule }` 組成出怪佇列：
@@ -105,7 +105,7 @@
   }
   ```
 
-### Step 7B（HUD + gameover/waveClear 畫面）— 7A 完成後做
+### Step 7B（HUD + gameover/waveClear 畫面）✅ 已實作完成 — 7A 完成後做
 
 #### ⑥ Phase / 波次 HUD（`src/render/renderer.js`，`_drawHud`）
 在 HUD 最上方加一行，例：

@@ -1,6 +1,6 @@
 # MAIN.md — 函式級參考
 
-> 版本：v0.0.14.6
+> 版本：v0.0.14.11
 > 類型：**代碼優先**（文件描述錯了，以代碼為準去改本檔）。
 > ⚠️ MVP 單機可動 + 多人大廳：移動/挖礦/背包/塔內資源/掉落物自動撿取/跟隨鏡頭/初版建造/核心數值回饋/核心 HP 與修復/核心戰鬥/正式波次晝夜/卡片選擇（hover+tier中文）/localStorage 存檔/新手教學提示/**debug 浮層（` 鍵）+ T 暫停**/**測試難度 preset（1~30 關）**/**手機觸控 UI + 動態 canvas 縮放**/**固定 bolt 電擊 VFX + 正式攻擊範圍可視化**/**快捷列圖示（手機 + 鍵盤 HUD）**/**sprite 基礎設施**/**規劃模式（B 鍵拖拽建造+資源預檢）+ 拆除模式（V 鍵材質選擇性拆除）**/**快捷列 10 格（1~0）+ 滑鼠點擊**/**梯子無限方塊**/**挖礦進度條持久化**/**多人大廳（Auth + Lobby + WaitingRoom + PeerJS 聊天）+ 等級/好友/裝備/成就/排行榜系統**已成完整循環。
 > 規則：新增 / 刪除函式必須同步本檔（見 `.claude/instructions.md` 開發鐵則）。
@@ -229,6 +229,7 @@ config/* 為靜態資料，被 logic 層 import。
 | `Renderer._drawLightningBolt(ctx, x1, y1, x2, y2, isPrimary)` | 生成 zigzag 點並雙重描邊（外層光暈 + 內層白核） |
 | `Renderer._drawTutorialHint(world)` | 首次遊玩顯示黃色操作提示（prep/night 各顯不同文字，最後 1 秒依 tutorialTimer 淡出） |
 | `Renderer._drawDebugOverlay(world)` | 半透明金邊浮層疊在畫布右上角；顯示 debug hotkeys + 即時狀態（tick/phase/stage/testMode/drops/enemies/coreHp）；` 鍵關閉 |
+| `Renderer._drawPartyBar(world)` | 多人模式下（players.size > 1），畫面頂部水平置中顯示隊友卡片（小頭像圓 + 疲勞條 + 意圖 Emoji）；每幀讀 `world.players`，濾除本地玩家；離線玩家半透明灰色；單人時自動隱藏 |
 | `loadImages(manifest)` (imageLoader.js) | 非同步批量載入圖片；回傳 `Promise<Map<key, HTMLImageElement>>`；失敗只警告不中斷 |
 | `getFrameRect(img, sheet, keyOrIndex)` (sprites.js) | 從 spritesheet 取單幀 `{sx,sy,sw,sh}`，等寬等高均分切割 |
 | `Controls.attach/detach` | 綁/解 WASD/方向鍵、滑鼠長按挖礦、快捷列選材（鍵盤+滑鼠點擊）、左鍵放置、右鍵拆除、R 修復、B 規劃模式、V 拆除模式、拖拽放置/拆除、debug hotkeys；canvas 自動 focus |
