@@ -9,7 +9,7 @@
  */
 
 import { GAME_CONFIG } from '../../config/gameConfig.js';
-import { ensureSupabaseUser, getSupabaseClient } from './supabaseClient.js';
+import { getSupabaseClient, requireSupabaseUser } from './supabaseClient.js';
 
 function assertTargetUser(currentUserId, targetUserId) {
   if (!targetUserId) throw new Error('target user id is required');
@@ -22,7 +22,7 @@ function friendshipPairFilter(a, b) {
 
 export async function sendFriendRequest(targetUserId, cfg = GAME_CONFIG) {
   const supabase = await getSupabaseClient(cfg);
-  const user = await ensureSupabaseUser(cfg);
+  const user = await requireSupabaseUser(cfg);
   assertTargetUser(user.id, targetUserId);
 
   const existing = await supabase
@@ -48,7 +48,7 @@ export async function sendFriendRequest(targetUserId, cfg = GAME_CONFIG) {
 
 export async function acceptFriendRequest(fromUserId, cfg = GAME_CONFIG) {
   const supabase = await getSupabaseClient(cfg);
-  const user = await ensureSupabaseUser(cfg);
+  const user = await requireSupabaseUser(cfg);
   assertTargetUser(user.id, fromUserId);
 
   const { data, error } = await supabase
@@ -65,7 +65,7 @@ export async function acceptFriendRequest(fromUserId, cfg = GAME_CONFIG) {
 
 export async function removeFriend(userId, cfg = GAME_CONFIG) {
   const supabase = await getSupabaseClient(cfg);
-  const user = await ensureSupabaseUser(cfg);
+  const user = await requireSupabaseUser(cfg);
   assertTargetUser(user.id, userId);
 
   const first = await supabase.from('friendships').delete().eq('user_a', user.id).eq('user_b', userId);
@@ -77,7 +77,7 @@ export async function removeFriend(userId, cfg = GAME_CONFIG) {
 
 export async function listFriends(cfg = GAME_CONFIG) {
   const supabase = await getSupabaseClient(cfg);
-  const user = await ensureSupabaseUser(cfg);
+  const user = await requireSupabaseUser(cfg);
   const { data, error } = await supabase
     .from('friendships')
     .select('*')
@@ -90,7 +90,7 @@ export async function listFriends(cfg = GAME_CONFIG) {
 
 export async function listPendingRequests(cfg = GAME_CONFIG) {
   const supabase = await getSupabaseClient(cfg);
-  const user = await ensureSupabaseUser(cfg);
+  const user = await requireSupabaseUser(cfg);
   const { data, error } = await supabase
     .from('friendships')
     .select('*')

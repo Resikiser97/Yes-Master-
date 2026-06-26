@@ -9,7 +9,7 @@
  */
 
 import { GAME_CONFIG } from '../../config/gameConfig.js';
-import { ensureSupabaseUser, getSupabaseClient } from './supabaseClient.js';
+import { getSupabaseClient, requireSupabaseUser } from './supabaseClient.js';
 
 export const ROOM_LIST_COLUMNS = Object.freeze([
   'room_id',
@@ -68,7 +68,7 @@ export async function createRoom({
   visibility = 'public',
 } = {}, cfg = GAME_CONFIG) {
   const supabase = await getSupabaseClient(cfg);
-  await ensureSupabaseUser(cfg);
+  await requireSupabaseUser(cfg);
   const { data, error } = await supabase.functions.invoke('create-room', {
     body: buildCreateRoomBody({ room_id, name, maxPlayers, password, minLevel, difficulty, visibility }),
   });
@@ -80,7 +80,7 @@ export async function createRoom({
 export async function joinRoom(room_id, cfg = GAME_CONFIG) {
   const { roomId, password } = normalizeJoinRoomInput(room_id);
   const supabase = await getSupabaseClient(cfg);
-  const user = await ensureSupabaseUser(cfg);
+  const user = await requireSupabaseUser(cfg);
   const { data, error } = await supabase.functions.invoke('join-room', {
     body: buildJoinRoomBody({ roomId, password }),
   });
@@ -91,7 +91,7 @@ export async function joinRoom(room_id, cfg = GAME_CONFIG) {
 
 export async function leaveRoom(room_id, cfg = GAME_CONFIG) {
   const supabase = await getSupabaseClient(cfg);
-  await ensureSupabaseUser(cfg);
+  await requireSupabaseUser(cfg);
   const { data, error } = await supabase.functions.invoke('leave-room', {
     body: buildLeaveRoomBody(room_id),
   });
@@ -113,7 +113,7 @@ export async function getRoomMembers(roomId, cfg = GAME_CONFIG) {
 
 export async function kickPlayer(roomId, userId, cfg = GAME_CONFIG) {
   const supabase = await getSupabaseClient(cfg);
-  await ensureSupabaseUser(cfg);
+  await requireSupabaseUser(cfg);
   const { data, error } = await supabase.functions.invoke('kick-player', {
     body: buildKickPlayerBody(roomId, userId),
   });
@@ -124,7 +124,7 @@ export async function kickPlayer(roomId, userId, cfg = GAME_CONFIG) {
 
 export async function startRoom(roomId, cfg = GAME_CONFIG) {
   const supabase = await getSupabaseClient(cfg);
-  await ensureSupabaseUser(cfg);
+  await requireSupabaseUser(cfg);
   const { data, error } = await supabase.functions.invoke('start-room', {
     body: buildStartRoomBody(roomId),
   });
@@ -135,7 +135,7 @@ export async function startRoom(roomId, cfg = GAME_CONFIG) {
 
 export async function updateHostPeer(room_id, peerId, cfg = GAME_CONFIG) {
   const supabase = await getSupabaseClient(cfg);
-  await ensureSupabaseUser(cfg);
+  await requireSupabaseUser(cfg);
   const { data, error } = await supabase.functions.invoke('update-host-peer', {
     body: { room_id, peer_id: peerId },
   });
@@ -146,7 +146,7 @@ export async function updateHostPeer(room_id, peerId, cfg = GAME_CONFIG) {
 
 export async function issueRoomJoinToken({ room_id, join_type = 'join', slot_id = null } = {}, cfg = GAME_CONFIG) {
   const supabase = await getSupabaseClient(cfg);
-  await ensureSupabaseUser(cfg);
+  await requireSupabaseUser(cfg);
   const { data, error } = await supabase.functions.invoke('issue-room-join-token', {
     body: { room_id, join_type, slot_id },
   });
@@ -345,7 +345,7 @@ export function isListableRoom(room) {
  */
 export async function heartbeatRoom(roomId, cfg = GAME_CONFIG) {
   const supabase = await getSupabaseClient(cfg);
-  await ensureSupabaseUser(cfg);
+  await requireSupabaseUser(cfg);
   const { data, error } = await supabase.functions.invoke('room-heartbeat', {
     body: buildHeartbeatRoomBody(roomId),
   });

@@ -2,7 +2,7 @@
  * @file        supabaseClient.js
  * @module      net
  * @summary     Lazy Supabase browser client 單例；動態 import 避免 Node 測試環境載入 https 模組
- * @exports     getSupabaseClient, ensureSupabaseUser
+ * @exports     getSupabaseClient, requireSupabaseUser, ensureSupabaseUser
  * @depends     config/gameConfig.js
  * @version     v0.0.14.1
  */
@@ -34,4 +34,12 @@ export async function ensureSupabaseUser(cfg = GAME_CONFIG) {
   const signedIn = await supabase.auth.signInAnonymously();
   if (signedIn.error) throw signedIn.error;
   return signedIn.data.user;
+}
+
+export async function requireSupabaseUser(cfg = GAME_CONFIG) {
+  const supabase = await getSupabaseClient(cfg);
+  const current = await supabase.auth.getUser();
+  if (current.data?.user) return current.data.user;
+  if (current.error) throw current.error;
+  throw new Error('not signed in');
 }
