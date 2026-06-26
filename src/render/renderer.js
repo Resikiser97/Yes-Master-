@@ -5,7 +5,7 @@
  * @exports     Renderer
  * @depends     config/gameConfig.js
  * @sourceOfTruth Docs/game-design-plan.md「建築維度」「遊戲內 UI 設計」
- * @version     v0.0.14.9
+ * @version     v0.0.14.10
  *
  * 渲染層只「讀」world 狀態畫圖，不寫任何遊戲規則（鐵則 9）。
  */
@@ -197,6 +197,7 @@ export class Renderer {
       this._drawEnemyInfo(world);
       this._drawXpGoldBar(world);
       this._drawDesktopHotbar(world);
+      this._drawHotbarTooltip(world);
       this._drawModeHint(world);
       this._drawVersionLabel();
       this._drawExitButton();
@@ -900,6 +901,88 @@ export class Renderer {
         ctx.fillStyle = isInfinite || qty > 0 ? '#ddd' : 'rgba(255,255,255,0.3)';
         ctx.fillText(isInfinite ? '∞' : `${qty}`, sx + slotSize / 2, sy + slotSize + 2);
       }
+    }
+
+    ctx.restore();
+  }
+
+  _drawHotbarTooltip(world) {
+    const tt = world.hotbarTooltip;
+    if (!tt?.blockKey || tt.timer <= 0) return;
+
+    const blockKey = tt.blockKey;
+    const def = BLOCKS[blockKey];
+    if (!def) return;
+
+    const alpha = Math.min(1, tt.timer / 0.15); // 最後 0.15s 淡出
+    const ctx = this.ctx;
+    const { width: vw, height: vh } = this.viewport;
+    const hotbar = this.cfg.hotbar ?? [];
+
+    // 找到對應槽位的 x 中心
+    const slotSize = 40;
+    const gap = 4;
+    const totalW = hotbar.length * slotSize + (hotbar.length - 1) * gap;
+    const startX = Math.round((vw - totalW) / 2);
+    const barY = vh - (slotSize + 18) - 4;
+    const slotIdx = hotbar.indexOf(blockKey);
+    const cx = slotIdx >= 0
+      ? startX + slotIdx * (slotSize + gap) + slotSize / 2
+      : vw / 2;
+
+    // 方塊名稱
+    const STAT_ZH = {
+      hp: '核心血量上限', range: '攻擊射程', defense: '防禦',
+      attack: '攻擊', attackSpeed: '攻速', magicPct: '穿透', chain: '連鎖',
+    };
+    const bonus = def.bonus ?? {};
+    const bonusLines = Object.entries(bonus)
+      .filter(([, v]) => v !== 0)
+      .map(([k, v]) => {
+        const label = STAT_ZH[k] ?? k;
+        const val = k === 'magicPct' ? `${v}%` : `${v > 0 ? '+' : ''}${v}`;
+        return `${label} ${val}`;
+      });
+
+    const lines = [def.zh ?? blockKey, ...bonusLines];
+    if (def.infinite) lines.push('無限數量');
+
+    const padding = 10;
+    const lineH = 18;
+    ctx.font = 'bold 13px sans-serif';
+    const maxLineW = Math.max(...lines.map(l => ctx.measureText(l).width));
+    const panelW = maxLineW + padding * 2;
+    const panelH = lines.length * lineH + padding * 1.5;
+
+    const px = Math.round(cx - panelW / 2);
+    const py = Math.round(barY - panelH - 8);
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+
+    // 背景
+    ctx.fillStyle = 'rgba(8,14,22,0.88)';
+    ctx.beginPath();
+    ctx.roundRect?.(px, py, panelW, panelH, 6) ?? ctx.fillRect(px, py, panelW, panelH);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,180,0,0.5)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect?.(px + 0.5, py + 0.5, panelW - 1, panelH - 1, 6) ?? ctx.strokeRect(px + 0.5, py + 0.5, panelW - 1, panelH - 1);
+    ctx.stroke();
+
+    // 方塊名稱（白色粗體）
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 13px sans-serif';
+    ctx.fillText(lines[0], cx, py + padding * 0.75);
+
+    // 加成行（金色）
+    ctx.fillStyle = '#e6c64d';
+    ctx.font = '12px sans-serif';
+    for (let i = 1; i < lines.length; i++) {
+      ctx.fillText(lines[i], cx, py + padding * 0.75 + lineH * i);
     }
 
     ctx.restore();

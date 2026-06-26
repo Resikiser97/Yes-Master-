@@ -13,7 +13,7 @@
  *              src/ui/splash.js、src/ui/mobileLayout.js、src/ui/uiState.js、
  *              src/net/netSession.js、src/net/inputBuffer.js、src/net/syncScheduler.js
  * @sourceOfTruth Docs/game-architecture-plan.md「MVP 開發範圍」
- * @version     v0.0.14.7
+ * @version     v0.0.14.10
  *
  * 手機模式：TouchControls + setupOrientationGuard + 動態 tilePx resize。
  * 電腦模式：Controls（鍵盤/滑鼠）+ resize 仍可動態縮放視窗。
@@ -272,6 +272,7 @@ export function boot() {
             netSession.sendInput(serializeControls(controls, world, cfg, inputSequenceId++, { debugActions }));
           }
           updateMining(world, !!controls.isMining?.(), dt, cfg);
+          if (world.hotbarTooltip?.timer > 0) world.hotbarTooltip.timer = Math.max(0, world.hotbarTooltip.timer - dt);
           return;
         }
 
@@ -312,7 +313,12 @@ export function boot() {
           // 背包格（最後一格，鍵 0）：目前無效果，預留給背包 UI
           controls.setSelectedSlot(null);
         }
+        const _prevBlock = world.selectedBlock;
         world.selectedBlock = selectedBlock ?? null;
+        if (world.selectedBlock && world.selectedBlock !== _prevBlock) {
+          world.hotbarTooltip = { blockKey: world.selectedBlock, timer: 0.5 };
+        }
+        if (world.hotbarTooltip?.timer > 0) world.hotbarTooltip.timer = Math.max(0, world.hotbarTooltip.timer - dt);
         world.buildPreview = computeBuildPreview(world, selectedBlock, tileX, tileY, cfg);
 
         // Build Plan / Destroy Mode toggle
@@ -441,7 +447,11 @@ function syncLocalInputUi({ controls, renderer, world, cfg, inputMode }) {
   const selectedBlock = slot != null ? cfg.hotbar[slot] : null;
   if (slot != null && !selectedBlock) controls.setSelectedSlot?.(null);
 
+  const _prevBlock2 = world.selectedBlock;
   world.selectedBlock = selectedBlock ?? null;
+  if (world.selectedBlock && world.selectedBlock !== _prevBlock2) {
+    world.hotbarTooltip = { blockKey: world.selectedBlock, timer: 0.5 };
+  }
   world.buildPreview = computeBuildPreview(world, selectedBlock, tileX, tileY, cfg, world.localPlayerId);
   controls.cardOfferMode = (world.phase === 'cardOffer');
   controls.cardOfferRects = world.cardOfferRects ?? null;

@@ -5,7 +5,7 @@
  * @exports     DEFAULT_PLAYER_ID, coreCells, coreCenterTile, createPlayerState, attachPlayerAlias, ensurePlayer, playerCount, createWorld, updateCameraFollow, focusCamera
  * @depends     config/gameConfig.js、config/mines.js、src/game/coreSnapshot.js、src/logic/connectivity.js、src/logic/rng.js、src/logic/mineGen.js
  * @sourceOfTruth Docs/game-architecture-plan.md「核心地基系統」、game-design-plan.md「建築維度」
- * @version     v0.0.14.1
+ * @version     v0.0.14.10
  *
  * 座標：tile (col x, row y)。x 0..widthTiles-1（左→右）；y 0..heightTiles-1（0=上、大=下）。
  * 兩深度層（Z）：dirt = 背景泥土地基（Set<"x,y">）；fore = 前景第二層方塊（Map<"x,y", blockKey>）。
@@ -140,6 +140,7 @@ export function createWorld(cfg = GAME_CONFIG) {
     tutorialTimer: 0,  // 提示剩餘秒數（> 0 時顯示）
     drops: [],         // 掉落物列表 [{ blockKey, x, y, qty }]（背包滿時溢出，同格同物品合併 qty）
     vfx: { timer: 0, bolts: [] }, // 視覺特效：攻擊閃電（攻擊時固定生成路徑，renderer 只負責繪製）
+    hotbarTooltip: { blockKey: null, timer: 0 }, // 快捷列切換方塊時短暫顯示的 tooltip
     cardHoverIndex: null, // 卡片面板滑鼠懸停索引（null | 0 | 1 | 2）
     buildPlanMode: false, // B 鍵切換：站在核心地基上時開啟，無距離限制+拖拽建造
     buildDestroyMode: false, // 拆除子模式：選材料後拖拽只拆該種方塊
