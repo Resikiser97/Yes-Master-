@@ -1,11 +1,11 @@
 /**
  * @file        building.js
  * @module      logic（pure）
- * @summary     建造放置/拆除合法性判定（reach + 分段範圍 + 高度 + 連通性 + 兩層規則），純函式
+ * @summary     建造放置/拆除合法性判定（分段範圍 + 高度 + 連通性 + 兩層規則），純函式；距離限制已移除（無限距離）
  * @exports     blockLayer, buildHalfWidth, validatePlacement, validateRemoval
  * @depends     config/blocks.js、src/logic/connectivity.js
  * @sourceOfTruth Docs/game-architecture-plan.md「核心地基系統」、Docs/waveplan.md「建造範圍」
- * @version     v0.0.14.1
+ * @version     v0.0.14.7
  *
  * 兩層（Z）：dirt = 背景泥土（第一層地基）；fore = 前景第二層方塊（蓋在連通泥土前方）。
  * 純函式：只讀傳入的 dirt/fore/core 等資料判斷，不碰 DOM/world 狀態。
@@ -41,7 +41,6 @@ export function validatePlacement(ctx, blockKey, x, y) {
   const layer = blockLayer(blockKey, defs);
   if (!layer) return { ok: false, reason: 'unknown_block' };
 
-  if (outOfReach(ctx, x, y)) return { ok: false, reason: 'out_of_reach' };
   if (core.some(([cx, cy]) => cx === x && cy === y)) return { ok: false, reason: 'on_core' };
   if (y >= groundY) return { ok: false, reason: 'underground' };              // 地面以下不可蓋
   if (Math.abs(x - coreCenter.x) > buildHalfWidth(stage, limits)) return { ok: false, reason: 'out_of_range' };
@@ -64,7 +63,6 @@ export function validatePlacement(ctx, blockKey, x, y) {
  */
 export function validateRemoval(ctx, x, y) {
   const { dirt, fore, core } = ctx;
-  if (outOfReach(ctx, x, y)) return { ok: false, reason: 'out_of_reach' };
   const k = key(x, y);
   if (fore.has(k)) return { ok: true, blockKey: fore.get(k), layer: 'foreground' };
   if (dirt.has(k)) {

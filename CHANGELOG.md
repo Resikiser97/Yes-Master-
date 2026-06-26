@@ -1,8 +1,18 @@
 # CHANGELOG.md — 版本歷史
 
-> 版本：v0.0.14.6
+> 版本：v0.0.14.7
 > 類型：**只增不改**（歷史紀錄，永遠往上加，最新在最上方，不回頭改舊條目）。
 > 條目格式：`## vX.Y.Z.W - YYYY-MM-DD`，下分「新增 / 修復 / 調整」。
+
+---
+
+## v0.0.14.7 - 2026-06-26
+
+### 修復
+- **P2 長按挖礦進度條不顯示**：客戶端只傳 input 給 Host 後 `return`，本地 `world.mining` 從未被更新，導致進度條永遠空白。修法：在客戶端 early-return 前加一行 `updateMining(world, !!controls.isMining?.(), dt, cfg)`，讓視覺反饋在本地即時更新；Host 的權威 state 仍會透過 sync 覆蓋最終結果。
+
+### 調整
+- **建造/拆除改為無限距離**：移除 `building.js` 中 `validatePlacement` 與 `validateRemoval` 的 `outOfReach` 距離限制，放置/拆除範圍現在與規劃模式（B 鍵）一致，無距離上限。
 
 ---
 
