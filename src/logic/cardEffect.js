@@ -5,7 +5,7 @@
  * @exports     applyCardEffect
  * @depends     config/cards.js
  * @sourceOfTruth Docs/bosscard.md「卡片效果」
- * @version     v0.0.13.0
+ * @version     v0.0.14.0
  *
  * 呼叫方須在此函式之後呼叫 refreshCoreSnapshot(world, { applyHpMaxDelta: true })
  * 以把 cardBonuses 合入核心數值快照，並正確夾取 coreHp。

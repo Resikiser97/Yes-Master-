@@ -1,8 +1,8 @@
 # MAIN.md — 函式級參考
 
-> 版本：v0.0.13.0
+> 版本：v0.0.14.0
 > 類型：**代碼優先**（文件描述錯了，以代碼為準去改本檔）。
-> ⚠️ MVP 單機可動：移動/挖礦/背包/塔內資源/掉落物自動撿取/跟隨鏡頭/初版建造/核心數值回饋/核心 HP 與修復/核心戰鬥/正式波次晝夜/卡片選擇（hover+tier中文）/localStorage 存檔/新手教學提示/**debug 浮層（` 鍵）+ T 暫停**/**測試難度 preset（1~30 關）**/**手機觸控 UI + 動態 canvas 縮放**/**固定 bolt 電擊 VFX + 正式攻擊範圍可視化**/**快捷列圖示（手機 + 鍵盤 HUD）**/**sprite 基礎設施**/**規劃模式（B 鍵拖拽建造+資源預檢）+ 拆除模式（V 鍵材質選擇性拆除）**/**快捷列 10 格（1~0）+ 滑鼠點擊**/**梯子無限方塊**/**挖礦進度條持久化**已成完整循環。
+> ⚠️ MVP 單機可動 + 多人大廳：移動/挖礦/背包/塔內資源/掉落物自動撿取/跟隨鏡頭/初版建造/核心數值回饋/核心 HP 與修復/核心戰鬥/正式波次晝夜/卡片選擇（hover+tier中文）/localStorage 存檔/新手教學提示/**debug 浮層（` 鍵）+ T 暫停**/**測試難度 preset（1~30 關）**/**手機觸控 UI + 動態 canvas 縮放**/**固定 bolt 電擊 VFX + 正式攻擊範圍可視化**/**快捷列圖示（手機 + 鍵盤 HUD）**/**sprite 基礎設施**/**規劃模式（B 鍵拖拽建造+資源預檢）+ 拆除模式（V 鍵材質選擇性拆除）**/**快捷列 10 格（1~0）+ 滑鼠點擊**/**梯子無限方塊**/**挖礦進度條持久化**/**多人大廳（Auth + Lobby + WaitingRoom + PeerJS 聊天）+ 等級/好友/裝備/成就/排行榜系統**已成完整循環。
 > 規則：新增 / 刪除函式必須同步本檔（見 `.claude/instructions.md` 開發鐵則）。
 >
 > 註：原本的「planning 進入點 / source map」已移至 `Docs/source-map.md`。
@@ -242,5 +242,72 @@ config/* 為靜態資料，被 logic 層 import。
 | `isTouchDevice()` | 偵測觸控裝置（ontouchstart / maxTouchPoints） |
 | `getSavedInputMode()` / `saveInputMode(mode)` | 讀/寫 `yesmaster.inputMode` localStorage key |
 | `setupOrientationGuard()` | 直向時顯示「請轉橫向遊玩」全螢幕遮罩；只在 touch 模式呼叫 |
-| `showSplashScreen(onStart)` | 顯示 GOBLIN NEST splash；兩排按鈕：難度（正式/測試）+ 輸入模式（鍵盤/觸控）；callback `onStart(diffMode, inputMode)` |
-| `boot()` | 入口：掛版本號；showSplashScreen(diffMode, inputMode) 後：applyTilePx → new Renderer → 選 Controls/TouchControls → touch 才 setupOrientationGuard → resize 監聽 → 建 world → 掛 ⚙ debug 按鈕 → 啟動 fixed timestep loop；touch 模式每幀把 controls.mouse 同步玩家位置 |
+| `showSplashScreen(onStart)` | 顯示 GOBLIN NEST splash；三排按鈕：難度（正式/測試/多人模式）+ 輸入模式（鍵盤/觸控）；callback `onStart(diffMode, inputMode, netInfo?)` |
+| `showAuthScreen(onAuthed)` | 登入 overlay：Google OAuth + 訪客匿名模式；登入後自動建立 profile 並回呼 |
+| `showLobby(inputMode, onStart)` | 多人大廳：登入檢查 → 房間列表（公開/朋友/房間號碼 tab）+ 建房 popup + 3 秒 polling |
+| `showWaitingRoom(opts)` | 等待室：PeerJS 連線 + 玩家卡片 + 聊天 + 加好友/踢人 + 開始遊戲廣播 |
+| `showCharacterPopup(userId)` | 角色面板 popup：查看等級/裝備/賽季稱號 |
+| `boot()` | 入口：掛版本號；showSplashScreen(diffMode, inputMode, netInfo?) 後：applyTilePx → new Renderer → 選 Controls/TouchControls → touch 才 setupOrientationGuard → resize 監聽 → 建 world → 掛 ⚙ debug 按鈕 → 啟動 fixed timestep loop；netInfo 存在時重用 WaitingRoom 的 PeerJS session |
+
+### `config/levelConfig.js`
+
+| 函式 | 職責 |
+|---|---|
+| `LEVEL_CONFIG` | 等級經驗值曲線設定（minLevel/maxLevel/expToNextLevel） |
+
+### `src/game/levelSystem.js`
+
+| 函式 | 職責 |
+|---|---|
+| `expToNextLevel(level, cfg?)` | 該等級升級所需經驗值 |
+| `expForLevel(level, cfg?)` | 到達該等級的累計經驗值 |
+| `calcLevel(exp, cfg?)` | 累計經驗值 → 等級 |
+| `addExp(currentExp, amount, cfg?)` | 加經驗並回傳新等級/經驗 |
+| `calcExpReward(summary, cfg?)` | 遊戲結算經驗計算 |
+
+### `src/game/equipmentSystem.js`
+
+| 函式 | 職責 |
+|---|---|
+| `getEquipment(userId?, cfg?)` | 查詢玩家五項裝備等級 |
+| `upgradeEquipment(userId, slot, cfg?)` | 升級指定裝備（回傳 cost，不扣資源） |
+| `applyEquipBonus(baseStats, equipment, cfg?)` | 純函式：裝備加成後的數值 |
+
+### `src/game/achievementSystem.js`
+
+| 函式 | 職責 |
+|---|---|
+| `checkAchievements(world, profile, defs?)` | 檢查已達成但未解鎖的成就 |
+| `unlockAchievement(userId, achievementId, cfg?)` | 解鎖成就寫入 DB |
+
+### `src/game/leaderboardSystem.js`
+
+| 函式 | 職責 |
+|---|---|
+| `submitScore(wave, score, cfg?)` | 提交排行榜成績 |
+| `getLeaderboard(season?, limit?, cfg?)` | 查詢排行榜 |
+| `getPlayerRank(userId, season?, cfg?)` | 查詢玩家排名 |
+| `getSeasonTitle(rank, totalPlayers, cfg?)` | 依排名百分比回傳賽季稱號 |
+
+### `src/net/authManager.js`
+
+| 函式 | 職責 |
+|---|---|
+| `signInWithGoogle(cfg?)` | Google OAuth 登入（跳轉） |
+| `signInAnonymously(cfg?)` | 匿名訪客登入 |
+| `signOut(cfg?)` | 登出 |
+| `getCurrentUser(cfg?)` | 取得目前登入使用者 |
+| `onAuthStateChange(callback, cfg?)` | 監聽登入狀態變化 |
+| `getProfile(userId, cfg?)` | 查詢玩家 profile |
+| `ensureProfile(user, cfg?)` | 確保 profile 存在（不存在則建立） |
+| `updateProfile(updates, cfg?)` | 更新 profile |
+
+### `src/net/friendManager.js`
+
+| 函式 | 職責 |
+|---|---|
+| `sendFriendRequest(targetUserId, cfg?)` | 送出好友邀請 |
+| `acceptFriendRequest(fromUserId, cfg?)` | 接受好友邀請 |
+| `removeFriend(userId, cfg?)` | 刪除好友 |
+| `listFriends(cfg?)` | 列出已接受的好友 |
+| `listPendingRequests(cfg?)` | 列出待處理的好友邀請（sent + received） |

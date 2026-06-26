@@ -5,7 +5,7 @@
  * @exports     checkAchievements, unlockAchievement
  * @depends     config/gameConfig.js、config/achievements.js、src/net/supabaseClient.js
  * @sourceOfTruth Docs/lobby-waitingroom-plan.md Phase E、config/achievements.js
- * @version     v0.0.13.0
+ * @version     v0.0.14.0
  */
 
 import { ACHIEVEMENTS, ACHIEVEMENT_BY_ID } from '../../config/achievements.js';

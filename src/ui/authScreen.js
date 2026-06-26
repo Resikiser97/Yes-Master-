@@ -4,7 +4,7 @@
  * @summary     登入/訪客 overlay — Google OAuth + 匿名登入
  * @exports     showAuthScreen
  * @depends     src/net/authManager.js
- * @version     v0.0.13.0
+ * @version     v0.0.14.0
  */
 
 import { signInWithGoogle, signInAnonymously, getCurrentUser, ensureProfile, onAuthStateChange } from '../net/authManager.js';

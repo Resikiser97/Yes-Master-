@@ -1,8 +1,8 @@
 # QUICKREF.md — 每次啟動速查表
 
-> 版本：v0.0.13.0
+> 版本：v0.0.14.0
 > 類型：**代碼優先**（文件描述錯了，以代碼為準去改本檔）。
-> ⚠️ MVP 單機可動：移動/挖礦/背包/塔內資源/掉落物自動撿取/跟隨鏡頭/初版建造/核心數值回饋/核心 HP 與修復/debug 核心戰鬥/正式波次/晝夜/卡片選擇（hover+tier中文）/localStorage 存檔/新手教學提示/**debug 浮層（` 鍵）/測試難度 preset（1~30 關）/手機三欄觸控 UI（左 HUD+D-pad、中 canvas+1~0 快捷列、右 Debug Tool+動作鍵）/動態 canvas 縮放/**PWA manifest + iOS/Android 安裝引導畫面**/**手機 3×3 放置方向選擇器**/**電擊攻擊 VFX + 範圍圈**/**快捷列方塊圖示（手機+鍵盤 HUD）**/**sprite 載入基礎設施 + 素材整理**/**規劃模式（B 鍵拖拽建造+資源預檢）+ 拆除模式（V 鍵材質選擇性拆除）**/**快捷列 10 格（1~0）+ 滑鼠點擊**/**梯子無限方塊**/**挖礦進度條持久化**已成完整循環。
+> ⚠️ MVP 單機可動 + 多人大廳：移動/挖礦/背包/塔內資源/掉落物自動撿取/跟隨鏡頭/初版建造/核心數值回饋/核心 HP 與修復/debug 核心戰鬥/正式波次/晝夜/卡片選擇（hover+tier中文）/localStorage 存檔/新手教學提示/**debug 浮層（` 鍵）/測試難度 preset（1~30 關）/手機三欄觸控 UI（左 HUD+D-pad、中 canvas+1~0 快捷列、右 Debug Tool+動作鍵）/動態 canvas 縮放/**PWA manifest + iOS/Android 安裝引導畫面**/**手機 3×3 放置方向選擇器**/**電擊攻擊 VFX + 範圍圈**/**快捷列方塊圖示（手機+鍵盤 HUD）**/**sprite 載入基礎設施 + 素材整理**/**規劃模式（B 鍵拖拽建造+資源預檢）+ 拆除模式（V 鍵材質選擇性拆除）**/**快捷列 10 格（1~0）+ 滑鼠點擊**/**梯子無限方塊**/**挖礦進度條持久化**/**多人大廳（Lobby + Auth + Waiting Room + PeerJS 聊天）+ 等級/好友/裝備/成就/排行榜系統**已成完整循環。
 
 ---
 
@@ -36,6 +36,22 @@
 | `assets/icon-status.md` | 素材裁剪/整合狀態追蹤表（✅已整合或已裁剪 / 🔲待裁剪 / ⏸暫緩 / ❌尚未製作） |
 | `manifest.json` | PWA 宣告（standalone/landscape/theme-color/#D4A017/icons） |
 | `tools/generate-icons.html` | 瀏覽器工具：產生並下載 icons/icon-192.png + icon-512.png |
+| `config/levelConfig.js` | 等級經驗值曲線 |
+| `config/equipmentConfig.js` | 五項裝備加成與升級成本 |
+| `config/achievements.js` | 成就定義表 |
+| `config/seasonConfig.js` | 排行榜賽季 ID 格式與稱號門檻 |
+| `src/game/levelSystem.js` | 等級計算：expToNextLevel / calcLevel / addExp / calcExpReward |
+| `src/game/equipmentSystem.js` | 裝備 CRUD：getEquipment / upgradeEquipment / applyEquipBonus |
+| `src/game/achievementSystem.js` | 成就檢查與解鎖 |
+| `src/game/leaderboardSystem.js` | 排行榜提交/查詢/賽季稱號 |
+| `src/net/authManager.js` | Auth：Google OAuth / 匿名登入 / profile CRUD |
+| `src/net/friendManager.js` | 好友系統：邀請/接受/刪除/列表 |
+| `src/net/roomManager.js` | 房間 CRUD + Edge Function 呼叫（含 getRoomMembers / kickPlayer） |
+| `src/ui/authScreen.js` | 登入/訪客 overlay |
+| `src/ui/lobby.js` | 多人大廳 UI（房間列表 + 建房 + 三 tab） |
+| `src/ui/waitingRoom.js` | 等待室 UI（玩家卡片 + PeerJS 聊天 + 開始遊戲） |
+| `src/ui/characterPopup.js` | 角色面板 popup（等級/裝備/稱號） |
+| `Docs/integration-plan.md` | Lobby↔Phase B-F 串接計劃 |
 | `Docs/claude-codex-worklist.md` | Claude↔Codex 交接看板 |
 
 > 函式級細節見 `MAIN.md`。

@@ -1,8 +1,35 @@
 # CHANGELOG.md — 版本歷史
 
-> 版本：v0.0.13.0
+> 版本：v0.0.14.0
 > 類型：**只增不改**（歷史紀錄，永遠往上加，最新在最上方，不回頭改舊條目）。
 > 條目格式：`## vX.Y.Z.W - YYYY-MM-DD`，下分「新增 / 修復 / 調整」。
+
+---
+
+## v0.0.14.0 - 2026-06-26
+
+### 新增
+- **多人大廳 UI（Lobby）**：Splash 新增「多人模式」按鈕 → 全螢幕大廳；三個 tab（公開/朋友/房間號碼）；建房 popup 支援名稱/人數/難度選擇；3 秒 polling 自動刷新房間列表。
+- **等待室 UI（Waiting Room）**：玩家 slot 卡片（皇冠/頭像/等級）；PeerJS data channel 即時聊天；操作圓（🔵 角色面板 / 🟢 加好友 / 🔴 踢人）；Host「開始遊戲」按鈕廣播 GAME_START。
+- **登入畫面（Auth Screen）**：進 Lobby 前自動檢查登入狀態；Google OAuth 一鍵登入 + 訪客匿名模式；登入後自動建立 player_profiles。
+- **角色面板 Popup**：查看玩家等級、經驗值、五項裝備等級、賽季稱號。
+- **等級系統**：經驗值曲線、calcLevel、addExp、遊戲結算經驗計算（`config/levelConfig.js` + `src/game/levelSystem.js`）。
+- **好友系統**：好友邀請/接受/刪除、好友列表、待處理邀請（`src/net/friendManager.js`）。
+- **裝備系統**：五項裝備（挖掘鎬/耐力護符/靈動面具/背負袋/修復錘）+ 每級加成 + 升級成本（`config/equipmentConfig.js` + `src/game/equipmentSystem.js`）。
+- **成就系統**：成就定義表 + 解鎖記錄（`config/achievements.js` + `src/game/achievementSystem.js` + `supabase/seed_achievements.sql`）。
+- **排行榜 + 賽季稱號**：賽季 ID 格式、稱號門檻（金冠/銀冠）、排名查詢（`config/seasonConfig.js` + `src/game/leaderboardSystem.js`）。
+- **房間 DB 補強**：rooms 表新增 password/min_level/difficulty/visibility/game_started；room_memberships 新增 display_name/player_level。
+- **Edge Function 更新**：create-room 接受新欄位；join-room 加入密碼/等級/滿員檢查。
+- **roomManager 新增**：`getRoomMembers()`、`kickPlayer()`。
+- **PeerJS 聊天路由**：peerHost.js 加入 MSG.CHAT 轉發；protocol.js 新增 CHAT/GAME_START/PLAYER_INFO 訊息類型。
+- **netSession 傳遞**：WaitingRoom 建立的 PeerJS 連線直接傳入遊戲，避免重複建立。
+
+### 調整
+- `src/ui/splash.js`：新增「多人模式」按鈕，import lobby.js。
+- `src/main.js`：onStart 接受第三參數 netInfo，優先使用 Lobby/WaitingRoom 流程的多人設定。
+- `src/net/protocol.js`：新增 CHAT、GAME_START、PLAYER_INFO 訊息類型。
+- `src/net/peerHost.js`：新增 MSG.CHAT 路由，host 收到後呼叫 `_onChat` callback。
+- `src/net/roomManager.js`：createRoom/joinRoom 支援新欄位傳遞。
 
 ---
 

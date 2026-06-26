@@ -5,7 +5,7 @@
  * @exports     spawnPositions
  * @depends     src/logic/building.js（buildHalfWidth）
  * @sourceOfTruth Docs/waveplan.md「怪物生成安全規則」「建造範圍與生成安全區」
- * @version     v0.0.13.0
+ * @version     v0.0.14.0
  *
  * 生成原則（waveplan.md）：
  *   - x = 核心中心 ± (當關 halfWidth + 10~20 格隨機偏移)

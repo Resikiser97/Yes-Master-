@@ -4,7 +4,7 @@
  * @summary     等待室：玩家 slot 卡片 + PeerJS 聊天 + 開始遊戲
  * @exports     showWaitingRoom
  * @depends     src/net/roomManager.js, src/net/authManager.js, src/net/peerHost.js, src/net/peerClient.js
- * @version     v0.0.13.0
+ * @version     v0.0.14.0
  */
 
 import { getCurrentUser, getProfile } from '../net/authManager.js';

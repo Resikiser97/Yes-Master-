@@ -4,7 +4,7 @@
  * @summary     手機版面輔助：動態 tilePx 計算、三欄觸控版面、觸控偵測、直向遮罩
  * @exports     computeTilePx, applyTilePx, computeThreeColumnLayout, applyThreeColumnLayout, isTouchDevice, isStandalone, getSavedInputMode, saveInputMode, setupOrientationGuard
  * @depends     （無）
- * @version     v0.0.13.0
+ * @version     v0.0.14.0
  *
  * 注意：baseViewCols/baseViewRows 在首次呼叫時快取，避免反覆 applyTilePx 後計算漂移。
  */

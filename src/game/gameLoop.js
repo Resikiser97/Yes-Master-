@@ -5,7 +5,7 @@
  * @exports     createGameLoop, startGameLoop
  * @depends     config/gameConfig.js
  * @sourceOfTruth Docs/game-architecture-plan.md「隨機與時間必須注入」
- * @version     v0.0.13.0
+ * @version     v0.0.14.0
  */
 
 import { GAME_CONFIG } from '../../config/gameConfig.js';

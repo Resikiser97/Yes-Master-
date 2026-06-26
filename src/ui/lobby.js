@@ -4,7 +4,7 @@
  * @summary     多人大廳：房間列表（公開/朋友/房間號碼 tab）+ 建房 popup
  * @exports     showLobby
  * @depends     src/net/roomManager.js, src/net/authManager.js, src/ui/waitingRoom.js
- * @version     v0.0.13.0
+ * @version     v0.0.14.0
  */
 
 import { listRooms, createRoom, joinRoom } from '../net/roomManager.js';

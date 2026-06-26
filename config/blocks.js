@@ -5,7 +5,7 @@
  * @exports     BLOCKS, BLOCK_KEYS
  * @depends     （無）
  * @sourceOfTruth Docs/game-design-plan.md「方塊系統」
- * @version     v0.0.13.0
+ * @version     v0.0.14.0
  */
 
 // layer：'background' = 第一層地基（只有泥土）；'foreground' = 第二層（蓋在泥土前方）

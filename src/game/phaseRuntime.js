@@ -5,7 +5,7 @@
  * @exports     initPhaseState, updatePhase
  * @depends     config/gameConfig.js、config/waves.js、src/logic/waveGen.js、src/logic/spawnPosition.js、src/logic/rng.js
  * @sourceOfTruth Docs/waveplan.md「晝夜節奏」「怪物生成安全規則」「夜晚加時賽/狂暴模式」
- * @version     v0.0.13.0
+ * @version     v0.0.14.0
  *
  * phase 轉換：
  *   prep（30s 或按 N）→ night（60s，分批出怪）

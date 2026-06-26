@@ -5,7 +5,7 @@
  * @exports     showSplashScreen
  * @depends     src/ui/mobileLayout.js（isTouchDevice, isStandalone, getSavedInputMode, saveInputMode）
  *              src/ui/pwaTutorial.js（showPwaTutorial, shouldShowPwaTutorial）
- * @version     v0.0.13.0
+ * @version     v0.0.14.0
  *
  * diffMode:  'normal' = 正式難度；'test' = 測試難度 1~30 關
  * inputMode: 'keyboard' = 電腦鍵盤；'touch' = 手機觸控

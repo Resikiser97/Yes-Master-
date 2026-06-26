@@ -7,7 +7,7 @@
  *              src/render/renderer.js、src/input/controls.js、src/input/touchControls.js、
  *              src/ui/mobileLayout.js
  * @sourceOfTruth Docs/game-architecture-plan.md「MVP 開發範圍」
- * @version     v0.0.13.0
+ * @version     v0.0.14.0
  *
  * renderer、controls は splash 後に inputMode が確定してから生成。
  * 手機模式：TouchControls + setupOrientationGuard + 動態 tilePx resize。

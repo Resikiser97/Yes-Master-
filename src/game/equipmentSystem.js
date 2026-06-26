@@ -5,7 +5,7 @@
  * @exports     getEquipment, upgradeEquipment, applyEquipBonus
  * @depends     config/gameConfig.js、config/equipmentConfig.js、src/net/supabaseClient.js
  * @sourceOfTruth Docs/lobby-waitingroom-plan.md Phase D、config/equipmentConfig.js
- * @version     v0.0.13.0
+ * @version     v0.0.14.0
  */
 
 import { GAME_CONFIG } from '../../config/gameConfig.js';
