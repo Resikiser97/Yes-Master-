@@ -5,12 +5,12 @@
  * @exports     GAME_CONFIG
  * @depends     （無）
  * @sourceOfTruth Docs/game-design-plan.md、Docs/game-architecture-plan.md、Docs/waveplan.md
- * @version     v0.0.14.8
+ * @version     v0.0.14.9
  */
 
 export const GAME_CONFIG = {
   // 版本同步點之一（見 .claude/instructions.md 版本號同步鐵則）
-  version: 'v0.0.14.8',
+  version: 'v0.0.14.9',
 
   // MVP 模式角標（單人 / 多人），方便錄影分辨測試版本
   mode: 'single', // 'single' | 'multi'
@@ -97,6 +97,7 @@ export const GAME_CONFIG = {
     carry: 50,         // 背負（承重上限）
     backpackSlots: 6,  // 背包格數（2x3，依方塊種類堆疊）
     repair: 50,        // 修復（每秒回血 = 值/60，無條件捨去到小數 2 位；每秒耗 1 疲勞）
+    miningFatigueCost: 5, // 每挖出一塊礦石消耗的疲勞值
     moveSpeed: 50,     // 移動能力值；基準 50 = 5 格/秒
     moveSpeedPerTilePerSecond: 10, // 格/秒 = moveSpeed / 10
     // 挖礦輸入次數上限（與挖掘數值無關）

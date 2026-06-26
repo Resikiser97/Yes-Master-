@@ -5,7 +5,7 @@
  * @exports     Renderer
  * @depends     config/gameConfig.js
  * @sourceOfTruth Docs/game-design-plan.md「建築維度」「遊戲內 UI 設計」
- * @version     v0.0.14.1
+ * @version     v0.0.14.9
  *
  * 渲染層只「讀」world 狀態畫圖，不寫任何遊戲規則（鐵則 9）。
  */
@@ -1176,8 +1176,9 @@ export class Renderer {
       const w = (m.cols[1] - m.cols[0] + 1) * t, h = (m.rows[1] - m.rows[0] + 1) * t;
       // 礦山可見方塊
       const cols = m.mine.columns;
+      const displayRows = m.mine.displayRows ?? cols[0]?.length ?? 3;
       for (let ci = 0; ci < cols.length; ci++) {
-        for (let ri = 0; ri < cols[ci].length; ri++) {
+        for (let ri = 0; ri < displayRows; ri++) {
           const bk = cols[ci][ri];
           if (bk) this._cell(c0 + ci, r0 + ri, PALETTE.block[bk] ?? '#999');
         }

@@ -5,9 +5,9 @@
  * @exports     hitsToBreak, durabilityToBreak, miningDamagePerSecond, selectNearestMineCell
  * @depends     config/blocks.js
  * @sourceOfTruth Docs/game-design-plan.md「方塊系統」「操作輸入方式」
- * @version     v0.0.14.1
+ * @version     v0.0.14.9
  *
- * 挖掘能力 = 每下傷害；次數上限由輸入方式決定（點擊 10/s、長按 5/s）。
+ * 挖掘能力 = 每下傷害；次數上限由輸入方式決定（點擊 10/s、長按 10/s）。
  * 例：沙/土/石 耐久 50、挖掘 10 → 5 下出塊。
  */
 
@@ -39,8 +39,9 @@ export function selectNearestMineCell(player, mines, reach) {
     const [c0] = m.cols;
     const [r0] = m.rows;
     const cols = m.mine.columns;
+    const displayRows = m.mine.displayRows ?? cols[0]?.length ?? 3;
     for (let ci = 0; ci < cols.length; ci++) {
-      for (let ri = 0; ri < cols[ci].length; ri++) {
+      for (let ri = 0; ri < displayRows; ri++) {
         const blockKey = cols[ci][ri];
         if (!blockKey) continue;
         const x = c0 + ci;

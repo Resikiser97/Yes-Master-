@@ -5,7 +5,7 @@
  * @exports     updateMining, collectDrops, tryDeposit, tryPlace, tryRemove, computeBuildPreview, updateRepair, damageCore, healCore, applyDebugAction, tryPlaceRect, tryRemoveRect, toggleBuildPlanMode, previewPlaceRect
  * @depends     config/gameConfig.js、config/blocks.js、src/game/coreSnapshot.js、src/game/combatRuntime.js、src/logic/mining.js、src/logic/mineGen.js、src/logic/inventory.js、src/logic/connectivity.js、src/logic/building.js、src/logic/coreHealth.js、src/logic/drops.js
  * @sourceOfTruth Docs/game-design-plan.md「操作輸入方式」「方塊系統」「遊戲內 UI 設計」
- * @version     v0.0.14.1
+ * @version     v0.0.14.9
  */
 
 import { GAME_CONFIG } from '../../config/gameConfig.js';
@@ -63,6 +63,7 @@ export function updateMining(world, isMining, dt, cfg = GAME_CONFIG, playerId = 
   const px = Math.round(player.x);
   const py = Math.round(player.y);
   const maxStacks = cfg.drops?.maxStacks ?? 128;
+  const fatigueCost = cfg.player.miningFatigueCost ?? 5;
 
   // 背包放得下 → 直接進背包
   if (canAdd(player.inventory, target.blockKey, 1, {
@@ -70,6 +71,7 @@ export function updateMining(world, isMining, dt, cfg = GAME_CONFIG, playerId = 
   })) {
     const dug = digMineCell(world.mines[target.mineId].mine, target.col, target.row, world.mineRng);
     if (dug) player.inventory = addItem(player.inventory, dug, 1);
+    player.fatigue = Math.max(0, (player.fatigue ?? 0) - fatigueCost);
     m.full = false;
     m.dropFull = false;
     delete prog[tk];
@@ -83,6 +85,7 @@ export function updateMining(world, isMining, dt, cfg = GAME_CONFIG, playerId = 
   if (dropResult.added) {
     world.drops = dropResult.drops;
     digMineCell(world.mines[target.mineId].mine, target.col, target.row, world.mineRng);
+    player.fatigue = Math.max(0, (player.fatigue ?? 0) - fatigueCost);
     m.full = true;
     m.dropFull = false;
     delete prog[tk];
