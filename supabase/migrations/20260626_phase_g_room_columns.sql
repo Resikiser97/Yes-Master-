@@ -1,5 +1,4 @@
--- Phase G: Room DB 補強
--- 在 Supabase SQL Editor 執行
+-- Phase G room columns required by Lobby / WaitingRoom v0.0.14.1.
 
 ALTER TABLE rooms ADD COLUMN IF NOT EXISTS password TEXT DEFAULT NULL;
 ALTER TABLE rooms ADD COLUMN IF NOT EXISTS password_hash TEXT DEFAULT NULL;
@@ -9,6 +8,7 @@ ALTER TABLE rooms ADD COLUMN IF NOT EXISTS min_level INT DEFAULT 0;
 ALTER TABLE rooms ADD COLUMN IF NOT EXISTS difficulty TEXT DEFAULT 'normal';
 ALTER TABLE rooms ADD COLUMN IF NOT EXISTS visibility TEXT DEFAULT 'public';
 ALTER TABLE rooms ADD COLUMN IF NOT EXISTS game_started BOOLEAN DEFAULT false;
+
 ALTER TABLE room_memberships ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'player';
 ALTER TABLE room_memberships ADD COLUMN IF NOT EXISTS is_host BOOLEAN DEFAULT false;
 ALTER TABLE room_memberships ADD COLUMN IF NOT EXISTS display_name TEXT DEFAULT 'Goblin';

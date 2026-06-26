@@ -56,7 +56,7 @@
 - v0.0.12.0 VFX / 範圍 / 圖示收尾：電擊 VFX 改為攻擊時固定生成 `bolts`；攻擊範圍圈改用正式 `coreAttackAnchors()` 可視化聯集；新增 T debug 暫停；整理 13 張素材、裁剪 52 張 sprites、產生真正透明且置中的 hotbar 方塊 sheet。
 
 - v0.0.14.0 多人大廳 + Phase B-G 系統：新增登入畫面（Google OAuth + 訪客）、Lobby UI（房間列表三 tab + 建房）、WaitingRoom UI（PeerJS 即時聊天 + 玩家卡片 + 加好友/踢人 + 開始遊戲廣播）、角色面板 popup、等級/好友/裝備/成就/排行榜後端模組、房間 DB 補強（密碼/等級/滿員檢查）、Edge Function 更新、netSession 傳遞避免重複建立 PeerJS 連線。
-- v0.0.14.1 多人大廳 P0+P1 修復：修正房間密碼傳遞、建房欄位、房間列表安全欄位與過濾；新增 start-room/kick-player/leave-room Edge Functions；開始遊戲保留 WaitingRoom PeerJS session 並在 main.js 重新掛接多人 callback；join token 必須驗 membership；本地 Supabase anonymous sign-in 開啟。
+- v0.0.14.1 多人大廳 P0+P1 修復：修正房間密碼傳遞、建房欄位、房間列表安全欄位與過濾；新增 start-room/kick-player/leave-room Edge Functions；開始遊戲保留 WaitingRoom PeerJS session 並在 main.js 重新掛接多人 callback；join token 必須驗 membership；本地 Supabase anonymous sign-in 開啟；Phase G room columns migration 與 Edge Functions 已部署到線上 Supabase，單瀏覽器 live acceptance 通過，雙瀏覽器 client join/chat/kick/leave/GAME_START 待驗。
 
 ### 已知問題
 - 🔴 緊急：（無）

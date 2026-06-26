@@ -17,6 +17,7 @@
 - **實機驗收修補**：訪客登入避免 auth callback / button flow 雙重進入 Lobby；WaitingRoom member list 支援舊 DB 缺 `role/is_host` 欄位 fallback；缺欄位 fallback 會 cache 已降級欄位，避免輪詢持續噴 400。
 
 ### 調整
+- `supabase/alter_rooms_phase_g.sql` / `supabase/migrations/20260626_phase_g_room_columns.sql`：補齊並部署 live Supabase 需要的 `rooms.current_players`、`room_memberships.role`、`room_memberships.is_host` 欄位，避免 WaitingRoom / start-room 在線上舊 schema 下失敗。
 - `src/net/roomManager.js`：房間列表只查安全欄位並過濾已開始、滿房、非公開房；新增 `startRoom()`，`kickPlayer()` / `leaveRoom()` 改呼叫 Edge Function。
 - `src/main.js`：多人角色判斷統一使用 Lobby/URL 合併後的 `netRole`，`world.roomId` 使用 Lobby 傳入的 room id。
 - `tests/roomManager.test.js`：新增房間列表安全欄位、join payload、列表過濾純函式測試。

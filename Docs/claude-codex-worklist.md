@@ -259,16 +259,20 @@
 
 | # | 項目 | 實作現況 | 狀態 | 下一步 |
 |---|---|---|---|---|
-| M0G-1 | rooms / memberships 基礎表 | `Docs/multiplayer-implementation-plan.md` 要求完整 schema；repo 目前只有 `alter_rooms_phase_g.sql` 局部補欄位 | 🔴 阻塞 | 補完整 migration：`rooms`、`room_memberships`、`consumed_nonces`、索引、RLS |
-| M0G-2 | create-room Edge Function | 已支援 name/max_players/password_hash/has_password/min_level/difficulty/visibility/current_players，新建房不再寫明文 password | 🟡 部分完成 | 補欄位驗證與 visibility constraint；🧪 需部署後驗 Edge Function payload |
+| M0G-1 | rooms / memberships 基礎表 | `alter_rooms_phase_g.sql` 與 `supabase/migrations/20260626_phase_g_room_columns.sql` 已部署到線上；Lobby / WaitingRoom 所需欄位已驗證存在；完整 `consumed_nonces`、索引、RLS 仍屬 P2 | 🟡 部分完成 | 後續補完整 P2 migration/RLS |
+| M0G-2 | create-room Edge Function | 已部署並 live 驗證 name/max_players/password/password_hash/has_password/min_level/difficulty/visibility/current_players payload；新建房不再寫明文 password | ✅ 已可用 | 後續補 visibility constraint / private-friends 規則 |
 | M0G-3 | join-room Edge Function | 已檢查 hash/舊明文密碼 fallback、等級、人數上限、game_started，並 upsert membership | 🟡 部分完成 | 補 private/friends visibility 邏輯；🧪 需 Supabase 驗錯密碼/滿房/等級不足 |
-| M0G-4 | 房間密碼安全 | 新建房間已改寫 `password_hash/has_password`；join-room 支援 hash 驗證與舊明文 fallback | 🟡 部分完成 | 🧪 需部署 Edge Function + SQL 後驗密碼房 |
+| M0G-4 | 房間密碼安全 | SQL + Edge Functions 已部署；新建密碼房 live 驗證 `has_password=true`，join-room 支援 hash 驗證與舊明文 fallback | 🟡 部分完成 | 🧪 仍需雙瀏覽器驗正確/錯誤密碼加入 |
 | M0G-5 | room_join_token 安全 | `issue-room-join-token` / `verify-room-join-token` 已要求 membership 存在 | 🟡 部分完成 | 🧪 需 Supabase 實測非成員不能取 token |
 | M0G-6 | kick-player Edge Function | 已新增 `kick-player`，UI 改呼叫 roomManager `kickPlayer()` | 🟡 部分完成 | 🧪 需雙瀏覽器驗 host 踢人與人數同步 |
 | M0G-7 | leave-room / current_players | 已新增 `leave-room`，WaitingRoom 退出改呼叫 roomManager `leaveRoom()` | 🟡 部分完成 | 🧪 需驗 host/client 退出與房間狀態 |
-| M0G-8 | start-room / game_started | 已新增 `start-room`，host 開始遊戲前寫 `game_started=true` | 🟡 部分完成 | 🧪 需驗開始後房間不再出現在列表 |
+| M0G-8 | start-room / game_started | `start-room` 已部署；host live 驗證開始遊戲成功，response `game_started=true` 並進入遊戲 | ✅ 已可用 | 🧪 雙瀏覽器 GAME_START 廣播仍待驗 |
 
 > 2026-06-26 live test note: frontend flow can reach Auth, Lobby, create-room, WaitingRoom, and PeerJS host setup. Online Supabase is not yet deployed with this round's SQL / Edge Functions: missing `rooms.current_players`, `rooms.has_password`, `room_memberships.role`, `room_memberships.is_host`; `start-room` preflight fails. Frontend fallbacks are in place for old schema, but full P0/P1 acceptance requires deploying SQL + Edge Functions.
+>
+> 2026-06-26 deploy prep note: local SQL now includes the missing `rooms.current_players`, `room_memberships.role`, and `room_memberships.is_host` columns in both `supabase/alter_rooms_phase_g.sql` and the formal migration `supabase/migrations/20260626_phase_g_room_columns.sql`. Remaining work is Supabase CLI deploy, secrets setup, live Playwright acceptance, and cleanup of `Codex Live Test` / `Codex Start Test` active rooms.
+>
+> 2026-06-26 deploy acceptance note: Supabase CLI deployed Phase G migration, `ROOM_PASSWORD_SECRET` / `ROOM_TOKEN_SECRET`, and Edge Functions (`create-room`, `join-room`, `issue-room-join-token`, `verify-room-join-token`, `start-room`, `kick-player`, `leave-room`, `update-host-peer`). Playwright live acceptance on `http://127.0.0.1:5500/` passed Splash → Auth → anonymous session → Lobby → create password room → WaitingRoom → start game. Google OAuth redirects to Google Accounts. `rooms` and `room_memberships` missing-column 400s are gone. Cleaned active `Codex Live Test%` / `Codex Start Test%` rooms and memberships. Still needs double-browser client join/chat/kick/leave/GAME_START acceptance.
 
 ### M0H. Lobby UI
 
@@ -279,20 +283,20 @@
 | M0H-3 | 朋友 tab | 已用 `listFriends()` 過濾 owner_id | 🟡 部分完成 | 依 friendships/RLS 實測；若未有接受好友 UI，朋友 tab 很難形成資料 |
 | M0H-4 | 房間 ID 加入 | 已改為傳 `joinRoom({ room_id, password })` | 🟡 部分完成 | 🧪 需 Supabase 驗正確/錯誤密碼 |
 | M0H-5 | 公開列表加入密碼房 | 已依 `has_password` 彈出密碼輸入，並顯示 lock 標記 | 🟡 部分完成 | 🧪 需部署 `has_password` 欄位後驗證 |
-| M0H-6 | 建房 popup | 已補密碼、最低等級、visibility、difficulty 並傳給 createRoom | 🟡 部分完成 | 🧪 需瀏覽器檢查 UI 與 Edge payload |
+| M0H-6 | 建房 popup | 已補密碼、最低等級、visibility、difficulty 並傳給 createRoom；live Playwright 已驗 payload | ✅ 已可用 | 後續補錯誤提示不使用 alert |
 | M0H-7 | 房間列表資訊 | 顯示人數、名稱、等級限制、難度 | 🟡 部分完成 | 補房主名稱、鎖房、已開始/滿房 disable、錯誤提示不用 alert |
 
 ### M0I. Waiting Room UI
 
 | # | 項目 | 實作現況 | 狀態 | 下一步 |
 |---|---|---|---|---|
-| M0I-1 | 玩家 slot 卡片 | `waitingRoom.js` 已依 `max_players` render slot、host crown、等級 | 🟡 部分完成 | 🧪 需建 2/3/4 人房檢查 slot 數量 |
+| M0I-1 | 玩家 slot 卡片 | `waitingRoom.js` 已依 `max_players` render slot、host crown、等級；live Playwright 已驗 2 人房 slot | 🟡 部分完成 | 🧪 仍需 3/4 人房 slot 檢查 |
 | M0I-2 | PeerJS 聊天 | WaitingRoom 建 host/client session，CHAT host relay | 🟡 部分完成 | 🧪 需雙瀏覽器測聊天；避免 host 自己重複顯示訊息 |
 | M0I-3 | 角色面板 | `characterPopup.js` 已讀 profile/equipment/rank | 🟡 部分完成 | 補六數值顯示；DB/RLS 實測 |
 | M0I-4 | 加好友 | 綠色按鈕呼叫 `sendFriendRequest()` | 🟡 部分完成 | 補自加好友防呆、已是好友/已 pending 顯示、接受好友流程 |
 | M0I-5 | 踢人 | UI 已改走 `kickPlayer()` Edge Function，仍會透過 PeerJS 發 KICK | 🟡 部分完成 | 🧪 需雙瀏覽器驗證 |
 | M0I-6 | 退出房間 | UI 已改走 `leaveRoom()` Edge Function；host 退出會關閉房間 | 🟡 部分完成 | 🧪 需驗 host/client 退出 |
-| M0I-7 | 開始遊戲 | host 已先呼叫 `startRoom()`，成功後才 broadcast GAME_START | 🟡 部分完成 | 🧪 需雙瀏覽器驗證 |
+| M0I-7 | 開始遊戲 | host 已先呼叫 `startRoom()`，成功後才 broadcast GAME_START；單瀏覽器 host start live 驗證通過 | 🟡 部分完成 | 🧪 仍需雙瀏覽器 GAME_START 驗證 |
 | M0I-8 | netSession 傳遞 | `_launchGame()` 已設定 `_keepAlive`，main.js 會 reuse WaitingRoom session | 🟡 部分完成 | 🧪 需雙瀏覽器驗證 session 未重建 |
 
 ### M0J. main.js / 多人遊戲內整合
