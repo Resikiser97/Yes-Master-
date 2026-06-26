@@ -5,7 +5,7 @@
  * @exports     serializeSnapshot, serializeDelta, applySnapshot, applyDelta
  * @depends     game/world.js, game/coreSnapshot.js
  * @sourceOfTruth Docs/game-architecture-plan.md「Multiplayer 架構 → State Sync」
- * @version     v0.0.14.1
+ * @version     v0.0.14.6
  */
 import { GAME_CONFIG } from '../../config/gameConfig.js';
 import { createWorld, attachPlayerAlias, ensurePlayer, createPlayerState } from '../game/world.js';
@@ -107,9 +107,9 @@ function applyPartialState(world, state, cfg) {
     for (const [id, player] of state.players) {
       world.players.set(id, deserializePlayer(id, player, cfg));
     }
-    world.localPlayerId = previousLocal && world.players.has(previousLocal)
-      ? previousLocal
-      : state.localPlayerId ?? world.localPlayerId ?? world.players.keys().next().value;
+    world.localPlayerId = previousLocal
+      || state.localPlayerId
+      || world.players.keys().next().value;
     ensurePlayer(world, world.localPlayerId, cfg);
     attachPlayerAlias(world);
   }

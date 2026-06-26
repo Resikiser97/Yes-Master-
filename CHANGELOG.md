@@ -1,10 +1,15 @@
 # CHANGELOG.md — 版本歷史
 
-> 版本：v0.0.14.5
+> 版本：v0.0.14.6
 > 類型：**只增不改**（歷史紀錄，永遠往上加，最新在最上方，不回頭改舊條目）。
 > 條目格式：`## vX.Y.Z.W - YYYY-MM-DD`，下分「新增 / 修復 / 調整」。
 
 ---
+
+## v0.0.14.6 - 2026-06-26
+
+### 修復
+- **客戶端視角跟著 Host 移動**：多人遊戲中客戶端 `world.localPlayerId` 未在遊戲開始時設為自己的 slotId，使鏡頭跟隨 Host 的 'p1' 而非自己。雙重修法：`main.js` 進入遊戲時設 `world.localPlayerId = netSession.slotId`；`stateSync.js` 的 `applyPartialState` 改為只要 `previousLocal` 存在就保留，不再因 player 尚未出現在 snapshot 而退回用 Host 的 localPlayerId。
 
 ## v0.0.14.5 - 2026-06-26
 

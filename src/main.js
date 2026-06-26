@@ -13,7 +13,7 @@
  *              src/ui/splash.js、src/ui/mobileLayout.js、src/ui/uiState.js、
  *              src/net/netSession.js、src/net/inputBuffer.js、src/net/syncScheduler.js
  * @sourceOfTruth Docs/game-architecture-plan.md「MVP 開發範圍」
- * @version     v0.0.14.1
+ * @version     v0.0.14.6
  *
  * 手機模式：TouchControls + setupOrientationGuard + 動態 tilePx resize。
  * 電腦模式：Controls（鍵盤/滑鼠）+ resize 仍可動態縮放視窗。
@@ -241,6 +241,7 @@ export function boot() {
             prevPhase = world.phase;
           }
         };
+        if (netSession.slotId) world.localPlayerId = netSession.slotId;
         console.info('[net] client reusing waitingRoom session', netSession.slotId);
       }
     } else if (cfg.mode === 'multi') {
