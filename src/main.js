@@ -13,7 +13,7 @@
  *              src/ui/splash.js、src/ui/mobileLayout.js、src/ui/uiState.js、
  *              src/net/netSession.js、src/net/inputBuffer.js、src/net/syncScheduler.js
  * @sourceOfTruth Docs/game-architecture-plan.md「MVP 開發範圍」
- * @version     v0.0.14.13
+ * @version     v0.0.15.0
  *
  * 手機模式：TouchControls + setupOrientationGuard + 動態 tilePx resize。
  * 電腦模式：Controls（鍵盤/滑鼠）+ resize 仍可動態縮放視窗。
@@ -273,6 +273,24 @@ export function boot() {
           }
           updateMining(world, !!controls.isMining?.(), dt, cfg);
           if (world.hotbarTooltip?.timer > 0) world.hotbarTooltip.timer = Math.max(0, world.hotbarTooltip.timer - dt);
+
+          // P2 本地意圖寫入（讓自己也能即時看到頭上 emoji）
+          const _localP = world.players?.get(world.localPlayerId);
+          if (_localP) {
+            const _manualLocked = _localP.intentManual && (Date.now() - (_localP.intentAt ?? 0)) < 30_000;
+            if (!_manualLocked) {
+              if (_localP.intentManual) _localP.intentManual = false;
+              const _intent = controls.isMining?.() ? 'mine' : controls.isRepairing?.() ? 'repair' :
+                (world.buildPlanMode && world.selectedBlock) ? 'build' : null;
+              if (_intent && _intent !== _localP.intent) {
+                _localP.intent = _intent;
+                _localP.intentAt = Date.now();
+              } else if (!_intent) {
+                _localP.intent = null;
+              }
+            }
+          }
+          world.intentWheel = controls.getIntentWheelState?.() ?? null;
           return;
         }
 

@@ -5,7 +5,7 @@
  * @exports     SEASON_CONFIG, currentSeasonId
  * @depends     （無）
  * @sourceOfTruth Docs/lobby-waitingroom-plan.md Phase F
- * @version     v0.0.14.1
+ * @version     v0.0.15.0
  */
 
 export const SEASON_CONFIG = {

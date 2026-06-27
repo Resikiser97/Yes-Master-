@@ -47,6 +47,11 @@ function testPhaseStartsNightAndSpawnsFirstBatch() {
   world.phaseTimer = 0;
 
   updatePhase(world, GAME_CONFIG.time.fixedStepSeconds, GAME_CONFIG);
+  assert.equal(world.phase, 'day');
+  assert.equal(world.enemies.length, 0);
+
+  world.phaseTimer = 0;
+  updatePhase(world, GAME_CONFIG.time.fixedStepSeconds, GAME_CONFIG);
   assert.equal(world.phase, 'night');
   assert.ok(world.pendingSpawns.length > 0);
   assert.equal(world.enemies.length, 0);
@@ -65,6 +70,8 @@ function testSpawnedWaveEnemyWalksToCoreAndAttacks() {
   world.stage = 1;
   world.phaseTimer = 0;
 
+  updatePhase(world, GAME_CONFIG.time.fixedStepSeconds, GAME_CONFIG);
+  world.phaseTimer = 0;
   updatePhase(world, GAME_CONFIG.time.fixedStepSeconds, GAME_CONFIG);
   updatePhase(world, 0, GAME_CONFIG);
 
@@ -197,4 +204,4 @@ testRestartStageClearsCombatPhase();
 testDebugTogglePause();
 testCoreCombatCreatesFixedVfxBolts();
 
-console.log('All tests passed (v0.0.14.3)');
+console.log('All tests passed (v0.0.15.0)');

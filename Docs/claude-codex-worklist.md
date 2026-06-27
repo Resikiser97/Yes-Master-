@@ -1,5 +1,5 @@
 # Claude ↔ Codex MVP 開工協作清單
-> 狀態：MVP 實作中（v0.0.14.13）
+> 狀態：MVP 實作中（v0.0.15.0）
 > 最後更新：2026-06-27
 > 用途：單一交接看板。Claude 負責架構/純邏輯/骨架；Codex 負責數值/平衡填表。
 > 規則：**config/ 檔案就是雙方的交接介面**。Codex 把數值填進 config，Claude 的純邏輯層消費，互不踩線。
@@ -153,6 +153,7 @@
 | 11C. 測試難度 preset（Claude） | ✅ `config/testPreset.js` + splash 兩按鈕 + saveLocal/saveManager key 參數化 + _testInit 強化注入（v0.0.7.0） |
 | 12. 手機操作 UI | ✅ v0.0.8.0 已接入並完成三欄手機 layout：左 HUD+D-pad、中 canvas+1~0 快捷列、右 Debug Tool+動作鍵；仍需實機校準尺寸與手感 |
 | 13. PWA / 加入主畫面支援 | 🔲 後排任務：本輪不做。後續再補 manifest、icon、apple mobile web app meta、加入主畫面提示、Android install prompt 檢查 |
+| 14. UI / 意圖 / 核心戰鬥收尾 | ✅ v0.0.15.0 完成：手機 📣 意圖選單、manualIntent 同步、波次情報展開、核心 magicPct 站位限制、核心優先打攻擊中的低血敵人、HUD 密度整理 |
 
 ---
 

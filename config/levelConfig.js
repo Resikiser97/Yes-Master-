@@ -5,7 +5,7 @@
  * @exports     LEVEL_CONFIG
  * @depends     （無）
  * @sourceOfTruth Docs/lobby-waitingroom-plan.md Phase B、Docs/game-design-plan.md「玩家等級與技能點經濟」
- * @version     v0.0.14.1
+ * @version     v0.0.15.0
  */
 
 export const LEVEL_CONFIG = {

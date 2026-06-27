@@ -1,11 +1,11 @@
 /**
  * @file        renderer.js
  * @module      render（渲染層，非純邏輯）
- * @summary     將世界狀態畫到 canvas：鏡頭捲動 + 地底/網格/礦山/背景泥土/前景方塊/核心/玩家/HUD
+ * @summary     將世界狀態畫到 canvas：鏡頭捲動 + 地圖/方塊/核心/玩家/敵人/VFX/HUD/收合面板
  * @exports     Renderer
  * @depends     config/gameConfig.js
  * @sourceOfTruth Docs/game-design-plan.md「建築維度」「遊戲內 UI 設計」
- * @version     v0.0.14.13
+ * @version     v0.0.15.0
  *
  * 渲染層只「讀」world 狀態畫圖，不寫任何遊戲規則（鐵則 9）。
  */
@@ -487,7 +487,7 @@ export class Renderer {
     const cardW = 160, cardH = 50, gap = 8;
     const totalW = others.length * cardW + (others.length - 1) * gap;
     let cardX = Math.round((vw - totalW) / 2);
-    const cardY = 8;
+    const cardY = 28;
     const fatigueMax = Number(this.cfg.player?.fatigueMax ?? 120);
     ctx.save();
     for (const p of others) {
@@ -500,10 +500,16 @@ export class Renderer {
       // intent emoji（卡片頂部上方，30 秒內有效）
       const intentEmoji = INTENT_EMOJI[p.intent];
       if (intentEmoji && (Date.now() - (p.intentAt ?? 0)) < 30_000) {
-        ctx.font = '14px sans-serif';
+        const emojiX = cardX + cardW / 2;
+        const emojiY = cardY - 4;
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.beginPath();
+        ctx.arc(emojiX, emojiY - 9, 12, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.font = '18px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
-        ctx.fillText(intentEmoji, cardX + cardW / 2, cardY - 2);
+        ctx.fillText(intentEmoji, emojiX, emojiY);
       }
 
       // avatar circle
@@ -606,7 +612,7 @@ export class Renderer {
     const w = 200, h = 80;
     const x = vw - w - 56, y = 8;
     const stage = world.stage ?? 0;
-    const set = Math.floor(stage / 10) + 1;
+    const set = Math.floor(stage / 10);
     const num = (stage % 10) + 1;
     const stageInSet = stage % 10;
     const phase = world.phase ?? 'prep';
@@ -667,8 +673,8 @@ export class Renderer {
   _drawBackpack(world) {
     const ctx = this.ctx;
     const { height: vh } = this.viewport;
-    const w = 128, h = 160;
-    const x = 6, y = vh - h - 6;
+    const w = 98, h = 138;
+    const x = 4, y = vh - h - 4;
     const inv = world.player?.inventory ?? {};
     const currentWeight = inventoryWeight(inv);
     const maxWeight = world.player?.capacity ?? this.cfg.player?.carry ?? 0;
@@ -676,12 +682,12 @@ export class Renderer {
     const border = isFull && Date.now() % 600 < 300 ? '#FF0000' : '#CD7F32';
 
     ctx.save();
-    drawPanel(ctx, x, y, w, h, { bg: 'rgba(0,0,0,0.7)', border, borderWidth: 2 });
+    drawPanel(ctx, x, y, w, h, { bg: 'rgba(0,0,0,0.7)', border, borderWidth: 1 });
     ctx.font = '10px sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     ctx.fillStyle = '#CD7F32';
-    ctx.fillText(`背包承重：${fmt1(currentWeight)}/${fmt1(maxWeight)}`, x + 6, y + 6);
+    ctx.fillText(`背包承重：${fmt1(currentWeight)}/${fmt1(maxWeight)}`, x + 4, y + 4);
 
     const hotbar = this.cfg.hotbar ?? [];
     const orderedKeys = Object.keys(inv)
@@ -693,9 +699,8 @@ export class Renderer {
       })
       .slice(0, 6);
 
-    // cellW=48, gap=3 → 2 cols = 99px; (128-99)/2 = 14 → symmetric left/right padding
-    const cellW = 48, cellH = 40, gap = 3;
-    const gridX = x + 14, gridY = y + 24;
+    const cellW = 42, cellH = 36, gap = 2;
+    const gridX = x + 6, gridY = y + 20;
     for (let i = 0; i < 6; i++) {
       const cx = gridX + (i % 2) * (cellW + gap);
       const cy = gridY + Math.floor(i / 2) * (cellH + gap);
@@ -737,29 +742,30 @@ export class Renderer {
     const cs = world.coreStats ?? {};
 
     if (!expanded) {
-      // Collapsed: single row — attack + speed + expand hint
-      // y positions panel bottom at barY-28, just above _drawCoreHpBar label (≈barY-27)
-      const x = startX, y = barY - 56, w = 280, h = 28;
+      // Collapsed: compact row, not exceeding 核心血量 label
+      const w = 200;
+      const x = startX, y = barY - 44, h = 18;
       world.uiHitRects.push({ id: 'corePanel', x, y, w, h });
       ctx.save();
       drawPanel(ctx, x, y, w, h, { bg: 'rgba(0,0,0,0.65)', border: '#555' });
       ctx.textBaseline = 'middle';
-      ctx.font = '12px sans-serif';
+      ctx.font = '10px sans-serif';
       ctx.fillStyle = '#CCC';
       ctx.textAlign = 'left';
-      ctx.fillText(`攻擊力：${fmt2(cs.attack)}`, x + 8, y + h / 2);
-      ctx.fillText(`攻速(每秒)：${fmt2(cs.attackSpeed)}`, x + 128, y + h / 2);
-      ctx.font = '10px sans-serif';
+      ctx.fillText(`攻擊力：${fmt2(cs.attack)}  攻速：${fmt2(cs.attackSpeed)}`, x + 6, y + h / 2);
+      ctx.font = '9px sans-serif';
       ctx.fillStyle = '#888';
       ctx.textAlign = 'right';
-      ctx.fillText('▼ 點擊展開', x + w - 8, y + h / 2);
+      ctx.fillText('▼展開', x + w - 4, y + h / 2);
       ctx.restore();
       return;
     }
 
-    // Expanded: three rows of stats
-    // bottom at barY-28, same clearance as collapsed
-    const x = startX, y = barY - 108, w = 280, h = 80;
+    // Expanded: 4 rows + collapse button below
+    const rh = 15;
+    const h = 6 + rh * 4 + 16;
+    const w = 200;
+    const x = startX, y = barY - 28 - h;
     world.uiHitRects.push({ id: 'corePanel', x, y, w, h });
     const defense = Number(cs.defense ?? 0);
     const defenseK = Number(this.cfg.core?.defenseK ?? 100);
@@ -770,29 +776,30 @@ export class Renderer {
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
 
-    // Row 1: attack + speed + collapse hint
-    ctx.font = 'bold 12px sans-serif';
+    // Row 1: attack + speed
+    ctx.font = 'bold 11px sans-serif';
     ctx.fillStyle = '#FFF';
-    ctx.fillText(`攻擊力：${fmt2(cs.attack)}`, x + 8, y + 10);
-    ctx.font = '12px sans-serif';
+    ctx.fillText(`攻擊力：${fmt2(cs.attack)}`, x + 6, y + 5);
+    ctx.font = '11px sans-serif';
     ctx.fillStyle = '#CCC';
-    ctx.fillText(`攻速(每秒)：${fmt2(cs.attackSpeed)}`, x + 118, y + 10);
-    ctx.font = '10px sans-serif';
+    ctx.fillText(`攻速：${fmt2(cs.attackSpeed)}/s`, x + 110, y + 5);
+
+    // Row 2: magic atk + range
+    ctx.fillText(`魔法：${fmt2(cs.magicAtk)}`, x + 6, y + 5 + rh);
+    ctx.fillText(`範圍：${fmt1(cs.range)}`, x + 110, y + 5 + rh);
+
+    // Row 3: magic amp + chain
+    ctx.fillText(`靈力：${fmt2(cs.magicPct)}%`, x + 6, y + 5 + rh * 2);
+    ctx.fillText(`連鎖：${fmt2(cs.chain)}`, x + 110, y + 5 + rh * 2);
+
+    // Row 4: defense
+    ctx.fillText(`防禦：${fmt2(defense)}（擋${reductionPct.toFixed(0)}%）`, x + 6, y + 5 + rh * 3);
+
+    // Collapse button — below all rows
+    ctx.font = '9px sans-serif';
     ctx.fillStyle = '#888';
-    ctx.textAlign = 'right';
-    ctx.fillText('▲ 收起', x + w - 8, y + 12);
-
-    // Row 2: range + defense
-    ctx.textAlign = 'left';
-    ctx.font = '12px sans-serif';
-    ctx.fillStyle = '#CCC';
-    ctx.fillText(`攻擊範圍：${fmt1(cs.range)}`, x + 8, y + 30);
-    ctx.fillText(`防禦力：${fmt2(defense)}（抵擋${reductionPct.toFixed(0)}%）`, x + 118, y + 30);
-
-    // Row 3: magic amp + magic atk + chain
-    ctx.fillText(`靈力增幅：${fmt2(cs.magicPct)}%`, x + 8, y + 50);
-    ctx.fillText(`魔法攻擊：${fmt2(cs.magicAtk)}`, x + 118, y + 50);
-    ctx.fillText(`連鎖：${fmt2(cs.chain)}`, x + 210, y + 50);
+    ctx.textAlign = 'center';
+    ctx.fillText('▲ 點擊收起', x + w / 2, y + 5 + rh * 4 + 2);
 
     ctx.restore();
   }
@@ -837,47 +844,116 @@ export class Renderer {
 
   _drawEnemyInfo(world) {
     const ctx = this.ctx;
-    const { width: vw, height: vh } = this.viewport;
-    const w = 260, h = 80;
-    const x = vw - w - 8, y = vh - 152;
+    const { width: vw } = this.viewport;
+    const { barY } = this._hotbarMetrics();
+    const expanded = world.uiState?.waveInfoExpanded ?? false;
+    const w = 160;
+    const x = vw - w - 8;
+    const lineH = 16;
+    const headerH = 22;
     const currentStage = (world.stage ?? 0) + 1;
     const nextStage = currentStage + 1;
+
+    // Current wave enemy counts
     const counts = {};
     for (const enemy of world.enemies ?? []) {
       if (!enemy?.key) continue;
       counts[enemy.key] = (counts[enemy.key] ?? 0) + 1;
     }
-    const currentText = this._formatEnemyCounts(counts, '— 無敵人');
-    const nextText = WAVES[nextStage]
-      ? this._formatEnemyCounts(WAVES[nextStage], '— 無敵人')
-      : '— 最終波已過';
+    const currentEntries = Object.entries(counts).filter(([, c]) => c > 0);
+    const currentRows = Math.max(1, currentEntries.length);
+
+    // Next wave
+    const nextWave = WAVES[nextStage];
+    const nextEntries = nextWave ? Object.entries(nextWave).filter(([, c]) => c > 0) : [];
+    const nextRows = expanded ? Math.max(1, nextEntries.length) : 0;
+
+    const separatorH = expanded ? 6 : 0;
+    const nextHeaderH = expanded ? headerH : 0;
+    const h = headerH + currentRows * lineH + separatorH + nextHeaderH + nextRows * lineH + 8;
+    const y = barY - 16 - h;
+
+    world.uiHitRects ??= [];
+    world.uiHitRects = world.uiHitRects.filter(r => r.id !== 'waveInfoPanel');
+    world.uiHitRects.push({ id: 'waveInfoPanel', x, y, w, h: headerH });
 
     ctx.save();
-    drawPanel(ctx, x, y, w, h);
+    drawPanel(ctx, x, y, w, h, { bg: 'rgba(0,0,0,0.7)', border: '#666' });
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
-    ctx.font = 'bold 12px sans-serif';
+
+    // Header
+    ctx.font = 'bold 11px sans-serif';
     ctx.fillStyle = '#F44336';
-    ctx.fillText('進攻人數', x + 8, y + 7);
+    ctx.fillText(`當前 ${this._stageLabel(currentStage)}`, x + 6, y + 5);
+    ctx.font = '10px sans-serif';
+    ctx.fillStyle = '#888';
+    ctx.textAlign = 'right';
+    ctx.fillText(expanded ? '▲' : '▼', x + w - 6, y + 6);
+
+    // Current wave entries
+    ctx.textAlign = 'left';
     ctx.font = '11px sans-serif';
-    ctx.fillStyle = '#FFF';
-    ctx.fillText(`當前波 ${this._stageLabel(currentStage)} ${currentText}`, x + 8, y + 28, w - 16);
-    ctx.fillStyle = '#AAA';
-    ctx.fillText(`下一波 ${this._stageLabel(nextStage)} ${nextText}`, x + 8, y + 48, w - 16);
+    let rowY = y + headerH;
+    if (currentEntries.length === 0) {
+      ctx.fillStyle = '#777';
+      ctx.fillText('— 無敵人', x + 6, rowY);
+      rowY += lineH;
+    } else {
+      for (const [key, count] of currentEntries) {
+        const def = ENEMIES[key];
+        ctx.fillStyle = '#FFF';
+        ctx.fillText(`${def?.zh ?? key} x${count}`, x + 6, rowY);
+        ctx.fillStyle = '#AAA';
+        ctx.textAlign = 'right';
+        ctx.fillText(def?.hp != null ? `${fmt1(def.hp)}hp` : '', x + w - 6, rowY);
+        ctx.textAlign = 'left';
+        rowY += lineH;
+      }
+    }
+
+    // Expanded: next wave
+    if (expanded) {
+      rowY += 2;
+      ctx.fillStyle = '#555';
+      ctx.fillRect(x + 6, rowY, w - 12, 1);
+      rowY += 4;
+      ctx.font = 'bold 11px sans-serif';
+      ctx.fillStyle = '#FFD700';
+      ctx.fillText(`下一波 ${this._stageLabel(nextStage)}`, x + 6, rowY);
+      rowY += headerH;
+      ctx.font = '11px sans-serif';
+      if (nextEntries.length === 0) {
+        ctx.fillStyle = '#777';
+        ctx.fillText(nextWave ? '— 無敵人' : '— 最終波已過', x + 6, rowY);
+      } else {
+        for (const [key, count] of nextEntries) {
+          const def = ENEMIES[key];
+          ctx.fillStyle = '#FFF';
+          ctx.fillText(`${def?.zh ?? key} x${count}`, x + 6, rowY);
+          ctx.fillStyle = '#AAA';
+          ctx.textAlign = 'right';
+          ctx.fillText(def?.hp != null ? `${fmt1(def.hp)}hp` : '', x + w - 6, rowY);
+          ctx.textAlign = 'left';
+          rowY += lineH;
+        }
+      }
+    }
+
     ctx.restore();
   }
 
   _drawXpGoldBar(world) {
-    if (!(world.uiState?.coreExpanded ?? false)) return;
     const ctx = this.ctx;
-    const { startX, barY } = this._hotbarMetrics();
-    const y = barY - 24;
+    const { startX, totalW, barY } = this._hotbarMetrics();
+    const drawX = startX + totalW;
+    const drawY = barY - 28;
     ctx.save();
-    ctx.font = '11px sans-serif';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'top';
-    ctx.fillStyle = '#FFD700';
-    ctx.fillText(`累計經驗：${world.totalXP ?? 0}XP，累計卡片：${world.totalCards ?? 0}張，累計金幣：${world.totalGold ?? 0}`, startX, y);
+    ctx.font = '9px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'bottom';
+    ctx.fillStyle = '#AA8800';
+    ctx.fillText(`經驗：${world.totalXP ?? 0}XP　金幣：${world.totalGold ?? 0}　票數：${world.totalCards ?? 0}張`, drawX, drawY);
     ctx.restore();
   }
 
@@ -918,13 +994,22 @@ export class Renderer {
     const ctx = this.ctx;
     const { width: vw } = this.viewport;
     const planTag = world.buildDestroyMode ? '【🔨 拆除模式】' : world.buildPlanMode ? '【📐 規劃模式】' : '';
-    const modeText = world.buildDestroyMode && world.selectedBlock
-      ? `${planTag} 拆除：${BLOCKS[world.selectedBlock]?.zh ?? world.selectedBlock}　拖拽選區拆除 / V 切回建造 / B 退出`
-      : world.buildPlanMode && world.selectedBlock
-      ? `${planTag} 建造：${BLOCKS[world.selectedBlock]?.zh ?? world.selectedBlock}（剩 ${BLOCKS[world.selectedBlock]?.infinite ? '∞' : (world.storage[world.selectedBlock] ?? 0)}）　拖拽放置 / V 拆除模式 / B 退出`
-      : world.selectedBlock
-      ? `建造：${BLOCKS[world.selectedBlock]?.zh ?? world.selectedBlock}（剩 ${BLOCKS[world.selectedBlock]?.infinite ? '∞' : (world.storage[world.selectedBlock] ?? 0)}）　左鍵放置 / 右鍵拆除 / 再按取消`
-      : `挖礦模式（左鍵長按挖最近）　按 1~8 選材料建造${world.buildPlanMode ? '　' + planTag : ''}`;
+    const hasPlanTag = !!(world.buildPlanMode || world.buildDestroyMode);
+
+    let line1, line2 = '';
+    if (world.buildDestroyMode && world.selectedBlock) {
+      line1 = `拆除：${BLOCKS[world.selectedBlock]?.zh ?? world.selectedBlock}　拖拽選區拆除`;
+      line2 = `${planTag}　V 切回建造 / B 退出`;
+    } else if (world.buildPlanMode && world.selectedBlock) {
+      line1 = `建造：${BLOCKS[world.selectedBlock]?.zh ?? world.selectedBlock}（剩 ${BLOCKS[world.selectedBlock]?.infinite ? '∞' : (world.storage[world.selectedBlock] ?? 0)}）　拖拽放置`;
+      line2 = `${planTag}　V 拆除模式 / B 退出`;
+    } else if (world.selectedBlock) {
+      line1 = `建造：${BLOCKS[world.selectedBlock]?.zh ?? world.selectedBlock}（剩 ${BLOCKS[world.selectedBlock]?.infinite ? '∞' : (world.storage[world.selectedBlock] ?? 0)}）　左鍵放置 / 右鍵拆除 / 再按取消`;
+    } else {
+      line1 = `挖礦模式（左鍵長按挖最近）　按 1~8 選材料建造`;
+      if (hasPlanTag) line2 = planTag;
+    }
+
     const status = world.mining?.dropFull
       ? '　⚠ 地面已滿'
       : world.mining?.full
@@ -936,24 +1021,35 @@ export class Renderer {
             : world.repair?.reason === 'no_fatigue'
               ? '　疲勞不足'
               : '';
-    const text = `${modeText}${status}`;
-    const panelW = Math.min(vw - 32, 620);
-    const panelH = 28;
+    line1 += status;
+
+    const hasLine2 = !!line2;
+    ctx.save();
+    ctx.font = '11px sans-serif';
+    const iconPad = world.selectedBlock ? 18 : 0;
+    const textW1 = ctx.measureText(line1).width + iconPad;
+    const textW2 = hasLine2 ? ctx.measureText(line2).width + iconPad : 0;
+    const panelW = Math.min(vw - 32, Math.max(textW1, textW2) + 24);
+    const panelH = hasLine2 ? 32 : 18;
     const x = Math.round((vw - panelW) / 2);
     const y = world.uiState?.playerExpanded ? 202 : 96;
 
-    ctx.save();
     drawPanel(ctx, x, y, panelW, panelH, { bg: 'rgba(0,0,0,0.62)', border: 'rgba(255,180,0,0.25)' });
-    let textX = x + 12;
-    const textMaxW = panelW - 24 - (world.selectedBlock ? 22 : 0);
-    if (world.selectedBlock && this._drawBlockIcon(world.selectedBlock, x + 10, y + 6, 16)) {
-      textX += 22;
+    let textX = x + 10;
+    const textMaxW = panelW - 20 - iconPad;
+    if (world.selectedBlock && this._drawBlockIcon(world.selectedBlock, x + 8, y + 2, 14)) {
+      textX += 18;
     }
-    ctx.font = '12px sans-serif';
+    ctx.font = '11px sans-serif';
     ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
+    ctx.textBaseline = 'top';
     ctx.fillStyle = '#EEE';
-    ctx.fillText(text, textX, y + panelH / 2, textMaxW);
+    ctx.fillText(line1, textX, y + 3, textMaxW);
+    if (hasLine2) {
+      ctx.fillStyle = '#CCC';
+      ctx.font = '10px sans-serif';
+      ctx.fillText(line2, textX, y + 19, textMaxW);
+    }
     ctx.restore();
   }
 
@@ -970,7 +1066,7 @@ export class Renderer {
 
   _stageLabel(stage) {
     const s = Math.max(1, Number(stage) || 1);
-    return `${Math.floor((s - 1) / 10) + 1}-${((s - 1) % 10) + 1}`;
+    return `${Math.floor((s - 1) / 10)}-${((s - 1) % 10) + 1}`;
   }
 
   _drawDesktopHotbar(world) {

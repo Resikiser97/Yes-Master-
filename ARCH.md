@@ -1,6 +1,6 @@
 # ARCH.md — 架構全貌
 
-> 版本：v0.0.14.11
+> 版本：v0.0.15.0
 > 類型：**代碼優先**（文件描述錯了，以代碼為準去改本檔）。
 > 用途：給任何新 AI 30 秒建立系統全貌；細節以 `src/` / `config/` 與 `Docs/game-architecture-plan.md` 為準。
 
@@ -13,8 +13,8 @@
 玩家扮演哥布林，白天挖礦收集資源、建塔蓋防線；夜晚人族怪物來襲攻打核心（Core）。每波結束後可選強化卡片。
 
 - 核心玩法：挖礦 → 建塔（泥土地基 + 第二層方塊）→ 扛波次 → 卡片強化 → 循環
-- 目前狀態：MVP 單機可動 + 多人大廳（Auth / Lobby / WaitingRoom / PeerJS 聊天）
-- 下一步：PeerJS 聯機戰鬥、sprite 動畫整合
+- 目前狀態：MVP 單機可動 + 多人大廳（Auth / Lobby / WaitingRoom / PeerJS 聊天）+ 多人意圖同步 + 波次/HUD 收合
+- 下一步：PeerJS 雙瀏覽器聯機戰鬥驗證、sprite 動畫整合
 
 ---
 
@@ -87,11 +87,11 @@ UI / Overlay 層（src/ui/*）
 | 模組 | 職責 |
 |---|---|
 | `rng.js` | Seed-based 隨機序列；所有隨機由此注入 |
-| `connectivity.js` | 泥土連通性 BFS（放置 / 拆除合法性） |
+| `connectivity.js` | 泥土連通性 BFS（放置 / 拆除合法性）與 `isOnFoundation()` 共用地基判斷 |
 | `coreStats.js` | 方塊計數 → 核心攻擊 / 攻速 / 血量 / 範圍 / 防禦 / 魔法 / 連鎖 |
 | `coreHealth.js` | 核心血量計算與修復 |
 | `damageDefense.js` | 防禦減傷公式 `N/(100+N)` |
-| `combat.js` | 普攻鎖定最近 + 連鎖去重（seed 注入） |
+| `combat.js` | 普攻目標選擇（攻擊中低血優先，否則最近）+ 連鎖去重（seed 注入） |
 | `waveGen.js` | 關卡 → 波次組成、多人 xN 倍率、分批出怪（seed 注入） |
 | `cardOffer.js` | 固定 3 槽出卡 + 類型保護 + 同名/同類重抽（seed 注入） |
 | `building.js` | 建造 / 拆除邏輯（連通性 + 範圍限制） |
@@ -123,7 +123,7 @@ UI / Overlay 層（src/ui/*）
 
 | 檔案 | 職責 |
 |---|---|
-| `renderer.js` | 地圖 / 方塊 / 玩家 / 敵人 / 掉落物 / 建造預覽 / HUD / 卡片面板 / debug overlay / gameover。插值（alpha）平移，整數像素避免 judder。攻擊範圍圈（lazy OffscreenCanvas）+ 電擊 VFX（固定 bolt points） |
+| `renderer.js` | 地圖 / 方塊 / 玩家 / 敵人 / 掉落物 / 建造預覽 / HUD / 可收合核心數值 / 可展開波次情報 / 卡片面板 / debug overlay / gameover。插值（alpha）平移，整數像素避免 judder。攻擊範圍圈（lazy OffscreenCanvas）+ 電擊 VFX（固定 bolt points） |
 | `imageLoader.js` | 批量異步載入圖片：`loadImages(manifest)` → `Promise<Map<key, HTMLImageElement>>` |
 
 ### src/input/（輸入層）
@@ -131,7 +131,7 @@ UI / Overlay 層（src/ui/*）
 | 檔案 | 職責 |
 |---|---|
 | `controls.js` | 桌面鍵盤 / 滑鼠：移動 / 挖礦 / 修復 / 建造 / 拆除 / 卡片點選 |
-| `touchControls.js` | 手機三欄觸控 UI（左 HUD+D-pad、中 1~0 快捷列、右 Debug Tool+動作鍵），與 Controls 介面相容 |
+| `touchControls.js` | 手機三欄觸控 UI（左 HUD+D-pad、中 1~0 快捷列、右 Debug Tool+動作鍵+📣意圖選單），與 Controls 介面相容；可消費 canvas UI hitRects |
 
 ### src/storage/（存檔 IO）
 
@@ -151,7 +151,7 @@ UI / Overlay 層（src/ui/*）
 | `waitingRoom.js` | 等待室 UI（玩家 slot 卡片、PeerJS 聊天、Host 開始遊戲） |
 | `characterPopup.js` | 角色面板 popup（等級 / 裝備 / 稱號） |
 | `pwaTutorial.js` | PWA 安裝引導畫面（iOS / Android） |
-| `uiState.js` | world.uiState 初始化與面板展開/收合切換（playerPanel / corePanel） |
+| `uiState.js` | world.uiState 初始化與面板展開/收合切換（playerPanel / corePanel / waveInfoPanel） |
 
 ### src/net/（網路層）
 
@@ -166,7 +166,7 @@ UI / Overlay 層（src/ui/*）
 | `peerHost.js` | PeerJS 房主端：連線管理、auth handshake、Input 接收、MSG.CHAT 轉發 |
 | `peerClient.js` | PeerJS 客戶端（非房主）：連線 + auth handshake + send/receive |
 | `netSession.js` | 多人會話入口：依 role 啟動 peerHost / peerClient，回傳統一 session 介面 |
-| `inputBuffer.js` | 房主端 Input buffer：佇列 + drain() 路由至 actions；`serializeControls`（client 打包） |
+| `inputBuffer.js` | 房主端 Input buffer：佇列 + drain() 路由至 actions；`serializeControls`（client 打包，含 manualIntent） |
 | `stateSync.js` | 狀態序列化：`serializeSnapshot` / `serializeDelta` / `applySnapshot` / `applyDelta` |
 | `syncScheduler.js` | 同步排程：每幀決定廣播 delta 或 full snapshot（5s 強制全量） |
 | `validation.js` | Input 驗證：sequenceId 防重放、速率限制、建造/拆除合法性 |

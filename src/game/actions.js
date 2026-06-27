@@ -5,7 +5,7 @@
  * @exports     updateMining, collectDrops, tryDeposit, tryPlace, tryRemove, computeBuildPreview, updateRepair, damageCore, healCore, applyDebugAction, tryPlaceRect, tryRemoveRect, toggleBuildPlanMode, previewPlaceRect
  * @depends     config/gameConfig.js、config/blocks.js、src/game/coreSnapshot.js、src/game/combatRuntime.js、src/logic/mining.js、src/logic/mineGen.js、src/logic/inventory.js、src/logic/connectivity.js、src/logic/building.js、src/logic/coreHealth.js、src/logic/drops.js
  * @sourceOfTruth Docs/game-design-plan.md「操作輸入方式」「方塊系統」「遊戲內 UI 設計」
- * @version     v0.0.14.13
+ * @version     v0.0.15.0
  */
 
 import { GAME_CONFIG } from '../../config/gameConfig.js';
@@ -13,7 +13,7 @@ import { BLOCKS } from '../../config/blocks.js';
 import { selectNearestMineCell, miningDamagePerSecond, durabilityToBreak } from '../logic/mining.js';
 import { digMineCell } from '../logic/mineGen.js';
 import { canAdd, addItem, removeItem, depositAll } from '../logic/inventory.js';
-import { computeConnected, canRemoveDirt, key } from '../logic/connectivity.js';
+import { computeConnected, canRemoveDirt, key, isOnFoundation } from '../logic/connectivity.js';
 import { validatePlacement, validateRemoval } from '../logic/building.js';
 import { damageCoreHp, repairCoreHp, clampCoreHp } from '../logic/coreHealth.js';
 import { refreshCoreSnapshot } from './coreSnapshot.js';
@@ -134,11 +134,7 @@ export function tryDeposit(world, playerId = world.localPlayerId, cfg = GAME_CON
   world.storage = out.storage;
 }
 
-// 判斷是否在「核心格或連通地基上」（兩個功能共用同一判斷，避免日後再出現修復/卸貨不一致）
-function isOnFoundation(world, px, py) {
-  if (world.core.some(([x, y]) => x === px && y === py)) return true;
-  return computeConnected(world.dirt, world.core).has(key(px, py));
-}
+// isOnFoundation 已移至 logic/connectivity.js（共用）
 
 function isOnRepairSurface(world, player = world.player) {
   const px = Math.round(player.x);

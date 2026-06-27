@@ -1,10 +1,10 @@
 /**
  * @file        inputBuffer.js
  * @module      net
- * @summary     房主端 Input buffer：佇列收集各玩家 Input Event，drain() 時驗證後路由至 actions / phaseRuntime；另提供 serializeControls（client 端打包 Input）與 applyInput（單步套用）
+ * @summary     房主端 Input buffer：收集/驗證 Input 後路由至 actions / phaseRuntime，並同步玩家 auto/manual intent
  * @exports     createInputBuffer, serializeControls, applyInput
  * @depends     logic/playerMovement.js, game/world.js, game/actions.js, game/phaseRuntime.js, net/validation.js
- * @version     v0.0.14.1
+ * @version     v0.0.15.0
  */
 import { movePlayer } from '../logic/playerMovement.js';
 import { ensurePlayer } from '../game/world.js';
@@ -42,6 +42,7 @@ export function serializeControls(controls, world, cfg, sequenceId, extra = {}) 
   const slot = controls.getSelectedSlot?.();
   const selectedBlock = slot != null ? cfg.hotbar[slot] : null;
   const actions = consumeControlActions(controls, world, selectedBlock, tileX, tileY, cfg);
+  const manualIntent = controls.consumeManualIntent?.();
   return {
     sequenceId,
     move: controls.getMoveVector?.() ?? { x: 0, y: 0 },
@@ -52,6 +53,7 @@ export function serializeControls(controls, world, cfg, sequenceId, extra = {}) 
     debugActions: extra.debugActions ?? [],
     selectedBlock,
     tile: { x: tileX, y: tileY },
+    manualIntent,
   };
 }
 
@@ -76,6 +78,23 @@ export function applyInput(world, playerId, input, dt, cfg) {
   collectDrops(world, cfg, playerId);
   updateRepair(world, !!input.repairing, dt, cfg, playerId);
   tryDeposit(world, playerId);
+
+  // Host 端為遠端玩家偵測意圖（auto-detect + 手動）
+  if (input.manualIntent !== undefined) {
+    player.intent = input.manualIntent;
+    player.intentAt = input.manualIntent ? Date.now() : 0;
+    player.intentManual = !!input.manualIntent;
+  } else if (!player.intentManual || (Date.now() - (player.intentAt ?? 0)) >= 30_000) {
+    if (player.intentManual) player.intentManual = false;
+    const _intent = input.mining ? 'mine' : input.repairing ? 'repair' :
+      (input.selectedBlock && actions.some(a => a.kind?.startsWith('place'))) ? 'build' : null;
+    if (_intent && _intent !== player.intent) {
+      player.intent = _intent;
+      player.intentAt = Date.now();
+    } else if (!_intent) {
+      player.intent = null;
+    }
+  }
 }
 
 function consumeControlActions(controls, world, selectedBlock, tileX, tileY, cfg) {

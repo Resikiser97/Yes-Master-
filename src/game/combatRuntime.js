@@ -1,17 +1,17 @@
 /**
  * @file        combatRuntime.js
  * @module      game（狀態/orchestration 層，非渲染）
- * @summary     敵人生成（debug）、追逐移動、核心普攻/連鎖攻擊執行，結果寫入 world
- * @exports     spawnDebugEnemies, updateEnemies, updateCoreCombat
+ * @summary     敵人生成（debug）、追核心/攻核心、核心普攻/連鎖/站位加成執行，結果寫入 world
+ * @exports     spawnDebugEnemies, updateEnemies, coreAttackAnchors, updateCoreCombat
  * @depends     config/enemies.js、config/gameConfig.js、src/logic/combat.js、src/logic/connectivity.js
  * @sourceOfTruth Docs/game-design-plan.md「核心攻擊與防禦機制」
- * @version     v0.0.14.1
+ * @version     v0.0.15.0
  */
 
 import { ENEMIES } from '../../config/enemies.js';
 import { GAME_CONFIG } from '../../config/gameConfig.js';
 import { computeHit, selectPrimaryTarget, chainHitCount, selectChainTargets, dist2 } from '../logic/combat.js';
-import { computeConnected } from '../logic/connectivity.js';
+import { computeConnected, isOnFoundation } from '../logic/connectivity.js';
 import { damageCoreHp } from '../logic/coreHealth.js';
 
 function nextEnemyId(world, enemyKey) {
@@ -62,6 +62,7 @@ export function updateEnemies(world, dt) {
     const range = enemy.attackRange ?? 1;
 
     if (d <= range) {
+      enemy.isAttacking = true;
       enemy.attackCooldown = (enemy.attackCooldown ?? 0) - dt;
       if (enemy.attackCooldown <= 0) {
         const amount = (enemy.attack ?? 0) * (world.combat?.overtimeMultiplier ?? 1);
@@ -71,6 +72,7 @@ export function updateEnemies(world, dt) {
       continue;
     }
 
+    enemy.isAttacking = false;
     if (d < 0.001) continue;
     const step = Math.min(enemy.moveSpeed * dt, d);
     enemy.x += (dx / d) * step;
@@ -115,6 +117,18 @@ function pruneDeadEnemies(world) {
   world.enemies = world.enemies.filter((enemy) => enemy.hp > 0);
 }
 
+function _anyPlayerOnFoundation(world) {
+  for (const [, p] of world.players ?? []) {
+    const px = Math.round(p.x), py = Math.round(p.y);
+    if (isOnFoundation(world, px, py)) return true;
+  }
+  if (world.player) {
+    const px = Math.round(world.player.x), py = Math.round(world.player.y);
+    return isOnFoundation(world, px, py);
+  }
+  return false;
+}
+
 export function updateCoreCombat(world, dt, cfg = GAME_CONFIG) {
   if (world.combat.lastHitTimer > 0) {
     world.combat.lastHitTimer = Math.max(0, world.combat.lastHitTimer - dt);
@@ -136,12 +150,13 @@ export function updateCoreCombat(world, dt, cfg = GAME_CONFIG) {
   const primary = selectPrimaryTarget(enemiesInRange, world.coreCenter);
   if (!primary) return world.combat;
 
+  const effectiveStats = _anyPlayerOnFoundation(world) ? stats : { ...stats, magicPct: 0 };
   const chainCount = chainHitCount(stats.chain, world.combat.rng);
   const others = enemiesInRange.filter((enemy) => enemy.id !== primary.id);
   const targets = [primary, ...selectChainTargets(primary, others, chainCount)];
   world.combat.lastHits = [];
   for (const target of targets) {
-    const damage = computeHit(stats, target, cfg.core.defenseK);
+    const damage = computeHit(effectiveStats, target, cfg.core.defenseK);
     target.hp -= damage;
     world.combat.lastHits.push({ id: target.id, damage });
   }

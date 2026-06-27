@@ -1,8 +1,8 @@
 # QUICKREF.md — 每次啟動速查表
 
-> 版本：v0.0.14.13
+> 版本：v0.0.15.0
 > 類型：**代碼優先**（文件描述錯了，以代碼為準去改本檔）。
-> ⚠️ **正式多人聯機上線**（PeerJS P2P + Supabase Auth + 房間系統）：移動/挖礦/背包/塔內資源/掉落物自動撿取/跟隨鏡頭/初版建造/核心數值回饋/核心 HP 與修復/debug 核心戰鬥/正式波次/晝夜/卡片選擇（hover+tier中文）/localStorage 存檔/新手教學提示/**debug 浮層（` 鍵）/測試難度 preset（1~30 關）/手機三欄觸控 UI（左 HUD+D-pad、中 canvas+1~0 快捷列、右 Debug Tool+動作鍵）/動態 canvas 縮放/**PWA manifest + iOS/Android 安裝引導畫面**/**手機 3×3 放置方向選擇器**/**電擊攻擊 VFX + 範圍圈**/**快捷列方塊圖示（手機+鍵盤 HUD）**/**sprite 載入基礎設施 + 素材整理**/**規劃模式（B 鍵拖拽建造+資源預檢）+ 拆除模式（V 鍵材質選擇性拆除）**/**快捷列 10 格（1~0）+ 滑鼠點擊**/**梯子無限方塊**/**挖礦進度條持久化**/**多人大廳（Lobby + Auth + Waiting Room + PeerJS 聊天）+ 等級/好友/裝備/成就/排行榜系統**/**隊友 Party Bar + Alt 輪盤意圖選擇（⛏🧱🦵🔧⚠️，auto mine/repair/build + 手動 destroy/warn）+ 角色頭上 Emoji**/**真實白天 Phase（prep 30s→day 60s→night 60s）**/**離散敲擊挖礦（per-hit 扣耐久）**已成完整循環。
+> ⚠️ **正式多人聯機上線**（PeerJS P2P + Supabase Auth + 房間系統）：移動/挖礦/背包/塔內資源/掉落物自動撿取/跟隨鏡頭/初版建造/核心數值回饋/核心 HP 與修復/debug 核心戰鬥/正式波次/晝夜/卡片選擇（hover+tier中文）/localStorage 存檔/新手教學提示/**debug 浮層（` 鍵）/測試難度 preset（1~30 關）/手機三欄觸控 UI（左 HUD+D-pad、中 canvas+1~0 快捷列、右 Debug Tool+動作鍵+📣意圖選單）/動態 canvas 縮放/**PWA manifest + iOS/Android 安裝引導畫面**/**手機 3×3 放置方向選擇器**/**電擊攻擊 VFX + 範圍圈**/**快捷列方塊圖示（手機+鍵盤 HUD）**/**sprite 載入基礎設施 + 素材整理**/**規劃模式（B 鍵拖拽建造+資源預檢）+ 拆除模式（V 鍵材質選擇性拆除）**/**快捷列 10 格（1~0）+ 滑鼠點擊**/**梯子無限方塊**/**挖礦進度條持久化**/**多人大廳（Lobby + Auth + Waiting Room + PeerJS 聊天）+ 等級/好友/裝備/成就/排行榜系統**/**隊友 Party Bar + Alt/手機意圖選擇（⛏🧱🦵🔧⚠️，auto mine/repair/build + 手動 destroy/warn）+ 角色頭上 Emoji**/**真實白天 Phase（prep 30s→day 60s→night 60s）**/**離散敲擊挖礦（per-hit 扣耐久）**/**可展開波次情報 + 核心數值 HUD 收合**已成完整循環。
 
 ---
 
@@ -28,9 +28,9 @@
 | `config/waves.js` | 1-30 波次/成長/Boss/加時/21-30 阻擋區 |
 | `config/cards.js` | 18 張卡池 + 出卡規則 |
 | `config/mines.js` | 礦山機率表 + 初始資源包 |
-| `src/logic/*`（純函式） | rng / damageDefense / coreStats / coreHealth / connectivity / building / combat / waveGen / cardOffer / migration / playerMovement / mineGen / inventory / mining / **drops**（掉落物撿取） |
+| `src/logic/*`（純函式） | rng / damageDefense / coreStats / coreHealth / connectivity（含 `isOnFoundation` 共用地基判斷）/ building / combat / waveGen / cardOffer / migration / playerMovement / mineGen / inventory / mining / **drops**（掉落物撿取） |
 | `src/game/*` | world（狀態 + 鏡頭跟隨 updateCameraFollow）/ coreSnapshot（核心數值快照）/ combatRuntime（debug 敵人 + 核心攻擊）/ gameLoop（fixed timestep）/ actions（挖礦/卸貨/建造/掉落物 orchestration） |
-| `src/render` `src/input` `src/storage` `src/ui` | 渲染（只讀 world、插值 + 整數平移 + 建造預覽 + 掉落物 + 核心數值 HUD + 卡片面板 hover + 教學提示；手機模式可關閉 canvas HUD；**_drawRangeCircle 正式攻擊 anchors 的範圍聯集（lazy OffscreenCanvas）**；**_drawVFX 電擊閃電（讀取攻擊時固定生成的 bolt points）**；**debugPaused 暫停提示**；**setSprites 注入 sprite 圖示**）/ 輸入（Controls 鍵盤/滑鼠 + **TouchControls 三欄手機 UI：左 HUD+D-pad、中 1~0 快捷列（圖示+角標）、右 Debug Tool+動作鍵**）/ 存檔層（saveLocal + saveManager）/ UI（splash 難度+輸入模式選擇、**mobileLayout** 動態 tilePx + 三欄 layout + 直向守衛 + isStandalone、**pwaTutorial** PWA 安裝引導畫面） |
+| `src/render` `src/input` `src/storage` `src/ui` | 渲染（只讀 world、插值 + 整數平移 + 建造預覽 + 掉落物 + 可收合核心數值 HUD + 可展開波次情報 + 卡片面板 hover + 教學提示；手機模式可關閉 canvas HUD；**_drawRangeCircle 正式攻擊 anchors 的範圍聯集（lazy OffscreenCanvas）**；**_drawVFX 電擊閃電（讀取攻擊時固定生成的 bolt points）**；**debugPaused 暫停提示**；**setSprites 注入 sprite 圖示**）/ 輸入（Controls 鍵盤/滑鼠 + **TouchControls 三欄手機 UI：左 HUD+D-pad、中 1~0 快捷列（圖示+角標）、右 Debug Tool+動作鍵+📣意圖選單；canvas UI hitRects 可點擊**）/ 存檔層（saveLocal + saveManager）/ UI（splash 難度+輸入模式選擇、**mobileLayout** 動態 tilePx + 三欄 layout + 直向守衛 + isStandalone、**pwaTutorial** PWA 安裝引導畫面） |
 | `src/render/imageLoader.js` | 非同步批量載入圖片：`loadImages(manifest)` → `Promise<Map<key, HTMLImageElement>>` |
 | `config/sprites.js` | Spritesheet 定義：`SPRITE_SHEETS`（blocksNoFrame 指向去背重打包 hotbar sheet / blocksSlotFrame）+ `getFrameRect(img, sheet, keyOrIndex)` 切幀工具 |
 | `assets/icon-status.md` | 素材裁剪/整合狀態追蹤表（✅已整合或已裁剪 / 🔲待裁剪 / ⏸暫緩 / ❌尚未製作） |
@@ -53,14 +53,14 @@
 | `src/net/peerHost.js` | PeerJS 房主端：連線管理 / auth handshake / Input 接收 / CHAT 轉發 |
 | `src/net/peerClient.js` | PeerJS 客戶端：連線 + auth handshake |
 | `src/net/netSession.js` | 多人會話入口（role → host 或 client） |
-| `src/net/inputBuffer.js` | Input buffer + drain() 路由；serializeControls（client 打包） |
+| `src/net/inputBuffer.js` | Input buffer + drain() 路由；serializeControls（client 打包，含 manualIntent） |
 | `src/net/stateSync.js` | serializeSnapshot / serializeDelta / applySnapshot / applyDelta |
 | `src/net/syncScheduler.js` | 排程廣播 delta / full snapshot（5s 強制全量） |
 | `src/net/validation.js` | Input 驗證：sequenceId / 速率 / 建造合法性 |
 | `src/net/strikeTracker.js` | 反作弊 Strike 計數（uid+room+slot） |
 | `src/net/reconnect.js` | 斷線重連 controller（grace 期 + reconnect token） |
 | `src/net/hostMigration.js` | Host Migration controller（CAS 更新 current_host_peer_id） |
-| `src/ui/uiState.js` | world.uiState 初始化 + 面板展開/收合切換 |
+| `src/ui/uiState.js` | world.uiState 初始化 + player/core/wave 面板展開/收合切換 |
 | `src/ui/authScreen.js` | 登入/訪客 overlay |
 | `src/ui/lobby.js` | 多人大廳 UI（房間列表 + 建房 + 三 tab） |
 | `src/ui/waitingRoom.js` | 等待室 UI（玩家卡片 + PeerJS 聊天 + 開始遊戲） |

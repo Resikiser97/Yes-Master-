@@ -5,7 +5,7 @@
  * @exports     WAVES, GROWTH, BOSS_RULES, OVERTIME, BLOCKER_BAND
  * @depends     enemies.js（敵人 key）
  * @sourceOfTruth Docs/waveplan.md（唯一波次主檔）
- * @version     v0.0.14.1
+ * @version     v0.0.15.0
  */
 
 // 單人基準波次：每關各敵人數量。多人倍率由 waveGen 套（普通怪 xN、Boss N 隻）

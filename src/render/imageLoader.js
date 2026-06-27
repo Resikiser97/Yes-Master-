@@ -5,7 +5,7 @@
  * @exports     loadImages
  * @depends     （無）
  * @sourceOfTruth config/sprites.js
- * @version     v0.0.14.1
+ * @version     v0.0.15.0
  */
 
 /**

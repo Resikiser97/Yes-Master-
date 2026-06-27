@@ -1,10 +1,10 @@
 /**
  * @file        touchControls.js
  * @module      input（輸入層，非純邏輯）
- * @summary     手機觸控輸入：8方向D-pad、動作按鍵（挖礦/修復/放置/拆除）、快捷列；介面與 Controls 完全相容
+ * @summary     手機觸控輸入：8方向D-pad、動作按鍵、快捷列、UI 點擊與手動意圖選單；介面與 Controls 相容
  * @exports     TouchControls
  * @depends     config/blocks.js、src/logic/inventory.js
- * @version     v0.0.14.1
+ * @version     v0.0.15.0
  *
  * 鐵則 9：只把操作「轉成資料」丟給上層，不在此做規則判定。
  * 介面與 Controls 完全相容，main.js 的 game loop 不需判斷輸入類型。
@@ -80,6 +80,9 @@ export class TouchControls {
     // 由 main.js 寫入
     this.cardOfferMode = false;
     this.cardOfferRects = null;
+    this.uiHitRects = [];
+    this.pendingUiClick = null;
+    this.pendingManualIntent = undefined;
 
     // 放置方向偏移（3×3 selector，tile 單位）
     this.placeOffset = { dx: 0, dy: 0 };
@@ -121,12 +124,13 @@ export class TouchControls {
   }
   consumeBuildPlanToggle() { return false; }
   consumeDestroyToggle()  { return false; }
-  consumeUiClick()        { return null; }
+  consumeUiClick()        { const v = this.pendingUiClick; this.pendingUiClick = null; return v; }
   consumeDragRect()       { return null; }
   consumePlace()   { const v = this.pendingPlace;       this.pendingPlace = false;       return v; }
   consumeRemove()  { const v = this.pendingRemove;      this.pendingRemove = false;      return v; }
   consumeDebugActions() { const v = this.pendingDebug; this.pendingDebug = []; return v; }
   consumeCardChoice()   { const v = this.pendingCardChoice; this.pendingCardChoice = null; return v; }
+  consumeManualIntent() { const v = this.pendingManualIntent; this.pendingManualIntent = undefined; return v; }
 
   // ── attach / detach ──────────────────────────────────────────────────────
 
@@ -152,6 +156,7 @@ export class TouchControls {
     this._buildPlacingSelector();
     this._buildHotbar();
     this._buildDebugPanel();
+    this._buildIntentButton();
 
     document.body.appendChild(this._overlay);
 
@@ -690,10 +695,62 @@ export class TouchControls {
     this._debugPanel = panel;
   }
 
+  // ── Intent 輪盤（手機版 Alt 輪盤替代）────────────────────────────────────
+
+  _buildIntentButton() {
+    const INTENTS = [
+      { key: 'mine',    emoji: '⛏️',  label: '挖礦' },
+      { key: 'repair',  emoji: '🔧', label: '修復' },
+      { key: 'build',   emoji: '🧱', label: '建造' },
+      { key: 'destroy', emoji: '🦵', label: '破壞' },
+      { key: 'warn',    emoji: '⚠️',  label: '警告' },
+    ];
+
+    const btn = document.createElement('button');
+    btn.textContent = '📣';
+    btn.style.cssText = `position:absolute;top:8px;right:8px;width:40px;height:40px;font-size:18px;${BTN_BASE};pointer-events:all;z-index:220;`;
+
+    const popup = document.createElement('div');
+    popup.style.cssText = [
+      'position:absolute', 'top:52px', 'right:8px',
+      'display:none', 'flex-direction:column', 'gap:2px',
+      'pointer-events:all', 'z-index:220',
+    ].join(';') + ';';
+
+    for (const { key, emoji, label } of INTENTS) {
+      const ib = document.createElement('button');
+      ib.textContent = `${emoji} ${label}`;
+      ib.style.cssText = `width:80px;height:36px;font-size:12px;${BTN_BASE};`;
+      ib.addEventListener('pointerdown', (e) => {
+        e.preventDefault(); e.stopPropagation();
+        this.pendingManualIntent = key;
+        popup.style.display = 'none';
+      });
+      popup.appendChild(ib);
+    }
+
+    const clearBtn = document.createElement('button');
+    clearBtn.textContent = '❌ 清除';
+    clearBtn.style.cssText = `width:80px;height:36px;font-size:12px;${BTN_BASE};`;
+    clearBtn.addEventListener('pointerdown', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      this.pendingManualIntent = null;
+      popup.style.display = 'none';
+    });
+    popup.appendChild(clearBtn);
+
+    btn.addEventListener('pointerdown', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      popup.style.display = popup.style.display === 'none' ? 'flex' : 'none';
+    });
+
+    this._rightPanel.appendChild(btn);
+    this._rightPanel.appendChild(popup);
+  }
+
   // ── Canvas touch → 卡片選擇 ──────────────────────────────────────────────
 
   _handleCanvasTouch(e) {
-    if (!this.cardOfferMode || !this.cardOfferRects?.length) return;
     e.preventDefault();
     const touch = e.changedTouches[0];
     if (!touch) return;
@@ -702,6 +759,17 @@ export class TouchControls {
     const scaleY = this.canvas.height / rect.height;
     const cx = (touch.clientX - rect.left) * scaleX;
     const cy = (touch.clientY - rect.top)  * scaleY;
+
+    // UI 面板點擊（展開/收縮）
+    for (const r of this.uiHitRects ?? []) {
+      if (cx >= r.x && cx <= r.x + r.w && cy >= r.y && cy <= r.y + r.h) {
+        this.pendingUiClick = r.id;
+        return;
+      }
+    }
+
+    // 卡片選擇
+    if (!this.cardOfferMode || !this.cardOfferRects?.length) return;
     for (let i = 0; i < this.cardOfferRects.length; i++) {
       const r = this.cardOfferRects[i];
       if (cx >= r.x && cx < r.x + r.w && cy >= r.y && cy < r.y + r.h) {

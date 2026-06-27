@@ -2,10 +2,10 @@
  * @file        connectivity.js
  * @module      logic（pure）
  * @summary     背景泥土地基的連通性判定（BFS）與放置/拆除合法性（純函式）
- * @exports     key, computeConnected, canPlaceDirt, canRemoveDirt
+ * @exports     key, computeConnected, canPlaceDirt, canRemoveDirt, isOnFoundation
  * @depends     （無）
  * @sourceOfTruth Docs/game-architecture-plan.md「核心地基系統」
- * @version     v0.0.14.1
+ * @version     v0.0.15.0
  *
  * 連通性只在「背景泥土平面」判定：4 方向相鄰（X 左右 + Y 上下，不含斜角），不穿透深度。
  * 泥土格表示為 Set<"x,y"> 字串；核心格為 [[x,y], ...]（2x2 共 4 格）。
@@ -45,6 +45,12 @@ export function computeConnected(dirtCells, coreCells) {
     }
   }
   return connected;
+}
+
+// 判斷座標是否在核心格或與核心連通的泥土上
+export function isOnFoundation(world, px, py) {
+  if (world.core.some(([x, y]) => x === px && y === py)) return true;
+  return computeConnected(world.dirt, world.core).has(key(px, py));
 }
 
 // 放置泥土：放下後該格必須與核心連通才允許

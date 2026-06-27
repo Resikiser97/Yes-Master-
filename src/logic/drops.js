@@ -4,7 +4,7 @@
  * @summary     掉落物生成（qty 堆疊 + 同格合併）與自動撿取純邏輯
  * @exports     createDrop, addDrop, collectNearbyDrops
  * @depends     src/logic/inventory.js
- * @version     v0.0.14.1
+ * @version     v0.0.15.0
  */
 
 import { canAdd, addItem } from './inventory.js';

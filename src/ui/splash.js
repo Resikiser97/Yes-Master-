@@ -4,7 +4,7 @@
  * @summary     開場 Splash Screen；觸控裝置先顯示 PWA 引導，再選難度/輸入模式（onStart）或進入多人流程（showLobby）
  * @exports     showSplashScreen
  * @depends     src/ui/mobileLayout.js, src/ui/pwaTutorial.js, src/ui/lobby.js
- * @version     v0.0.14.1
+ * @version     v0.0.15.0
  *
  * diffMode:  'normal' = 正式難度；'test' = 測試難度 1~30 關
  * inputMode: 'keyboard' = 電腦鍵盤；'touch' = 手機觸控

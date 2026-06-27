@@ -5,7 +5,7 @@
  * @exports     moveSpeedToTilesPerSecond, normalizeMoveInput, movePlayer
  * @depends     config/gameConfig.js
  * @sourceOfTruth Docs/game-design-plan.md「哥布林角色數值」「操作輸入方式」
- * @version     v0.0.14.1
+ * @version     v0.0.15.0
  */
 
 import { GAME_CONFIG } from '../../config/gameConfig.js';

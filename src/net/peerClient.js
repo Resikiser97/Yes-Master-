@@ -4,7 +4,7 @@
  * @summary     PeerJS 客戶端（非房主玩家）：加入房間、取 room_join_token、連線房主、完成 auth handshake
  * @exports     startPeerClient
  * @depends     net/protocol.js, net/peerRuntime.js, net/roomManager.js
- * @version     v0.0.14.1
+ * @version     v0.0.15.0
  */
 import { GAME_CONFIG } from '../../config/gameConfig.js';
 import { MSG, decode, encode, makeMessage } from './protocol.js';
