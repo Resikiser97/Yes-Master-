@@ -274,15 +274,12 @@ export class Controls {
     const dx = this.mouse.x - this._altCenter.x;
     const dy = this.mouse.y - this._altCenter.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    // 從未離開死區（30px）= 無意間按下 Alt → 取消，不送出任何意圖
-    if (!this._wheelEverOut) return null;
-    // 曾離開死區但放開時回到中心 → ⚠️
-    if (dist < 20) return 'warn';
+    if (dist < 20) return 'errand';
     const a = Math.atan2(dy, dx);
     if (a > -Math.PI / 4 && a <= Math.PI / 4)          return 'build';   // 右
-    if (a > Math.PI / 4  && a <= 3 * Math.PI / 4)      return 'destroy'; // 下
+    if (a > Math.PI / 4  && a <= 3 * Math.PI / 4)      return 'repair';  // 下
     if (a > 3 * Math.PI / 4 || a <= -3 * Math.PI / 4) return 'mine';    // 左
-    return 'repair'; // 上
+    return 'warn'; // 上
   }
 }
 

@@ -702,8 +702,8 @@ export class TouchControls {
       { key: 'mine',    emoji: '⛏️',  label: '挖礦' },
       { key: 'repair',  emoji: '🔧', label: '修復' },
       { key: 'build',   emoji: '🧱', label: '建造' },
-      { key: 'destroy', emoji: '🦵', label: '破壞' },
-      { key: 'warn',    emoji: '⚠️',  label: '警告' },
+      { key: 'errand',  emoji: '🦵', label: '跑腿' },
+      { key: 'warn',    emoji: '⚠️',  label: '危險' },
     ];
 
     const btn = document.createElement('button');

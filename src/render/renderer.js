@@ -19,22 +19,22 @@ import { coreAttackAnchors } from '../game/combatRuntime.js';
 import { inventoryWeight } from '../logic/inventory.js';
 import { durabilityToBreak } from '../logic/mining.js';
 
-const INTENT_EMOJI = { mine: '⛏️', build: '🧱', destroy: '🦵', repair: '🔧', warn: '⚠️' };
+const INTENT_EMOJI = { mine: '⛏️', build: '🧱', errand: '🦵', repair: '🔧', warn: '⚠️' };
 
 const WHEEL_ITEMS = [
-  { intent: 'mine',    emoji: '⛏️', angle: Math.PI },        // 左
-  { intent: 'repair',  emoji: '🔧', angle: -Math.PI / 2 },   // 上
-  { intent: 'build',   emoji: '🧱', angle: 0 },              // 右
-  { intent: 'destroy', emoji: '🦵', angle: Math.PI / 2 },    // 下
+  { intent: 'mine',   emoji: '⛏️', angle: Math.PI },        // 左
+  { intent: 'warn',   emoji: '⚠️', angle: -Math.PI / 2 },   // 上
+  { intent: 'build',  emoji: '🧱', angle: 0 },              // 右
+  { intent: 'repair', emoji: '🔧', angle: Math.PI / 2 },    // 下
 ];
 
 function _wheelHoveredIntent(dx, dy, dist) {
-  if (dist < 20) return 'warn';
+  if (dist < 20) return 'errand';
   const a = Math.atan2(dy, dx);
   if (a > -Math.PI / 4 && a <= Math.PI / 4)          return 'build';   // 右
-  if (a > Math.PI / 4  && a <= 3 * Math.PI / 4)      return 'destroy'; // 下
+  if (a > Math.PI / 4  && a <= 3 * Math.PI / 4)      return 'repair';  // 下
   if (a > 3 * Math.PI / 4 || a <= -3 * Math.PI / 4) return 'mine';    // 左
-  return 'repair'; // 上
+  return 'warn'; // 上
 }
 
 const fmtItems = (obj) => {
@@ -592,9 +592,9 @@ export class Renderer {
       ctx.textBaseline = 'middle';
       ctx.fillText(item.emoji, ex, ey);
     }
-    // center item ⚠️
-    if (hovered === 'warn') {
-      ctx.fillStyle = 'rgba(255,80,80,0.28)';
+    // center item 🦵 跑腿
+    if (hovered === 'errand') {
+      ctx.fillStyle = 'rgba(255,230,80,0.28)';
       ctx.beginPath();
       ctx.arc(cx, cy, 20, 0, Math.PI * 2);
       ctx.fill();
@@ -602,7 +602,7 @@ export class Renderer {
     ctx.font = '18px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('⚠️', cx, cy);
+    ctx.fillText('🦵', cx, cy);
     ctx.restore();
   }
 
@@ -742,21 +742,27 @@ export class Renderer {
     const cs = world.coreStats ?? {};
 
     if (!expanded) {
-      // Collapsed: compact row, not exceeding 核心血量 label
-      const w = 200;
-      const x = startX, y = barY - 44, h = 18;
-      world.uiHitRects.push({ id: 'corePanel', x, y, w, h });
+      // Collapsed: align with 核心血量 label, flexible width
+      const { totalW } = this._hotbarMetrics();
+      const labelCenterY = barY - 25;
+      const h = 14;
+      const anchorY = Math.round(labelCenterY - h / 2);
       ctx.save();
-      drawPanel(ctx, x, y, w, h, { bg: 'rgba(0,0,0,0.65)', border: '#555' });
-      ctx.textBaseline = 'middle';
       ctx.font = '10px sans-serif';
+      const contentText = `攻擊力：${fmt2(cs.attack)}  攻速：${fmt2(cs.attackSpeed)}`;
+      const suffixText = ' ▼展開';
+      const w = Math.min(Math.ceil(ctx.measureText(contentText + suffixText).width) + 16, Math.floor(totalW / 2));
+      const x = startX;
+      world.uiHitRects.push({ id: 'corePanel', x, y: anchorY, w, h });
+      drawPanel(ctx, x, anchorY, w, h, { bg: 'rgba(0,0,0,0.65)', border: '#555' });
+      ctx.textBaseline = 'middle';
       ctx.fillStyle = '#CCC';
       ctx.textAlign = 'left';
-      ctx.fillText(`攻擊力：${fmt2(cs.attack)}  攻速：${fmt2(cs.attackSpeed)}`, x + 6, y + h / 2);
+      ctx.fillText(contentText, x + 6, anchorY + h / 2);
       ctx.font = '9px sans-serif';
       ctx.fillStyle = '#888';
       ctx.textAlign = 'right';
-      ctx.fillText('▼展開', x + w - 4, y + h / 2);
+      ctx.fillText('▼展開', x + w - 4, anchorY + h / 2);
       ctx.restore();
       return;
     }
@@ -818,11 +824,12 @@ export class Renderer {
 
     ctx.save();
     // Label
-    ctx.font = 'bold 10px sans-serif';
+    const labelY = y - 3;
+    ctx.font = 'bold 12px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
     ctx.fillStyle = '#F44336';
-    ctx.fillText('核心血量', startX + totalW / 2, y - 1);
+    ctx.fillText('核心血量', startX + totalW / 2, labelY);
 
     // Bar background
     ctx.fillStyle = '#1e2330';
@@ -946,14 +953,14 @@ export class Renderer {
   _drawXpGoldBar(world) {
     const ctx = this.ctx;
     const { startX, totalW, barY } = this._hotbarMetrics();
+    const labelCenterY = barY - 25;
     const drawX = startX + totalW;
-    const drawY = barY - 28;
     ctx.save();
     ctx.font = '9px sans-serif';
     ctx.textAlign = 'right';
-    ctx.textBaseline = 'bottom';
+    ctx.textBaseline = 'middle';
     ctx.fillStyle = '#AA8800';
-    ctx.fillText(`經驗：${world.totalXP ?? 0}XP　金幣：${world.totalGold ?? 0}　票數：${world.totalCards ?? 0}張`, drawX, drawY);
+    ctx.fillText(`經驗：${world.totalXP ?? 0}XP　金幣：${world.totalGold ?? 0}　票數：${world.totalCards ?? 0}張`, drawX, labelCenterY);
     ctx.restore();
   }
 
