@@ -5,7 +5,7 @@
  * @exports     refreshCoreSnapshot
  * @depends     src/logic/coreStats.js
  * @sourceOfTruth Docs/game-design-plan.md「方塊屬性加成（堆疊到核心）」
- * @version     v0.0.17.0
+ * @version     v0.0.18.0
  */
 
 import { countPlacedBlocks, computeCoreStats } from '../logic/coreStats.js';

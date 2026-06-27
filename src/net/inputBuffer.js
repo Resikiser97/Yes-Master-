@@ -4,7 +4,7 @@
  * @summary     房主端 Input buffer：收集/驗證 Input 後路由至 actions / phaseRuntime，並同步玩家 auto/manual intent
  * @exports     createInputBuffer, serializeControls, applyInput
  * @depends     logic/playerMovement.js, game/world.js, game/actions.js, game/phaseRuntime.js, net/validation.js
- * @version     v0.0.17.0
+ * @version     v0.0.18.0
  */
 import { movePlayer } from '../logic/playerMovement.js';
 import { ensurePlayer } from '../game/world.js';

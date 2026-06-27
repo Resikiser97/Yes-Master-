@@ -7,7 +7,7 @@
  *
  * POST body: { room_id: string, slot: 1 | 2 | 3, data_revision: string }
  *
- * @version v0.0.17.0
+ * @version v0.0.18.0
  *
  * Responses:
  *   200 { ok: true, save_file_id: string }

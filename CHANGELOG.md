@@ -1,10 +1,17 @@
 # CHANGELOG.md — 版本歷史
 
-> 版本：v0.0.17.0
+> 版本：v0.0.18.0
 > 類型：**只增不改**（歷史紀錄，永遠往上加，最新在最上方，不回頭改舊條目）。
 > 條目格式：`## vX.Y.Z.W - YYYY-MM-DD`，下分「新增 / 修復 / 調整」。
 
 ---
+
+## v0.0.18.0 - 2026-06-27
+
+### 新增
+- **`friendships` 資料表**：`supabase/migrations/20260627_friendships.sql`；user_a（送出方）/ user_b（接收方）/ status（pending|accepted）/ UNIQUE(user_a,user_b)；RLS：SELECT=雙方可見、INSERT=只能以自己為 user_a、UPDATE=只有 user_b（接受）、DELETE=雙方均可（取消/拒絕/解除）。好友 UI（T6）後端正式上線。
+- **`api/env.js`（Vercel Serverless）**：`/api/env` 端點在 runtime 注入 `TURN_USERNAME` / `TURN_CREDENTIAL` 為 `globalThis.__YESMASTER_ENV__`；credential 存 Vercel Dashboard env vars，不進 git；本地 dev 404 靜默，`resolveIceServers` 自動降級為 STUN-only。
+- **`index.html`**：加入 `<script src="/api/env">` 前置載入，確保 TURN credential 在 ES module 啟動前就位。
 
 ## v0.0.17.0 - 2026-06-27
 

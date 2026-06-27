@@ -4,7 +4,7 @@
  * @summary     同步排程器：afterHostTick 每幀決定廣播 delta 或 full snapshot（每 5s 強制全量）；createClientSyncApplier 處理收到的 SNAPSHOT/DELTA 訊息
  * @exports     createHostSyncScheduler, createClientSyncApplier
  * @depends     net/protocol.js, net/stateSync.js
- * @version     v0.0.17.0
+ * @version     v0.0.18.0
  */
 import { MSG, makeMessage } from './protocol.js';
 import { serializeDelta, serializeSnapshot, applyDelta, applySnapshot } from './stateSync.js';

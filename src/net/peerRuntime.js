@@ -4,7 +4,7 @@
  * @summary     PeerJS 動態載入（esm.sh）與 Peer 實例建立；lazy singleton 防重複載入
  * @exports     loadPeerCtor, createPeer, waitForPeerOpen
  * @depends     config/gameConfig.js
- * @version     v0.0.17.0
+ * @version     v0.0.18.0
  */
 import { GAME_CONFIG } from '../../config/gameConfig.js';
 
