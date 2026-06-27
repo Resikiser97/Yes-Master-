@@ -1,8 +1,19 @@
 # CHANGELOG.md — 版本歷史
 
-> 版本：v0.0.15.0
+> 版本：v0.0.16.0
 > 類型：**只增不改**（歷史紀錄，永遠往上加，最新在最上方，不回頭改舊條目）。
 > 條目格式：`## vX.Y.Z.W - YYYY-MM-DD`，下分「新增 / 修復 / 調整」。
+
+---
+
+## v0.0.16.0 - 2026-06-27
+
+### 新增
+- **RLS Policy**：`player_profiles` / `rooms` / `room_memberships` / `save_files` / `active_saves` 全部啟用 Row Level Security；`rooms` / `room_memberships` 寫入鎖定為 Edge Function（service_role），防止任意用戶改寫他人資料。
+- **`active_saves` 資料表**：多人進行中存檔專用表（per room_id PK），含 `data_revision` 樂觀鎖欄位；RLS DENY ALL，全部走 Edge Function。
+- **`save_files` 資料表**：正式持久化存檔表（per owner_id + slot 1-3），RLS owner only。
+- **Edge Function `save-active`**：host 每晚結束後呼叫，驗 `current_host_uid` + room active + `data_revision` 後以 service_role 寫入 `active_saves`。
+- **Worklist M_BE 節**：T4–T7 完整 spec 已寫入 `Docs/claude-codex-worklist.md`，Codex 可直接照做。
 
 ---
 

@@ -393,6 +393,127 @@
 
 ---
 
+## M_BE. Backend Security + Active Save 基礎建設
+
+> 最後更新：2026-06-27
+> 優先級：P0（RLS）→ P1（active save）→ P2（TURN）→ P3（Friend UI）→ P4（Shop UI）
+>
+> **速讀：為什麼要做這些？**
+> 1. Supabase 資料表目前**沒有 Row Level Security**——任何登入用戶可讀寫所有人資料（P0 安全漏洞）。
+> 2. 多人遊戲中存檔**不能只靠 `owner_id = auth.uid()`**——Host Migration 後新房主的 uid 變了，RLS 會把合法房主擋掉。解法：開一張 `active_saves` 表，全部寫入走 Edge Function + service_role，完全繞過 RLS。
+> 3. WebRTC 在部分 NAT 環境打洞失敗，加 TURN relay 可覆蓋 95%+ 的網路。
+
+---
+
+### 分工總覽
+
+| 任務 | 誰做 | 狀態 |
+|---|---|---|
+| T1：RLS Policy SQL（rooms / memberships / profiles / save_files） | Claude Code | ✅ 已完成 |
+| T2：active_saves + save_files DB Migration | Claude Code | ✅ 已完成 |
+| T3：Edge Function `save-active` | Claude Code | ✅ 已完成 |
+| T4：Edge Function `save-exit` | **Codex** | 🔲 待做 |
+| T5：TURN Server 設定 | **Codex** | 🔲 待做 |
+| T6：好友 UI（`friendsPanel.js`） | **Codex** | 🔲 待做 |
+| T7：商店 UI（待設計討論後） | **Codex** | ⏸ 等設計 |
+
+---
+
+### T4. Edge Function: `save-exit`（Codex 完成）
+
+**檔案**：`supabase/functions/save-exit/index.ts`
+
+照 `save-active/index.ts` 的 pattern，但多「轉正式存檔」步驟：
+
+```
+POST body: { room_id, slot (1-3), data_revision }
+```
+
+1. `requireUser()` → 取 `auth.uid()`
+2. 查 `rooms`：確認 `current_host_uid = uid` AND `status = 'active'`
+3. 讀 `active_saves WHERE room_id = ?`（取 data + data_revision）
+4. 比對 `data_revision`（409 Conflict 時前端重讀再送）
+5. UPSERT `save_files`：`owner_id = uid, slot = slot, data = active_save.data, data_revision = now()`
+6. 把 room `status = 'completed'`，寫 `completed_at`
+7. 刪除 `active_saves WHERE room_id = ?`
+8. 回傳 `{ ok: true, save_file_id }`
+
+**錯誤碼規則**（同 T3）：
+- 401 unauthorized、403 not current host、404 room not found
+- 409 room not active / revision_conflict（附 `latest_revision` 給前端重試）
+- 500 其他
+
+---
+
+### T5. TURN Server 設定（Codex 完成）
+
+**難度**：極低（5 行 config，無邏輯）
+
+步驟：
+1. 在 [Metered.ca](https://www.metered.ca/tools/openrelay/) 建立免費帳號，取得 `hostname / username / credential`。
+2. `GAME_CONFIG.net.iceServers`（`config/gameConfig.js`）新增陣列：
+```js
+iceServers: [
+  { urls: 'stun:openrelay.metered.ca:80' },
+  { urls: 'turn:openrelay.metered.ca:80', username: 'YOUR_USER', credential: 'YOUR_CRED' },
+  { urls: 'turn:openrelay.metered.ca:443', username: 'YOUR_USER', credential: 'YOUR_CRED' },
+  { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'YOUR_USER', credential: 'YOUR_CRED' },
+],
+```
+3. `peerRuntime.js` 的 `createPeer()` 加入 `config: { iceServers: GAME_CONFIG.net.iceServers }`。
+4. **不要**把真實 credential 寫進 git：Vercel Dashboard 加 env var `TURN_USERNAME` / `TURN_CREDENTIAL`；`peerRuntime.js` 讀取（或由 Edge Function 動態發 short-lived TURN credential）。
+
+---
+
+### T6. 好友 UI（Codex 完成）
+
+**前置條件**：需要 `friendships` 資料表 migration + RLS（Claude Code 第二輪補，見 T6-DB 備注）。
+Codex 可以先做 UI 骨架 + mock data，DB 接上後取消 mock。
+
+**新檔案**：`src/ui/friendsPanel.js`
+
+功能清單：
+- 好友列表（`listFriends()`，顯示 display_name + 線上狀態 dot）
+- 待處理邀請（`listPendingRequests()`，接受 / 拒絕按鈕）
+- 傳送好友邀請（輸入框 + 送出，呼叫 `sendFriendRequest(targetUserId)`）
+- 刪除好友按鈕
+
+API（全部在 `src/net/friendManager.js`，可直接呼叫）：
+- `listFriends()` / `listPendingRequests()` / `sendFriendRequest(id)` / `acceptFriendRequest(id)` / `declineFriendRequest(id)` / `deleteFriend(id)`
+
+**入口**：`src/ui/lobby.js` 頂部加「👥 好友」按鈕，點開 friendsPanel overlay（z-index 同 characterPopup）。
+
+**File Header 必填**（見 `.claude/skills/file-header.md`）：
+```js
+/**
+ * @file        friendsPanel.js
+ * @module      ui（HTML overlay）
+ * @summary     好友列表、邀請、接受/拒絕 HTML overlay
+ * @exports     showFriendsPanel, hideFriendsPanel
+ * @depends     src/net/friendManager.js
+ * @version     v0.0.16.0
+ */
+```
+
+> T6-DB 備注：`friendships` 資料表 schema（Claude Code 第二輪建）：
+> `id UUID PK, user_id_1 UUID, user_id_2 UUID, status TEXT ('pending'|'accepted'), requester_id UUID, created_at TIMESTAMPTZ`
+> RLS：SELECT where user_id_1 = uid OR user_id_2 = uid；INSERT/UPDATE via Edge Function。
+
+---
+
+### T7. 商店 UI（⏸ 等設計確認）
+
+未決問題（需先討論再動工）：
+- 每日幾件商品？（planning-dashboard 有「6 樣」初稿）
+- 貨幣：銀幣 vs 金幣 分別能買什麼？
+- 廣告刷新：幾次？刷新單件還是全部？
+- 商品種類：方塊包 / 裝備 / 消耗品？
+- DB 表設計（daily_shop_offers）
+
+設計確認後 Claude Code 定 schema，Codex 再做 UI。**現在不要動這個。**
+
+---
+
 ## 3. 交接約定
 
 - Codex 改 `config/` 數值 **不需** 動 `src/`、不需動版本號。
