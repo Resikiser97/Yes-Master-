@@ -204,4 +204,4 @@ testRestartStageClearsCombatPhase();
 testDebugTogglePause();
 testCoreCombatCreatesFixedVfxBolts();
 
-console.log('All tests passed (v0.0.15.0)');
+console.log('All tests passed (v0.0.16.0)');

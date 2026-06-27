@@ -1,5 +1,5 @@
 # Claude ↔ Codex MVP 開工協作清單
-> 狀態：MVP 實作中（v0.0.15.0）
+> 狀態：MVP 實作中（v0.0.17.0）
 > 最後更新：2026-06-27
 > 用途：單一交接看板。Claude 負責架構/純邏輯/骨架；Codex 負責數值/平衡填表。
 > 規則：**config/ 檔案就是雙方的交接介面**。Codex 把數值填進 config，Claude 的純邏輯層消費，互不踩線。
@@ -412,9 +412,9 @@
 | T1：RLS Policy SQL（rooms / memberships / profiles / save_files） | Claude Code | ✅ 已完成 |
 | T2：active_saves + save_files DB Migration | Claude Code | ✅ 已完成 |
 | T3：Edge Function `save-active` | Claude Code | ✅ 已完成 |
-| T4：Edge Function `save-exit` | **Codex** | 🔲 待做 |
-| T5：TURN Server 設定 | **Codex** | 🔲 待做 |
-| T6：好友 UI（`friendsPanel.js`） | **Codex** | 🔲 待做 |
+| T4：Edge Function `save-exit` | **Codex** | ✅ 已完成並部署 |
+| T5：TURN Server 設定 | **Codex** | ✅ 已接入 runtime credential 模板（credential 不進 git） |
+| T6：好友 UI（`friendsPanel.js`） | **Codex** | ✅ 已完成 |
 | T7：商店 UI（待設計討論後） | **Codex** | ⏸ 等設計 |
 
 ---

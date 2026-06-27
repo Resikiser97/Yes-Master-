@@ -3,8 +3,8 @@
  * @module      ui
  * @summary     多人大廳：房間列表（公開/朋友/房間號碼 tab）+ 建房 popup
  * @exports     showLobby
- * @depends     src/net/roomManager.js, src/net/authManager.js, src/net/friendManager.js, src/ui/waitingRoom.js
- * @version     v0.0.15.0
+ * @depends     src/net/roomManager.js, src/net/authManager.js, src/net/friendManager.js, src/ui/waitingRoom.js, src/ui/friendsPanel.js
+ * @version     v0.0.17.0
  */
 
 import { listRooms, createRoom, joinRoom } from '../net/roomManager.js';
@@ -12,6 +12,7 @@ import { getCurrentUser, ensureProfile } from '../net/authManager.js';
 import { listFriends } from '../net/friendManager.js';
 import { showAuthScreen } from './authScreen.js';
 import { showWaitingRoom } from './waitingRoom.js';
+import { showFriendsPanel } from './friendsPanel.js';
 
 const GOLD = '#D4A017';
 const GOLD_DIM = 'rgba(212,160,23,0.7)';
@@ -36,11 +37,21 @@ export async function showLobby(inputMode, onStart) {
     style: 'position:fixed;top:0;left:0;width:100%;height:100%;background:#000;display:flex;flex-direction:column;align-items:center;z-index:9998;opacity:0;transition:opacity 0.6s ease;font-family:sans-serif;overflow-y:auto;',
   });
 
-  // Title
+  // Header
+  const header = _el('div', {
+    style: 'position:relative;width:90%;max-width:900px;margin-top:24px;display:flex;align-items:flex-start;justify-content:center;',
+  });
   const title = _el('div', {
     textContent: 'GOBLIN NEST',
-    style: `font-family:Georgia,'Times New Roman',serif;font-size:clamp(20px,4vw,36px);font-weight:bold;letter-spacing:6px;color:${GOLD};text-shadow:2px 2px 0px #7a5500;margin-top:24px;`,
+    style: `font-family:Georgia,'Times New Roman',serif;font-size:clamp(20px,4vw,36px);font-weight:bold;letter-spacing:6px;color:${GOLD};text-shadow:2px 2px 0px #7a5500;`,
   });
+  const friendsBtn = _btn('👥 好友');
+  friendsBtn.style.position = 'absolute';
+  friendsBtn.style.right = '0';
+  friendsBtn.style.top = '4px';
+  friendsBtn.addEventListener('click', showFriendsPanel);
+  header.append(title, friendsBtn);
+
   const sub = _el('div', {
     textContent: '多 人 大 廳',
     style: `font-family:Georgia,serif;font-size:clamp(10px,2vw,14px);letter-spacing:6px;color:${GOLD_DIM};margin-bottom:16px;`,
@@ -143,7 +154,7 @@ export async function showLobby(inputMode, onStart) {
   main.appendChild(panel);
   main.appendChild(roomIdPanel);
 
-  overlay.append(title, sub, main);
+  overlay.append(header, sub, main);
   document.body.appendChild(overlay);
 
   requestAnimationFrame(() => { overlay.style.opacity = '1'; });

@@ -5,7 +5,7 @@
  * @exports     createReconnectController
  * @depends     net/roomManager.js
  * @sourceOfTruth Docs/game-architecture-plan.md「斷線重連機制」章節
- * @version     v0.0.15.0
+ * @version     v0.0.17.0
  */
 import { issueRoomJoinToken } from './roomManager.js';
 

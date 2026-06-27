@@ -5,7 +5,7 @@
  * @exports     EQUIPMENT_CONFIG, EQUIPMENT_SLOTS
  * @depends     （無）
  * @sourceOfTruth Docs/lobby-waitingroom-plan.md Phase D、config/gameConfig.js player 區塊
- * @version     v0.0.15.0
+ * @version     v0.0.17.0
  */
 
 export const EQUIPMENT_CONFIG = {

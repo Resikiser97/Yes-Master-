@@ -4,7 +4,7 @@
  * @summary     PeerJS 動態載入（esm.sh）與 Peer 實例建立；lazy singleton 防重複載入
  * @exports     loadPeerCtor, createPeer, waitForPeerOpen
  * @depends     config/gameConfig.js
- * @version     v0.0.15.0
+ * @version     v0.0.17.0
  */
 import { GAME_CONFIG } from '../../config/gameConfig.js';
 
@@ -26,7 +26,26 @@ export async function createPeer(cfg = GAME_CONFIG) {
     port: net.peerJsPort ?? 443,
     secure: net.peerJsSecure ?? true,
     debug: net.peerJsDebug ?? 0,
+    config: { iceServers: resolveIceServers(net.iceServers ?? []) },
   });
+}
+
+function resolveIceServers(servers) {
+  const turnUsername = runtimeEnv('TURN_USERNAME');
+  const turnCredential = runtimeEnv('TURN_CREDENTIAL');
+  return servers
+    .map((server) => {
+      if (server.username !== 'TURN_USERNAME' && server.credential !== 'TURN_CREDENTIAL') return server;
+      if (!turnUsername || !turnCredential) return null;
+      return { ...server, username: turnUsername, credential: turnCredential };
+    })
+    .filter(Boolean);
+}
+
+function runtimeEnv(key) {
+  const env = globalThis.__YESMASTER_ENV__ ?? {};
+  const viteEnv = import.meta.env ?? {};
+  return env[key] ?? viteEnv[`VITE_${key}`] ?? viteEnv[key] ?? null;
 }
 
 export function waitForPeerOpen(peer) {

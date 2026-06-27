@@ -5,12 +5,12 @@
  * @exports     GAME_CONFIG
  * @depends     （無）
  * @sourceOfTruth Docs/game-design-plan.md、Docs/game-architecture-plan.md、Docs/waveplan.md
- * @version     v0.0.16.0
+ * @version     v0.0.17.0
  */
 
 export const GAME_CONFIG = {
   // 版本同步點之一（見 .claude/instructions.md 版本號同步鐵則）
-  version: 'v0.0.16.0',
+  version: 'v0.0.17.0',
 
   // MVP 模式角標（單人 / 多人），方便錄影分辨測試版本
   mode: 'single', // 'single' | 'multi'
@@ -128,6 +128,12 @@ export const GAME_CONFIG = {
     peerJsHost: '0.peerjs.com',
     peerJsPort: 443,
     peerJsSecure: true,
+    iceServers: [
+      { urls: 'stun:openrelay.metered.ca:80' },
+      { urls: 'turn:openrelay.metered.ca:80', username: 'TURN_USERNAME', credential: 'TURN_CREDENTIAL' },
+      { urls: 'turn:openrelay.metered.ca:443', username: 'TURN_USERNAME', credential: 'TURN_CREDENTIAL' },
+      { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'TURN_USERNAME', credential: 'TURN_CREDENTIAL' },
+    ],
   },
 
   // 多人波次倍率（MVP）

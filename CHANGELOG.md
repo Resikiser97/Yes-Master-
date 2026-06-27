@@ -1,10 +1,18 @@
 # CHANGELOG.md — 版本歷史
 
-> 版本：v0.0.16.0
+> 版本：v0.0.17.0
 > 類型：**只增不改**（歷史紀錄，永遠往上加，最新在最上方，不回頭改舊條目）。
 > 條目格式：`## vX.Y.Z.W - YYYY-MM-DD`，下分「新增 / 修復 / 調整」。
 
 ---
+
+## v0.0.17.0 - 2026-06-27
+
+### 新增
+- **Edge Function `save-exit`**：host 離場時將 `active_saves` 轉存為 `save_files` 正式槽（slot 1-3）並將房間標記 `completed`；樂觀鎖 `data_revision` 防止存陳舊資料；部署至 Supabase。
+- **TURN Server 設定**：`config/gameConfig.js` 加入 OpenRelay Metered.ca iceServers 陣列（STUN + TURN 80/443/TCP）；`src/net/peerRuntime.js` 加入 `resolveIceServers()` 在 runtime 替換 `TURN_USERNAME` / `TURN_CREDENTIAL` 佔位符，真實 credential 從 `globalThis.__YESMASTER_ENV__` 或 `import.meta.env` 讀取，不進 git。
+- **好友面板 `src/ui/friendsPanel.js`**：HTML overlay，含待接受邀請 / 已送出邀請 / 好友列表三個區塊；送出/接受/拒絕/取消/刪除操作加 loading 防連擊；點外部關閉。`src/ui/lobby.js` 新增「👥 好友」按鈕入口。
+- **`friendManager.js` 補齊**：`declineFriendRequest` / `deleteFriend` alias 匯出；`listFriends` / `listPendingRequests` 回傳 `display_name`。
 
 ## v0.0.16.0 - 2026-06-27
 

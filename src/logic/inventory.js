@@ -5,7 +5,7 @@
  * @exports     blockWeight, inventoryWeight, distinctCount, canAdd, addItem, removeItem, depositAll
  * @depends     config/blocks.js
  * @sourceOfTruth Docs/game-design-plan.md「遊戲內 UI 設計」（背包/塔內資源欄）
- * @version     v0.0.15.0
+ * @version     v0.0.17.0
  *
  * inventory / storage 皆為 { blockKey: qty } 物件。背包受「承重(carry)」與「格數(slots)」雙重限制。
  */

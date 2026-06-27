@@ -5,7 +5,7 @@
  * @exports     listRooms, createRoom, joinRoom, leaveRoom, getRoom, getRoomMembers, kickPlayer, startRoom, updateHostPeer, issueRoomJoinToken, verifyRoomJoinToken, heartbeatRoom, ROOM_LIST_COLUMNS, ROOM_DETAIL_COLUMNS
  * @depends     config/gameConfig.js、src/net/supabaseClient.js
  * @sourceOfTruth Docs/game-architecture-plan.md「存檔系統」「P2P 安全限制 → token 申請流程」
- * @version     v0.0.15.0
+ * @version     v0.0.17.0
  */
 
 import { GAME_CONFIG } from '../../config/gameConfig.js';

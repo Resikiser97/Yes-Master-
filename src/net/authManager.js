@@ -4,7 +4,7 @@
  * @summary     Authentication helpers: Google OAuth, anonymous sign-in, profile management
  * @exports     signInWithGoogle, signInAnonymously, signOut, getCurrentUser, onAuthStateChange, getProfile, ensureProfile, updateProfile
  * @depends     src/net/supabaseClient.js
- * @version     v0.0.15.0
+ * @version     v0.0.17.0
  */
 
 import { GAME_CONFIG } from '../../config/gameConfig.js';

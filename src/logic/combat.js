@@ -5,7 +5,7 @@
  * @exports     dist2, selectPrimaryTarget, chainHitCount, selectChainTargets, computeHit
  * @depends     src/logic/damageDefense.js
  * @sourceOfTruth Docs/game-design-plan.md「核心攻擊與防禦機制」（目標選擇 / 連鎖定案）
- * @version     v0.0.15.0
+ * @version     v0.0.17.0
  *
  * 定案規則：
  *  - 普攻：敵人正在攻擊核心時，優先鎖定攻擊者中 HP 最低者；否則鎖定離核心最近的目標。
