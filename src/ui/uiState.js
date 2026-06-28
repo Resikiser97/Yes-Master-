@@ -3,7 +3,7 @@
  * @module      ui
  * @summary     world.uiState 初始化與面板展開/收合狀態切換（playerPanel / corePanel / waveInfoPanel）
  * @exports     ensureUiState, applyUiClick
- * @version     v0.0.18.0
+ * @version     v0.0.19.0
  */
 export function ensureUiState(world) {
   world.uiState ??= { playerExpanded: false, backpackExpanded: true, coreExpanded: false, waveInfoExpanded: false };

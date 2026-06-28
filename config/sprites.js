@@ -5,7 +5,7 @@
  * @exports     SPRITE_SHEETS, getFrameRect
  * @depends     （無）
  * @sourceOfTruth assets/icon-status.md
- * @version     v0.0.18.0
+ * @version     v0.0.19.0
  *
  * 切幀方式：等寬等高格，index 從左上角開始，逐列橫向掃描。
  * 使用 drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh) 繪製單幀。

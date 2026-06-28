@@ -1,10 +1,10 @@
 /**
  * @file        lobby.js
  * @module      ui
- * @summary     多人大廳：房間列表（公開/朋友/房間號碼 tab）+ 建房 popup
+ * @summary     多人大廳：房間列表（公開/朋友/房間號碼 tab）+ 建房 popup + 每日商店入口
  * @exports     showLobby
- * @depends     src/net/roomManager.js, src/net/authManager.js, src/net/friendManager.js, src/ui/waitingRoom.js, src/ui/friendsPanel.js
- * @version     v0.0.18.0
+ * @depends     src/net/roomManager.js, src/net/authManager.js, src/net/friendManager.js, src/ui/waitingRoom.js, src/ui/friendsPanel.js, src/ui/uiManager.js
+ * @version     v0.0.19.0
  */
 
 import { listRooms, createRoom, joinRoom } from '../net/roomManager.js';
@@ -13,6 +13,7 @@ import { listFriends } from '../net/friendManager.js';
 import { showAuthScreen } from './authScreen.js';
 import { showWaitingRoom } from './waitingRoom.js';
 import { showFriendsPanel } from './friendsPanel.js';
+import { openShop } from './uiManager.js';
 
 const GOLD = '#D4A017';
 const GOLD_DIM = 'rgba(212,160,23,0.7)';
@@ -45,12 +46,17 @@ export async function showLobby(inputMode, onStart) {
     textContent: 'GOBLIN NEST',
     style: `font-family:Georgia,'Times New Roman',serif;font-size:clamp(20px,4vw,36px);font-weight:bold;letter-spacing:6px;color:${GOLD};text-shadow:2px 2px 0px #7a5500;`,
   });
+  const shopBtn = _btn('每日商店');
+  shopBtn.style.position = 'absolute';
+  shopBtn.style.left = '0';
+  shopBtn.style.top = '4px';
+  shopBtn.addEventListener('click', openShop);
   const friendsBtn = _btn('👥 好友');
   friendsBtn.style.position = 'absolute';
   friendsBtn.style.right = '0';
   friendsBtn.style.top = '4px';
   friendsBtn.addEventListener('click', showFriendsPanel);
-  header.append(title, friendsBtn);
+  header.append(shopBtn, title, friendsBtn);
 
   const sub = _el('div', {
     textContent: '多 人 大 廳',

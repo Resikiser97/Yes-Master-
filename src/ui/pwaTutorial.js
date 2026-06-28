@@ -4,7 +4,7 @@
  * @summary     PWA 安裝引導畫面；教 iOS/Android 玩家如何加入主畫面以移除地址欄
  * @exports     showPwaTutorial, shouldShowPwaTutorial
  * @depends     （無）
- * @version     v0.0.18.0
+ * @version     v0.0.19.0
  *
  * localStorage key：yesmaster.pwaSkip（整數 0~3，≥3 不再顯示）
  * 顯示條件由呼叫端控制（isTouchDevice && !isStandalone && shouldShowPwaTutorial）

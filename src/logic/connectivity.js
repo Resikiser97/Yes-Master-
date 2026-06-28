@@ -5,7 +5,7 @@
  * @exports     key, computeConnected, canPlaceDirt, canRemoveDirt, isOnFoundation
  * @depends     （無）
  * @sourceOfTruth Docs/game-architecture-plan.md「核心地基系統」
- * @version     v0.0.18.0
+ * @version     v0.0.19.0
  *
  * 連通性只在「背景泥土平面」判定：4 方向相鄰（X 左右 + Y 上下，不含斜角），不穿透深度。
  * 泥土格表示為 Set<"x,y"> 字串；核心格為 [[x,y], ...]（2x2 共 4 格）。

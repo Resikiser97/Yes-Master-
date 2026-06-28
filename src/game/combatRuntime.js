@@ -5,7 +5,7 @@
  * @exports     spawnDebugEnemies, updateEnemies, coreAttackAnchors, updateCoreCombat
  * @depends     config/enemies.js、config/gameConfig.js、src/logic/combat.js、src/logic/connectivity.js
  * @sourceOfTruth Docs/game-design-plan.md「核心攻擊與防禦機制」
- * @version     v0.0.18.0
+ * @version     v0.0.19.0
  */
 
 import { ENEMIES } from '../../config/enemies.js';

@@ -4,7 +4,7 @@
  * @summary     多人 data-channel 訊息格式：MSG 類型常數、encode/decode（JSON）、makeMessage/safeDecode/byteLength
  * @exports     MSG, makeMessage, encode, decode, safeDecode, byteLength
  * @depends     （無）
- * @version     v0.0.18.0
+ * @version     v0.0.19.0
  */
 
 export const MSG = Object.freeze({

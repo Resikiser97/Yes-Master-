@@ -1,6 +1,6 @@
 # Claude ↔ Codex MVP 開工協作清單
-> 狀態：MVP 實作中（v0.0.18.0）
-> 最後更新：2026-06-27
+> 狀態：MVP 實作中（v0.0.19.0）
+> 最後更新：2026-06-28
 > 用途：單一交接看板。Claude 負責架構/純邏輯/骨架；Codex 負責數值/平衡填表。
 > 規則：**config/ 檔案就是雙方的交接介面**。Codex 把數值填進 config，Claude 的純邏輯層消費，互不踩線。
 
@@ -415,7 +415,7 @@
 | T4：Edge Function `save-exit` | **Codex** | ✅ 已完成並部署 |
 | T5：TURN Server 設定 | **Codex** | ✅ 已接入 runtime credential 模板（credential 不進 git） |
 | T6：好友 UI（`friendsPanel.js`） | **Codex** | ✅ 已完成 |
-| T7：商店 UI（待設計討論後） | **Codex** | ⏸ 等設計 |
+| T7：商店 UI | **Codex** | ✅ 已完成 |
 
 ---
 
@@ -501,16 +501,19 @@ API（全部在 `src/net/friendManager.js`，可直接呼叫）：
 
 ---
 
-### T7. 商店 UI（⏸ 等設計確認）
+### T7. 商店 UI（✅ 已完成 v0.0.19.0）
 
-未決問題（需先討論再動工）：
-- 每日幾件商品？（planning-dashboard 有「6 樣」初稿）
-- 貨幣：銀幣 vs 金幣 分別能買什麼？
-- 廣告刷新：幾次？刷新單件還是全部？
-- 商品種類：方塊包 / 裝備 / 消耗品？
-- DB 表設計（daily_shop_offers）
+**新增檔案**：`src/ui/shopPanel.js`、`src/ui/uiManager.js`
+**修改檔案**：`src/ui/lobby.js`（大廳 header 左側加「每日商店」按鈕）
 
-設計確認後 Claude Code 定 schema，Codex 再做 UI。**現在不要動這個。**
+實作摘要：
+- 6 格加權隨機品項，從 `ECONOMY.shop.items` 讀取（8 種池，各有 weight）
+- 金幣 / 銀幣購買扣款，購買後灰出防重複
+- 每日 UTC 16:00 重置（GMT+8 00:00），localStorage 持久化
+- 刷新：首次免費，第 2/3 次看廣告（MVP placeholder `console.log('AD_WATCHED')`），上限 3 次
+- 裝備獎勵 → 隨機 `EQUIPMENT_SLOTS` 類型 + log toast（MVP，不寫存檔）
+- 票券獎勵 → log + toast（票券系統後續接上）
+- 所有數值從 `config/economyConfig.js` import，無硬編數字
 
 ---
 

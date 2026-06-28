@@ -1,6 +1,6 @@
 # QUICKREF.md — 每次啟動速查表
 
-> 版本：v0.0.18.0
+> 版本：v0.0.19.0
 > 類型：**代碼優先**（文件描述錯了，以代碼為準去改本檔）。
 > ⚠️ **正式多人聯機上線**（PeerJS P2P + Supabase Auth + 房間系統）：移動/挖礦/背包/塔內資源/掉落物自動撿取/跟隨鏡頭/初版建造/核心數值回饋/核心 HP 與修復/debug 核心戰鬥/正式波次/晝夜/卡片選擇（hover+tier中文）/localStorage 存檔/新手教學提示/**debug 浮層（` 鍵）/測試難度 preset（1~30 關）/手機三欄觸控 UI（左 HUD+D-pad、中 canvas+1~0 快捷列、右 Debug Tool+動作鍵+📣意圖選單）/動態 canvas 縮放/**PWA manifest + iOS/Android 安裝引導畫面**/**手機 3×3 放置方向選擇器**/**電擊攻擊 VFX + 範圍圈**/**快捷列方塊圖示（手機+鍵盤 HUD）**/**sprite 載入基礎設施 + 素材整理**/**規劃模式（B 鍵拖拽建造+資源預檢）+ 拆除模式（V 鍵材質選擇性拆除）**/**快捷列 10 格（1~0）+ 滑鼠點擊**/**梯子無限方塊**/**挖礦進度條持久化**/**多人大廳（Lobby + Auth + Waiting Room + PeerJS 聊天）+ 等級/好友/裝備/成就/排行榜系統**/**隊友 Party Bar + Alt/手機意圖選擇（⛏🧱🦵🔧⚠️，auto mine/repair/build + 手動 destroy/warn）+ 角色頭上 Emoji**/**真實白天 Phase（prep 30s→day 60s→night 60s）**/**離散敲擊挖礦（per-hit 扣耐久）**/**可展開波次情報 + 核心數值 HUD 收合**已成完整循環。
 

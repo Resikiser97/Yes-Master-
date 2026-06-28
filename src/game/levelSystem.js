@@ -5,7 +5,7 @@
  * @exports     expForLevel, expToNextLevel, calcLevel, addExp, calcExpReward
  * @depends     config/levelConfig.js
  * @sourceOfTruth Docs/lobby-waitingroom-plan.md Phase B、config/levelConfig.js
- * @version     v0.0.18.0
+ * @version     v0.0.19.0
  */
 
 import { LEVEL_CONFIG } from '../../config/levelConfig.js';

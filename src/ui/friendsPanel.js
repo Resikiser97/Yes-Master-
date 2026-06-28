@@ -4,7 +4,7 @@
  * @summary     好友列表、邀請、接受/拒絕/刪除 HTML overlay
  * @exports     showFriendsPanel, hideFriendsPanel
  * @depends     src/net/friendManager.js
- * @version     v0.0.18.0
+ * @version     v0.0.19.0
  */
 
 import {

@@ -1,10 +1,18 @@
 # CHANGELOG.md — 版本歷史
 
-> 版本：v0.0.18.0
+> 版本：v0.0.19.0
 > 類型：**只增不改**（歷史紀錄，永遠往上加，最新在最上方，不回頭改舊條目）。
 > 條目格式：`## vX.Y.Z.W - YYYY-MM-DD`，下分「新增 / 修復 / 調整」。
 
 ---
+
+## v0.0.19.0 - 2026-06-28
+
+### 新增
+- **每日商店 `src/ui/shopPanel.js`**：6 格加權隨機品項（`ECONOMY.shop.items` 8種池）、金幣/銀幣購買扣款、購買後灰出防重複、每日 UTC 16:00 重置（GMT+8 00:00）、localStorage 持久化、刷新（首次免費，第2/3次看廣告 MVP placeholder）、刷新上限3次；所有數值從 `config/economyConfig.js` import，無硬編數字。
+- **`src/ui/uiManager.js`**（新建）：UI overlay 入口集中器；`openShop()` 單例模式初始化 `ShopPanel`。
+- **每日商店入口**：`src/ui/lobby.js` 大廳 header 左側新增「每日商店」按鈕，呼叫 `openShop()`。
+- **Instructions 第10條**：`.claude/instructions.md` 新增「重大分析結果必須立刻寫入 config/ 常數」鐵則。
 
 ## v0.0.18.0 - 2026-06-27
 
