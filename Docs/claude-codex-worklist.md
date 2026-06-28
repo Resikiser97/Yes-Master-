@@ -417,6 +417,12 @@
 | T6：好友 UI（`friendsPanel.js`） | **Codex** | ✅ 已完成 |
 | T7：商店 UI | **Codex** | ✅ 已完成 |
 | T8：貨幣過渡層（WalletService + StageRewardService） | **Codex** | ✅ 已完成 |
+| T9：抽獎盤 UI（gachaPanel.js） | **Codex** | ✅ 已完成 |
+| T10：Email 登入（authScreen + authManager） | **Codex** | ❌ 放棄（Supabase free tier 3封/天上限，不適合測試） |
+
+> **B 系列手動項目**（開發者在 Supabase Dashboard 執行，不需 Codex）：
+> - B1：`friendships` migration — SQL 已在 `supabase/migrations/20260627_friendships.sql`，直接貼進 Dashboard SQL Editor 執行
+> - B2：`player_equipment` / `player_achievements` / `leaderboard` migration — T10 後視需求補
 
 ---
 
@@ -572,6 +578,152 @@ WalletService.grantReward()   → server-side decided reward, client only displa
 3. 打一關 → console 出現 stage reward creditWallet log
 4. 重複通關同一關（刷新）→ idempotencyKey 防止重複入帳
 5. `npm test`：全過
+
+---
+
+### T9. 抽獎盤 UI（✅ 已完成 v0.0.21.0）
+
+**版本目標**：v0.0.21.0
+
+#### 必讀檔案
+
+1. `config/economyConfig.js` — `ECONOMY.gacha.*`（boardSize / rewards / equipFairValue）、`ECONOMY.shop.walletDefault`
+2. `src/account/walletService.js` — `WalletService.spendWallet()` / `grantReward()`
+3. `config/equipmentConfig.js` — `EQUIPMENT_SLOTS`（裝備類型清單）
+4. `src/ui/shopPanel.js` — overlay 結構與風格參考
+5. `src/ui/uiManager.js` — 加入 `openGacha()` 入口（參考 `openShop()` 模式）
+
+#### 新增檔案：`src/ui/gachaPanel.js`
+
+File header：
+```js
+/**
+ * @file        gachaPanel.js
+ * @module      ui
+ * @summary     抽獎盤 overlay：64格不放回抽樣、大獎高亮、盤面持久化、票券消費
+ * @exports     GachaPanel
+ * @depends     config/economyConfig.js, src/account/walletService.js, config/equipmentConfig.js
+ * @version     v0.0.21.0
+ */
+```
+
+#### 盤面初始化（每次新盤）
+
+1. 依 `ECONOMY.gacha.rewards` 建立 64 格陣列，每格記 `{ type, amount?, level?, isBigPrize }`
+   - `silverSmall` × 7、`silverMedium` × 3 …（完整組成見 rewards）
+2. Fisher-Yates shuffle（使用 `Math.random()`）
+3. 盤面持久化到 localStorage，key：`'yesmaster.gacha.board'`
+   - 格式：`{ slots: [...], pulled: [bool×64], bigPrizesCleared: N, createdAt }`
+4. **重置條件**：`bigPrizesCleared >= 7`（全部 7 格大獎抽完）→ 下一次 show() 時自動生成新盤
+
+#### 每次抽獎
+
+1. 確認錢包有 ≥ 1 票券：`WalletService.canAfford({ ticket: 1 })`；不足 → toast「票券不足」，不抽
+2. 扣票：`WalletService.spendWallet({ source: 'gacha', reason: 'pull', cost: { ticket: 1 }, idempotencyKey: \`gacha-pull:local:${boardId}:${slotIndex}\` })`
+3. 從未抽格隨機選一格（`Math.random()`）→ 標記 `pulled[i] = true`
+4. 若該格 `isBigPrize` → `bigPrizesCleared += 1`
+5. 發放獎勵：`WalletService.grantReward(reward, { source: 'gacha', reason: type, toast })`
+   - 裝備：`grantReward({ equipment: { level } }, ...)` → WalletService 內部隨機 EQUIPMENT_SLOTS
+6. 儲存盤面、重新 render
+
+#### UI 規格
+
+```
+overlay（position:fixed, z-index:10003）
+  ├─ 標題「抽獎盤」
+  ├─ 票券餘額顯示（從 WalletService.getWallet() 讀）
+  ├─ 8×8 格子（64格）
+  │    ├─ 未抽：金色邊框方格，hover 變亮，cursor:pointer
+  │    ├─ 已抽-普通：灰暗，顯示獎品名（少銀幣、中金幣…）
+  │    └─ 已抽-大獎：金色背景，顯示獎品名 + ✦ 標記
+  ├─ 進度「已抽 N / 64（大獎 M / 7）」
+  ├─ 「抽一次（-1票）」按鈕
+  └─ 「關閉」按鈕
+```
+
+- 點格子 = 抽那一格（視覺好看但邏輯上等同隨機，不給玩家真正選擇）
+  → 實作簡化：點任意未抽格都觸發同一個 `_pull()` 隨機邏輯
+- 點已抽格：無動作
+- 盤面全抽完（64格）或大獎清空（7格）→ 顯示「本盤結束，下次開啟自動重置」提示
+
+#### 修改檔案
+
+**`src/ui/uiManager.js`**：加入 `openGacha()`（參考 `openShop()`）
+
+```js
+import { GachaPanel } from './gachaPanel.js';
+let gachaPanel = null;
+export function openGacha() {
+  gachaPanel ??= new GachaPanel(document.body);
+  gachaPanel.show();
+  return gachaPanel;
+}
+```
+
+**`src/ui/lobby.js`**：在「每日商店」按鈕旁加「🎲 抽獎盤」按鈕（呼叫 `openGacha()`）
+- import `{ openGacha } from './uiManager.js'`
+- 按鈕放在 header 右側（好友按鈕左邊）或另一區域，不要擠掉現有按鈕
+
+**`config/economyConfig.js`**：`ECONOMY.gacha` 裡加一行 key：
+```js
+boardStorageKey: 'yesmaster.gacha.board',
+```
+
+#### 不要做的事
+
+- 不做動畫（MVP，靜態 reveal 即可）
+- 不新增 Supabase migration
+- 不修改 `economyConfig.js` 的其他數值
+- 不修改 `phaseRuntime.js`
+- 不讓玩家真正「選」格子（點任意格 = 隨機一格）
+
+#### 驗收
+
+1. `node --check src/ui/gachaPanel.js`：通過
+2. `npm test`：全過
+3. 票券 0 → 點抽獎 → toast「票券不足」，錢包不動
+4. 票券 ≥ 1 → 抽獎 → 票券 -1，格子翻開，獎品顯示，console log WALLET_TRANSACTION
+5. 重複送同一 `idempotencyKey` → 不重複扣票
+
+---
+
+### T10. Email 登入（❌ 放棄）
+
+> **放棄原因**：Supabase free tier 每日僅能送 3 封驗證信，完全不敷多人封測使用。
+> 目前登入維持 Google OAuth + 訪客模式兩條路。日後若升 Supabase Pro 或改用 SendGrid / Resend 自訂 SMTP，可重新開啟。
+
+**版本目標**：v0.0.22.0（已取消）
+
+#### 修改檔案
+
+**`src/net/authManager.js`**：新增兩個 export function
+
+```js
+export async function signUpWithEmail(email, password) {
+  const { data, error } = await supabase.auth.signUp({ email, password });
+  if (error) throw error;
+  return data;
+}
+
+export async function signInWithEmail(email, password) {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) throw error;
+  if (data.user) await ensureProfile(data.user);
+  return data.user;
+}
+```
+
+**`src/ui/authScreen.js`**：在現有 Google OAuth 按鈕下方加 Email 區塊
+- Email input + Password input + 「登入」/ 「註冊」toggle
+- 錯誤訊息顯示（不用 alert，用 overlay 內 inline 文字）
+- 登入成功 → 呼叫 `onAuthed(user)`（與 Google 流程相同）
+- 不移除現有 Google 按鈕，兩種方式並存
+
+#### 不要做的事
+
+- 不做「忘記密碼」（Supabase 內建，後續再加入口）
+- 不做 Email 驗證 confirmation（Supabase Dashboard 可設定是否強制，MVP 關閉）
+- 不修改 Supabase 設定（那是 Dashboard 操作，不在程式碼內）
 
 ---
 

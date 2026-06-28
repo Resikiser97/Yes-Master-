@@ -4,7 +4,7 @@
  * @summary     貨幣讀寫唯一入口（封測 localStorage mock；後端化時只替換本檔底層）
  * @exports     WalletService
  * @depends     config/economyConfig.js, config/equipmentConfig.js
- * @version     v0.0.20.0
+ * @version     v0.0.21.0
  */
 
 import { ECONOMY } from '../../config/economyConfig.js';
@@ -16,6 +16,8 @@ import { EQUIPMENT_SLOTS } from '../../config/equipmentConfig.js';
 
 const CURRENCY_KEYS = ['silver', 'gold', 'ticket'];
 const TRANSACTION_STORAGE_KEY = ECONOMY.shop.walletTransactionsKey;
+
+// TODO: 封測 local log 可接受；正式版需改後端 ledger，或至少限制 localStorage 交易紀錄保留筆數。
 
 export const WalletService = {
   getWallet,

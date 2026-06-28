@@ -7,7 +7,7 @@
  * @depends     （無）
  * @sourceOfTruth Docs/game-design-plan.md「每日商店系統」「抽獎系統」「貨幣基準轉化率」
  *               Docs/simulation/economy-sim-log.md（Monte Carlo 模擬定案）
- * @version     v0.0.20.0
+ * @version     v0.0.21.0
  */
 
 export const ECONOMY = {
@@ -45,6 +45,7 @@ export const ECONOMY = {
     },
     // fairValue[N] = (boardSize / slots) * goldPerTicket
     equipFairValue: { 0: 107, 1: 240, 2: 384, 3: 640, 4: 960 },
+    boardStorageKey: 'yesmaster.gacha.board',
   },
 
   // ─── 裝備合成 ────────────────────────────────────────────────────────────────
