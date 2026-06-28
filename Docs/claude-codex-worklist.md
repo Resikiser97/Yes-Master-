@@ -416,6 +416,162 @@
 | T5：TURN Server 設定 | **Codex** | ✅ 已接入 runtime credential 模板（credential 不進 git） |
 | T6：好友 UI（`friendsPanel.js`） | **Codex** | ✅ 已完成 |
 | T7：商店 UI | **Codex** | ✅ 已完成 |
+| T8：貨幣過渡層（WalletService + StageRewardService） | **Codex** | ✅ 已完成 |
+
+---
+
+### T8. 貨幣過渡層（🔴 開工）
+
+> 設計決策：封測期全部維持 client-side mock wallet。
+> 目標不是防作弊，而是把貨幣讀寫集中在一層，降低未來後端化的重構風險。
+> 正式後端 wallet 上線時，localStorage 餘額不遷移；測試者以固定補償方案處理。
+
+#### 必讀檔案（開工前全部讀完）
+
+1. `config/economyConfig.js` — 所有常數 Single Source of Truth（wallet key、default、匯率等）
+2. `src/ui/shopPanel.js` — 目前直接操作 localStorage wallet 的現有程式，T8 要把它改走 WalletService
+3. `src/game/phaseRuntime.js` — `_waveClear` 流程（line 209）；注意 `world.stage` 在 `_waveClear` 內已 +1
+4. `src/main.js` — line 442：`updatePhase(world, dt, cfg)` 是 stageReward 的掛載位置（見下方說明）
+5. `.claude/instructions.md` 鐵則 9 — phaseRuntime.js 是純邏輯層，不得碰 localStorage IO
+
+---
+
+#### 新增檔案
+
+**`src/account/walletService.js`**（需新建 `src/account/` 目錄）
+
+所有貨幣讀寫的唯一入口。UI、商店、抽獎盤、技能、合成、關卡獎勵都不得直接讀寫 localStorage wallet。
+
+```
+import { ECONOMY } from '../../config/economyConfig.js';
+
+// 此 wallet 是刪檔封測用 local mock。
+// 正式後端 wallet 上線時，不會信任或遷移 localStorage 數值。
+// 正式補償會用固定 tester grant，不讀取玩家本機餘額。
+
+export const WalletService = {
+  getWallet(),
+  setWallet(wallet),
+  creditWallet({ source, reason, reward, idempotencyKey }),
+  spendWallet({ source, reason, cost, idempotencyKey }),
+  grantReward(reward, context),
+  canAfford(cost),
+  resetWallet(),
+  getTransactions(),
+};
+```
+
+- `walletStorageKey`、`walletDefault` 從 `ECONOMY.shop.*` 讀，不得硬編
+- `idempotencyKey` 重複時不重複入帳或扣款（log 裡已有同 key → 直接 return）
+- `reward` 支援 `{ silver, gold, ticket, equipment: { level } }`
+- `cost` 支援 `{ silver, gold, ticket }`
+- `equipment` reward：隨機 `EQUIPMENT_SLOTS` 類型，僅 `console.log + toast`（不寫存檔，同現行 shopPanel 行為）
+- `ticket` credit/spend：更新 wallet，不另外處理（票券系統後續接上）
+
+**本地交易 log**（debug 用，不作為可信資料）
+
+localStorage key：`yesmaster.wallet.transactions`
+
+每筆包含：`{ id, createdAt, source, reason, delta, balanceAfter, idempotencyKey }`
+
+---
+
+**`src/account/stageRewardService.js`**
+
+每通關一關的 MVP 收入：
+- `+ ECONOMY.session.ticketsPerStage`（tickets）
+- `+ ECONOMY.session.goldPerStage`（gold）
+
+```js
+export function claimStageReward(completedStage, world) {
+  // idempotencyKey: 'stage-reward:local:{completedStage}'
+  // TODO: 多人後端版需改為 `stage-reward:{roomId}:{userId}:{stage}`
+  walletService.creditWallet({ ... });
+}
+```
+
+入帳失敗不中斷遊戲流程，最多 `console.warn`。
+
+---
+
+#### 修改檔案
+
+**`src/ui/shopPanel.js`**
+
+- 移除所有直接 `localStorage.getItem/setItem` wallet 操作
+- 改用 `WalletService.getWallet()`、`WalletService.spendWallet()`、`WalletService.grantReward()`
+- 每日商店的 `slots/purchases/refreshCount` 仍可繼續直接存 localStorage（非 wallet 資料）
+
+**`src/main.js`**（最小改動）
+
+stageReward 掛載點在 `updatePhase` 呼叫前後，不要改動 phaseRuntime.js：
+
+```js
+// ⚠️ 鐵則9：phaseRuntime 是純邏輯，不得從內部呼叫 IO
+// stageReward 必須在 main.js 這層觸發
+const stageBefore = world.stage;
+updatePhase(world, dt, cfg);
+if (world.stage !== stageBefore && world.phase !== 'cardOffer') {
+  claimStageReward(stageBefore, world);   // stageBefore = 剛通過的那關
+}
+```
+
+---
+
+#### 不要做的事
+
+- 不新增 Supabase migration 或 Edge Function
+- 不修改 `config/economyConfig.js`
+- 不把 localStorage 數值遷移到 DB
+- 不做 server-authoritative gameplay
+- 不修改 `phaseRuntime.js` 的純邏輯（stageReward 掛在 main.js，不在 _waveClear 內）
+
+---
+
+#### 未來替換方向（TODO 標記，不要現在做）
+
+```
+WalletService.getWallet()     → GET /api/wallet
+WalletService.creditWallet()  → POST /api/wallet/credit  (by server after stage clear)
+WalletService.spendWallet()   → POST /api/wallet/debit   (atomic, balance check in DB)
+WalletService.grantReward()   → server-side decided reward, client only displays
+```
+
+---
+
+#### File Header（兩個新檔案都需要）
+
+```js
+/**
+ * @file        walletService.js
+ * @module      account
+ * @summary     貨幣讀寫唯一入口（封測 localStorage mock；後端化時只替換本檔底層）
+ * @exports     WalletService
+ * @depends     config/economyConfig.js
+ * @version     v0.0.20.0
+ */
+```
+
+```js
+/**
+ * @file        stageRewardService.js
+ * @module      account
+ * @summary     關卡通關入帳（MVP mock；idempotencyKey 防重複領取）
+ * @exports     claimStageReward
+ * @depends     src/account/walletService.js, config/economyConfig.js
+ * @version     v0.0.20.0
+ */
+```
+
+---
+
+#### 驗收項目
+
+1. `node --check src/account/walletService.js src/account/stageRewardService.js`：語法通過
+2. `shopPanel.js` 裡搜尋 `localStorage`：只剩 shop 狀態（slots/purchases/refreshCount），零筆 wallet 直存
+3. 打一關 → console 出現 stage reward creditWallet log
+4. 重複通關同一關（刷新）→ idempotencyKey 防止重複入帳
+5. `npm test`：全過
 
 ---
 

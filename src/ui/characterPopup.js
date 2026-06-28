@@ -4,7 +4,7 @@
  * @summary     角色面板 popup — 顯示等級、裝備、賽季稱號
  * @exports     showCharacterPopup
  * @depends     src/net/authManager.js, src/game/equipmentSystem.js, src/game/leaderboardSystem.js
- * @version     v0.0.19.0
+ * @version     v0.0.20.0
  */
 
 import { getProfile } from '../net/authManager.js';

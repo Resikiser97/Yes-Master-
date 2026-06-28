@@ -4,7 +4,7 @@
  * @summary     多人大廳：房間列表（公開/朋友/房間號碼 tab）+ 建房 popup + 每日商店入口
  * @exports     showLobby
  * @depends     src/net/roomManager.js, src/net/authManager.js, src/net/friendManager.js, src/ui/waitingRoom.js, src/ui/friendsPanel.js, src/ui/uiManager.js
- * @version     v0.0.19.0
+ * @version     v0.0.20.0
  */
 
 import { listRooms, createRoom, joinRoom } from '../net/roomManager.js';

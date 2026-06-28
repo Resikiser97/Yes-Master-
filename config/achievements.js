@@ -5,7 +5,7 @@
  * @exports     ACHIEVEMENTS, ACHIEVEMENT_BY_ID
  * @depends     （無）
  * @sourceOfTruth Docs/lobby-waitingroom-plan.md Phase E
- * @version     v0.0.19.0
+ * @version     v0.0.20.0
  */
 
 export const ACHIEVEMENTS = [

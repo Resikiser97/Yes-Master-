@@ -4,7 +4,7 @@
  * @summary     UI overlay 入口集中器；提供每日商店開啟方法
  * @exports     openShop
  * @depends     src/ui/shopPanel.js
- * @version     v0.0.19.0
+ * @version     v0.0.20.0
  */
 
 import { ShopPanel } from './shopPanel.js';

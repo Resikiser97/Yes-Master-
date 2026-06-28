@@ -3,12 +3,12 @@
  * @module      ui
  * @summary     每日商店 overlay：6 格加權隨機品項、金幣/銀幣購買、每日重置、刷新上限
  * @exports     ShopPanel
- * @depends     config/economyConfig.js, uiManager
- * @version     v0.0.19.0
+ * @depends     config/economyConfig.js, src/account/walletService.js, uiManager
+ * @version     v0.0.20.0
  */
 
 import { ECONOMY } from '../../config/economyConfig.js';
-import { EQUIPMENT_SLOTS } from '../../config/equipmentConfig.js';
+import { WalletService } from '../account/walletService.js';
 
 const OVERLAY_ID = 'shop-overlay';
 const SLOT_LIST_ID = 'shop-slots';
@@ -34,7 +34,7 @@ export class ShopPanel {
   show() {
     this.ensureOverlay();
     this.state = this.loadTodayState();
-    this.wallet = this.loadWallet();
+    this.wallet = WalletService.getWallet();
     this.render();
     this.overlay.style.display = 'flex';
     this.overlay.classList.remove(HIDDEN_CLASS);
@@ -113,20 +113,6 @@ export class ShopPanel {
     );
   }
 
-  loadWallet() {
-    const stored = readJson(ECONOMY.shop.walletStorageKey);
-    const wallet = {
-      silver: Number.isFinite(stored?.silver) ? stored.silver : ECONOMY.shop.walletDefault.silver,
-      gold: Number.isFinite(stored?.gold) ? stored.gold : ECONOMY.shop.walletDefault.gold,
-    };
-    this.saveWallet(wallet);
-    return wallet;
-  }
-
-  saveWallet(wallet = this.wallet) {
-    writeJson(ECONOMY.shop.walletStorageKey, wallet);
-  }
-
   saveTodayState() {
     writeJson(this.todayStorageKey(), this.state);
   }
@@ -159,6 +145,7 @@ export class ShopPanel {
   }
 
   render() {
+    this.wallet = WalletService.getWallet();
     const wallet = this.overlay.querySelector(`#${WALLET_ID}`);
     wallet.textContent = `銀幣: ${formatNumber(this.wallet.silver)} ｜ 金幣: ${formatNumber(this.wallet.gold)}`;
 
@@ -203,7 +190,7 @@ export class ShopPanel {
       badge.style.cssText = 'display:inline-block;padding:7px 10px;border:1px solid rgba(255,255,255,0.25);border-radius:4px;color:#ddd;text-align:center;font-size:12px;';
       slot.appendChild(badge);
     } else {
-      const canAfford = this.wallet[item.currency] >= item.price;
+      const canAfford = WalletService.canAfford({ [item.currency]: item.price }, this.wallet);
       const buy = el('button', { class: 'shop-buy-btn', textContent: '購買' });
       buy.style.cssText = buttonStyle();
       buy.disabled = !canAfford;
@@ -218,38 +205,36 @@ export class ShopPanel {
   purchase(index) {
     const item = this.itemMap.get(this.state.slots[index]);
     if (!item || this.state.purchases[index]) return;
-    if (this.wallet[item.currency] < item.price) {
+    const cost = { [item.currency]: item.price };
+    if (!WalletService.canAfford(cost, this.wallet)) {
       this.toast(`${currencyLabel(item.currency)}不足`);
       return;
     }
 
-    this.wallet[item.currency] -= item.price;
-    this.grantReward(item);
+    const purchaseKey = `shop:${this.todayKey()}:${index}:${item.id}`;
+    const spend = WalletService.spendWallet({
+      source: 'shop',
+      reason: `buy:${item.id}`,
+      cost,
+      idempotencyKey: `${purchaseKey}:spend`,
+    });
+    if (!spend.ok) {
+      this.wallet = spend.wallet ?? WalletService.getWallet();
+      this.toast(`${currencyLabel(item.currency)}不足`);
+      this.render();
+      return;
+    }
+
+    const reward = WalletService.grantReward(item.reward, {
+      source: 'shop',
+      reason: `buy:${item.id}`,
+      idempotencyKey: `${purchaseKey}:reward`,
+      toast: (message) => this.toast(message),
+    });
+    this.wallet = reward.wallet ?? spend.wallet ?? WalletService.getWallet();
     this.state.purchases[index] = true;
-    this.saveWallet();
     this.saveTodayState();
     this.render();
-  }
-
-  grantReward(item) {
-    const reward = item.reward ?? {};
-    if (reward.gold) {
-      this.wallet.gold += reward.gold;
-      this.toast(`獲得 ${formatNumber(reward.gold)} 金幣`);
-    }
-    if (reward.silver) {
-      this.wallet.silver += reward.silver;
-      this.toast(`獲得 ${formatNumber(reward.silver)} 銀幣`);
-    }
-    if (reward.ticket) {
-      console.log('SHOP_REWARD_TICKET', { itemId: item.id, amount: reward.ticket });
-      this.toast(`獲得 ${formatNumber(reward.ticket)} 張票券`);
-    }
-    if (reward.equipment) {
-      const type = randomEquipmentType();
-      console.log('SHOP_REWARD_EQUIPMENT', { itemId: item.id, type, level: reward.equipment.level });
-      this.toast(`獲得 ${equipmentLabel(type)} Lv${reward.equipment.level} 裝備`);
-    }
   }
 
   async refreshSlots() {
@@ -283,15 +268,6 @@ function currencyLabel(currency) {
 
 function formatNumber(value) {
   return Number(value).toLocaleString('en-US');
-}
-
-function randomEquipmentType() {
-  const index = Math.floor(Math.random() * EQUIPMENT_SLOTS.length);
-  return EQUIPMENT_SLOTS[index];
-}
-
-function equipmentLabel(type) {
-  return type;
 }
 
 function readJson(key) {

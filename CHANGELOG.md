@@ -1,10 +1,21 @@
 # CHANGELOG.md — 版本歷史
 
-> 版本：v0.0.19.0
+> 版本：v0.0.20.0
 > 類型：**只增不改**（歷史紀錄，永遠往上加，最新在最上方，不回頭改舊條目）。
 > 條目格式：`## vX.Y.Z.W - YYYY-MM-DD`，下分「新增 / 修復 / 調整」。
 
 ---
+
+## v0.0.20.0 - 2026-06-28
+
+### 新增
+- **`src/account/walletService.js`**：貨幣讀寫唯一入口（封測 localStorage mock）；`creditWallet`/`spendWallet`/`grantReward`/`canAfford`/`resetWallet`/`getTransactions`；idempotencyKey 防重複入帳/扣款；本地 transaction log（`yesmaster.wallet.transactions`，debug 用）。
+- **`src/account/stageRewardService.js`**：關卡通關後入帳 ticket+gold（`ECONOMY.session.*`）；idempotencyKey `stage-reward:local:{stage}`；失敗僅 `console.warn`，不中斷遊戲。
+- **`config/economyConfig.js`**：補回遺失內容（含新增 `walletTransactionsKey`）；Single Source of Truth 恢復正常。
+
+### 調整
+- **`src/ui/shopPanel.js`**：移除直接 localStorage wallet 操作，改走 `WalletService`（shop 狀態 slots/purchases/refreshCount 仍用 localStorage）。
+- **`src/main.js`**：在 `updatePhase()` 前後用 `stageBefore` 比較觸發 `claimStageReward()`（遵守鐵則 9，不進純邏輯層）。
 
 ## v0.0.19.0 - 2026-06-28
 

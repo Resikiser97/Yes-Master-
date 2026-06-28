@@ -5,7 +5,7 @@
  * @exports     weightedSample, createMine, digMineCell
  * @depends     config/mines.js
  * @sourceOfTruth Docs/game-design-plan.md「礦山系統」
- * @version     v0.0.19.0
+ * @version     v0.0.20.0
  *
  * columns[col] = [row0, row1, ...]（row0 = 最上層）。挖掉某格 → 上方往下掉、最上層補新塊。
  * 隨機一律注入 rng（rng.next() ∈ [0,1)），可重現、可單測。

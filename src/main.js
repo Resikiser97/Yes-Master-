@@ -11,9 +11,10 @@
  *              src/logic/playerMovement.js、
  *              src/storage/saveManager.js、src/storage/saveLocal.js、
  *              src/ui/splash.js、src/ui/mobileLayout.js、src/ui/uiState.js、
- *              src/net/netSession.js、src/net/inputBuffer.js、src/net/syncScheduler.js
+ *              src/net/netSession.js、src/net/inputBuffer.js、src/net/syncScheduler.js、
+ *              src/account/stageRewardService.js
  * @sourceOfTruth Docs/game-architecture-plan.md「MVP 開發範圍」
- * @version     v0.0.19.0
+ * @version     v0.0.20.0
  *
  * 手機模式：TouchControls + setupOrientationGuard + 動態 tilePx resize。
  * 電腦模式：Controls（鍵盤/滑鼠）+ resize 仍可動態縮放視窗。
@@ -42,6 +43,7 @@ import { SPRITE_SHEETS } from '../config/sprites.js';
 import { parseNetLaunch, createNetSession } from './net/netSession.js';
 import { createInputBuffer, serializeControls } from './net/inputBuffer.js';
 import { createHostSyncScheduler, createClientSyncApplier } from './net/syncScheduler.js';
+import { claimStageReward } from './account/stageRewardService.js';
 
 export function boot() {
   const versionEl = document.getElementById('version');
@@ -439,7 +441,12 @@ export function boot() {
         }
         // 同步輪盤狀態給 renderer
         world.intentWheel = controls.getIntentWheelState?.() ?? null;
+        // 鐵則9：phaseRuntime 是純邏輯，不得從內部呼叫 wallet/localStorage IO。
+        const stageBefore = world.stage;
         updatePhase(world, dt, cfg);
+        if (world.stage !== stageBefore && world.phase !== 'cardOffer') {
+          claimStageReward(stageBefore, world);
+        }
         updateEnemies(world, dt);
         updateCoreCombat(world, dt, cfg);
         tryDeposit(world);

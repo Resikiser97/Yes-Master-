@@ -5,7 +5,7 @@
  * @exports     countPlacedBlocks, computeCoreStats
  * @depends     config/gameConfig.js、config/blocks.js
  * @sourceOfTruth Docs/game-design-plan.md「核心攻擊與防禦機制」
- * @version     v0.0.19.0
+ * @version     v0.0.20.0
  *
  * 不寫死任何加成倍率：倍率全部來自 BLOCKS[block].bonus（Magic Number 禁令）。
  */
