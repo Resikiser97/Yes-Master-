@@ -3,13 +3,14 @@
  * @module      account
  * @summary     貨幣讀寫唯一入口（封測 localStorage mock；後端化時只替換本檔底層）
  * @exports     WalletService
- * @depends     config/economyConfig.js, config/equipmentConfig.js, src/account/equipmentService.js
- * @version     v0.0.22.0
+ * @depends     config/economyConfig.js, config/equipmentConfig.js, src/account/equipmentService.js, src/account/skillService.js
+ * @version     v0.0.23.0
  */
 
 import { ECONOMY } from '../../config/economyConfig.js';
 import { EQUIPMENT_SLOTS } from '../../config/equipmentConfig.js';
 import { equipmentService, deterministicEquipmentType } from './equipmentService.js';
+import { skillService } from './skillService.js';
 
 // 此 wallet 是刪檔封測用 local mock。
 // 正式後端 wallet 上線時，不會信任或遷移 localStorage 數值。
@@ -131,9 +132,10 @@ function resetWallet() {
   const wallet = normalizeWallet(ECONOMY.shop.walletDefault);
   writeJson(ECONOMY.shop.walletStorageKey, wallet);
   writeJson(TRANSACTION_STORAGE_KEY, []);
-  // MVP resetWallet = 重置整個 mock account economy（錢包＋裝備庫存）。
+  // MVP resetWallet = 重置整個 mock account economy（錢包＋裝備庫存＋技能）。
   // 正式後端上線後此函數不再使用。
   equipmentService.resetInventory();
+  skillService.resetSkills();
   return wallet;
 }
 

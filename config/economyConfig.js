@@ -7,7 +7,7 @@
  * @depends     （無）
  * @sourceOfTruth Docs/game-design-plan.md「每日商店系統」「抽獎系統」「貨幣基準轉化率」
  *               Docs/simulation/economy-sim-log.md（Monte Carlo 模擬定案）
- * @version     v0.0.22.0
+ * @version     v0.0.23.0
  */
 
 export const ECONOMY = {
@@ -51,6 +51,19 @@ export const ECONOMY = {
   // ─── 裝備庫存 ────────────────────────────────────────────────────────────────
   inventory: {
     storageKey: 'yesmaster.inventory',
+  },
+
+  // ─── 技能點 ──────────────────────────────────────────────────────────────────
+  skills: {
+    storageKey: 'yesmaster.skills',
+    attributes: [
+      { key: 'mining',    name: '挖掘' },
+      { key: 'fatigue',   name: '耐力' },
+      { key: 'spirit',    name: '靈動' },
+      { key: 'carry',     name: '背負' },
+      { key: 'repair',    name: '修復' },
+      { key: 'moveSpeed', name: '移動' },
+    ],
   },
 
   // ─── 裝備合成 ────────────────────────────────────────────────────────────────

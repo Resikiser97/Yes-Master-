@@ -420,10 +420,163 @@
 | T9：抽獎盤 UI（gachaPanel.js） | **Codex** | ✅ 已完成 |
 | T10：Email 登入（authScreen + authManager） | **Codex** | ❌ 放棄（Supabase free tier 3封/天上限，不適合測試） |
 | T11：裝備庫存（equipmentService + equipmentPanel） | **Codex** | ✅ 已完成 |
+| T12：技能點 UI（skillService + skillPanel） | **Codex** | ✅ 已完成 |
 
 > **B 系列手動項目**（開發者在 Supabase Dashboard 執行，不需 Codex）：
-> - B1：`friendships` migration — SQL 已在 `supabase/migrations/20260627_friendships.sql`，直接貼進 Dashboard SQL Editor 執行 ← **下一步手動執行**
+> - B1：`friendships` migration — SQL 已在 `supabase/migrations/20260627_friendships.sql`，直接貼進 Dashboard SQL Editor 執行
 > - B2：`player_equipment` / `player_achievements` / `leaderboard` migration — 視需求補
+
+---
+
+### T12. 技能點 UI（✅ 已完成 v0.0.23.0）
+
+**版本目標**：v0.0.23.0
+
+#### 問題
+
+`ECONOMY.skillGoldCost` 曲線已定案，`GAME_CONFIG.skill` 已存在，但沒有任何地方儲存玩家的技能等級，也沒有 UI 可以花金幣升技能。金幣目前只有商店一個消費出口，技能是第二條。
+
+#### 必讀檔案
+
+1. `config/economyConfig.js` — `ECONOMY.skillGoldCost`（10 級費用曲線）、`ECONOMY.skills`（storageKey + 六屬性定義，已加入）
+2. `config/gameConfig.js` — `GAME_CONFIG.skill`（`perLevelPct: 10, maxLevel: 10`）
+3. `src/account/walletService.js` — `WalletService.spendWallet()` / `canAfford()`
+4. `src/account/equipmentService.js` — 架構參考（localStorage service 模式）
+5. `src/ui/equipmentPanel.js` — overlay 風格參考（DOM builder、textContent 規則）
+6. `src/ui/uiManager.js` — 加入 `openSkills()` 入口
+
+#### 新增檔案：`src/account/skillService.js`
+
+File header（照抄）：
+```js
+/**
+ * @file        skillService.js
+ * @module      account
+ * @summary     技能等級唯一讀寫入口（localStorage mock；後端化時只替換本檔底層）
+ *              注意：本檔儲存「玩家投資的技能等級」，不負責套用屬性加成到 gameplay。
+ * @exports     skillService
+ * @depends     config/economyConfig.js, config/gameConfig.js
+ * @version     v0.0.23.0
+ */
+```
+
+資料格式（localStorage）：
+```js
+// key = ECONOMY.skills.storageKey
+{ mining: 0, fatigue: 0, spirit: 0, carry: 0, repair: 0, moveSpeed: 0 }
+```
+- 每個 key 對應 `ECONOMY.skills.attributes[i].key`
+- 值為 0（未投點）到 `GAME_CONFIG.skill.maxLevel`（10）的整數
+
+Export 的 `skillService` 物件：
+```js
+export const skillService = {
+  getLevels,      // () => Record<key, number> — 所有屬性當前等級
+  getLevel,       // (key: string) => number
+  setLevel,       // (key: string, level: number) => void — 內部用，不暴露給 UI
+  resetSkills,    // () => void — 清空（配合 resetWallet）
+  getUpgradeCost, // (key: string) => number | null — 升到下一級的金幣費用；已滿等回 null
+  canUpgrade,     // (key: string, wallet) => boolean
+};
+```
+
+`getLevels()` 從 localStorage 讀出後驗證：
+- 每個 key 必須存在且為 0~10 整數；壞資料補 0（不炸 UI）
+- 多餘 key 忽略；缺少 key 補 0
+
+`getUpgradeCost(key)`:
+- 當前 level = `getLevel(key)`
+- 若 level >= maxLevel → return null
+- 否則 return `ECONOMY.skillGoldCost[level]`（index = 當前等級，即升至 level+1 的費用）
+
+#### 新增檔案：`src/ui/skillPanel.js`
+
+File header（照抄）：
+```js
+/**
+ * @file        skillPanel.js
+ * @module      ui
+ * @summary     技能點升級 overlay：六屬性技能等級、金幣費用、一鍵升級
+ * @exports     SkillPanel
+ * @depends     config/economyConfig.js, config/gameConfig.js, src/account/walletService.js, src/account/skillService.js
+ * @version     v0.0.23.0
+ */
+```
+
+UI 規格：
+```
+overlay（position:fixed, inset:0, z-index:10003）
+  ├─ 標題「⚡ 技能點」（金色，Georgia serif）
+  ├─ 金幣餘額「💰 金幣：N」（每次 render 讀 WalletService.getWallet()）
+  ├─ 6 個屬性欄（依 ECONOMY.skills.attributes 順序）
+  │    每欄：屬性名稱 / Lv N / 10 / 進度條（N/10格）
+  │           升級費用（「升至 Lv{N+1}：{cost} 金幣」）或「已滿等」
+  │           「升級」按鈕
+  └─ 「關閉」按鈕
+```
+
+升級流程（每次點「升級」按鈕）：
+1. `skillService.canUpgrade(key, WalletService.getWallet())` → false → 按鈕 disabled（不 toast）
+2. `const cost = skillService.getUpgradeCost(key)`
+3. idempotencyKey = `skill-upgrade:local:{key}:lv{currentLevel+1}`
+4. `WalletService.spendWallet({ source:'skill', reason:'upgrade', cost:{ gold: cost }, idempotencyKey })`
+   - ok:false → showToast('金幣不足') → return
+   - duplicate:true → 視為已升級（繼續 setLevel）
+5. `skillService.setLevel(key, currentLevel + 1)`
+6. re-render
+
+**安全規則**：全程 DOM / `textContent`，不用 `innerHTML` 顯示任何 localStorage 資料。
+
+#### 修改：`src/account/walletService.js`
+
+在 `resetWallet()` 中，`equipmentService.resetInventory()` 後再加：
+```js
+skillService.resetSkills();
+```
+加 import：`import { skillService } from './skillService.js';`
+`@version` header → v0.0.23.0
+
+#### 修改：`src/ui/uiManager.js`
+
+```js
+import { SkillPanel } from './skillPanel.js';
+let skillPanel = null;
+export function openSkills() {
+  skillPanel ??= new SkillPanel(document.body);
+  skillPanel.show();
+  return skillPanel;
+}
+```
+`@version` → v0.0.23.0
+
+#### 修改：`src/ui/lobby.js`
+
+加 import `openSkills`，在「🎒 裝備」按鈕旁加「⚡ 技能」按鈕，呼叫 `openSkills()`。
+`@version` → v0.0.23.0
+
+#### 版本同步
+
+`config/gameConfig.js` → `v0.0.23.0`
+`config/economyConfig.js` → `@version v0.0.23.0`（header 只改版本）
+
+#### 不要做的事
+
+- 不讓技能等級影響 gameplay 屬性（那是之後與 game loop 整合的工作）
+- 不修改 `config/economyConfig.js` 的 skillGoldCost 數值
+- 不新增 Supabase table
+- 不修改 `src/game/equipmentSystem.js`
+
+#### 驗收
+
+1. `node --check src/account/skillService.js` 通過
+2. `node --check src/ui/skillPanel.js` 通過
+3. 金幣不足 → 升級按鈕 disabled 或 toast 顯示金幣不足
+4. 金幣足夠 → 點升級 → 金幣扣除、等級 +1、費用顯示更新
+5. 同一 idempotencyKey 重複 spendWallet → duplicate:true，金幣不重複扣
+6. Lv10 → 顯示「已滿等」，按鈕 disabled
+7. `WalletService.resetWallet()` → 技能全部歸 0
+8. 存檔竄改（level 設為 99）→ `getLevels()` 補回 0，UI 不爆炸
+9. `npm test` 全過
 
 ---
 

@@ -1,10 +1,10 @@
 /**
  * @file        lobby.js
  * @module      ui
- * @summary     多人大廳：房間列表（公開/朋友/房間號碼 tab）+ 建房 popup + 商店/抽獎/裝備入口
+ * @summary     多人大廳：房間列表（公開/朋友/房間號碼 tab）+ 建房 popup + 商店/抽獎/裝備/技能入口
  * @exports     showLobby
  * @depends     src/net/roomManager.js, src/net/authManager.js, src/net/friendManager.js, src/ui/waitingRoom.js, src/ui/friendsPanel.js, src/ui/uiManager.js
- * @version     v0.0.22.0
+ * @version     v0.0.23.0
  */
 
 import { listRooms, createRoom, joinRoom } from '../net/roomManager.js';
@@ -13,7 +13,7 @@ import { listFriends } from '../net/friendManager.js';
 import { showAuthScreen } from './authScreen.js';
 import { showWaitingRoom } from './waitingRoom.js';
 import { showFriendsPanel } from './friendsPanel.js';
-import { openEquipment, openGacha, openShop } from './uiManager.js';
+import { openEquipment, openGacha, openShop, openSkills } from './uiManager.js';
 
 const GOLD = '#D4A017';
 const GOLD_DIM = 'rgba(212,160,23,0.7)';
@@ -55,7 +55,9 @@ export async function showLobby(inputMode, onStart) {
   gachaBtn.addEventListener('click', openGacha);
   const equipmentBtn = _btn('🎒 裝備');
   equipmentBtn.addEventListener('click', openEquipment);
-  leftActions.append(shopBtn, gachaBtn, equipmentBtn);
+  const skillsBtn = _btn('⚡ 技能');
+  skillsBtn.addEventListener('click', openSkills);
+  leftActions.append(shopBtn, gachaBtn, equipmentBtn, skillsBtn);
   const friendsBtn = _btn('👥 好友');
   friendsBtn.style.position = 'absolute';
   friendsBtn.style.right = '0';
