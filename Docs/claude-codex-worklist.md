@@ -419,10 +419,152 @@
 | T8：貨幣過渡層（WalletService + StageRewardService） | **Codex** | ✅ 已完成 |
 | T9：抽獎盤 UI（gachaPanel.js） | **Codex** | ✅ 已完成 |
 | T10：Email 登入（authScreen + authManager） | **Codex** | ❌ 放棄（Supabase free tier 3封/天上限，不適合測試） |
+| T11：裝備庫存（equipmentService + equipmentPanel） | **Codex** | ✅ 已完成 |
 
 > **B 系列手動項目**（開發者在 Supabase Dashboard 執行，不需 Codex）：
-> - B1：`friendships` migration — SQL 已在 `supabase/migrations/20260627_friendships.sql`，直接貼進 Dashboard SQL Editor 執行
-> - B2：`player_equipment` / `player_achievements` / `leaderboard` migration — T10 後視需求補
+> - B1：`friendships` migration — SQL 已在 `supabase/migrations/20260627_friendships.sql`，直接貼進 Dashboard SQL Editor 執行 ← **下一步手動執行**
+> - B2：`player_equipment` / `player_achievements` / `leaderboard` migration — 視需求補
+
+---
+
+### T11. 裝備庫存（✅ 已完成 v0.0.22.0）
+
+**版本目標**：v0.0.22.0
+
+#### 問題
+
+`walletService.grantReward()` 目前會隨機生成裝備並 console.log，但回傳值被呼叫方丟棄，裝備從未寫入任何儲存。玩家抽到裝備 → toast 說恭喜 → 刷新頁面裝備不見。
+
+#### 必讀檔案
+
+1. `config/economyConfig.js` — `ECONOMY.inventory.storageKey`（新增）
+2. `src/account/walletService.js` — `grantReward()` 要改為呼叫 equipmentService
+3. `config/equipmentConfig.js` — `EQUIPMENT_SLOTS`、5 個裝備類型
+
+#### 新增檔案：`src/account/equipmentService.js`
+
+File header：
+```js
+/**
+ * @file        equipmentService.js
+ * @module      account
+ * @summary     裝備庫存唯一讀寫入口（localStorage mock；後端化時只替換本檔底層）
+ * @exports     equipmentService
+ * @depends     config/economyConfig.js
+ * @version     v0.0.22.0
+ */
+```
+
+資料格式（每件裝備）：
+```js
+{ id: string, type: string, level: number, acquiredAt: string, source: string }
+```
+- `id`：由 idempotencyKey 衍生（`idempotencyKey + ':equip'`）；若無 key 則 `crypto.randomUUID()` fallback
+- `type`：`'mining' | 'fatigue' | 'spirit' | 'carry' | 'repair'`（從 EQUIPMENT_SLOTS）
+- `level`：0~4（對應抽獎盤 equip0~equip4）
+- `source`：`'gacha' | 'reward' | ...`（context.source）
+
+Export 的 `equipmentService` 物件：
+```js
+export const equipmentService = {
+  getInventory,   // () => Item[]
+  appendItem,     // (item) => void — 若 id 已存在則靜默略過（idempotent）
+  resetInventory, // () => void — 清空（配合 WalletService.resetWallet）
+  countByType,    // () => Record<string, { total: number, maxLevel: number }>
+};
+```
+
+`appendItem` 必須先檢查陣列中是否已有相同 `id`（idempotency），有則 return（不重複寫入）。
+
+#### 修改：`src/account/walletService.js`
+
+1. 加 import：`import { equipmentService } from './equipmentService.js';`
+2. 修改 `grantReward()` 中裝備生成的區塊：
+   ```js
+   if (reward?.equipment) {
+     const equipId = idempotencyKey ? `${idempotencyKey}:equip` : createTransactionId();
+     equipment = {
+       id: equipId,
+       type: randomEquipmentType(),
+       level: reward.equipment.level,
+       acquiredAt: new Date().toISOString(),
+       source: source,
+     };
+     equipmentService.appendItem(equipment);  // ← 新增這行
+     console.log('WALLET_REWARD_EQUIPMENT', { source, reason, equipment });
+     notify(context, `獲得 ${equipmentLabel(equipment.type)} Lv${equipment.level} 裝備`);
+   }
+   ```
+3. 修改 `resetWallet()`：在原有邏輯後加 `equipmentService.resetInventory();`
+4. 在 `WalletService` export 物件加 `getInventory: equipmentService.getInventory`
+
+#### 新增檔案：`src/ui/equipmentPanel.js`
+
+File header：
+```js
+/**
+ * @file        equipmentPanel.js
+ * @module      ui
+ * @summary     裝備庫存 overlay：顯示持有裝備清單，按類型分組，顯示等級與件數
+ * @exports     EquipmentPanel
+ * @depends     config/economyConfig.js, config/equipmentConfig.js, src/account/walletService.js
+ * @version     v0.0.22.0
+ */
+```
+
+UI 規格：
+```
+overlay（position:fixed, inset:0, z-index:10003）
+  ├─ 標題「🎒 裝備庫存」（金色，Georgia serif）
+  ├─ 摘要「共 N 件」
+  ├─ 按類型分 5 組（mining/fatigue/spirit/carry/repair）
+  │    每組：EQUIPMENT_CONFIG.slots[type].name + 件數
+  │    每件：等級標籤（Lv0~Lv4），按等級由高到低排列
+  │    若該類型為 0 件：顯示「尚無裝備」（灰色）
+  └─ 「關閉」按鈕
+```
+- 不做任何操作（裝備/升級/合成 是之後的任務）
+- 不做分頁（MVP，直接全列）
+- 樣式參考 shopPanel.js / gachaPanel.js 金色主題
+
+#### 修改：`src/ui/uiManager.js`
+
+```js
+import { EquipmentPanel } from './equipmentPanel.js';
+let equipmentPanel = null;
+export function openEquipment() {
+  equipmentPanel ??= new EquipmentPanel(document.body);
+  equipmentPanel.show();
+  return equipmentPanel;
+}
+```
+
+#### 修改：`src/ui/lobby.js`
+
+加 import：`import { openEquipment, openGacha, openShop } from './uiManager.js';`
+在「🎲 抽獎盤」按鈕旁加「🎒 裝備」按鈕，呼叫 `openEquipment()`。
+
+#### 版本同步
+
+`config/gameConfig.js` version → `v0.0.22.0`
+`config/economyConfig.js` header @version → `v0.0.22.0`
+`src/account/walletService.js` header @version → `v0.0.22.0`
+
+#### 不要做的事
+
+- 不做裝備裝備/升級/合成（那是 T12/T13）
+- 不做裝備影響數值（那是之後實作）
+- 不新增 Supabase table（localStorage 就夠）
+- 不修改 gachaPanel.js（已正確呼叫 grantReward，只是 grantReward 沒存）
+
+#### 驗收
+
+1. `node --check src/account/equipmentService.js` 通過
+2. `node --check src/ui/equipmentPanel.js` 通過
+3. 抽獎得到裝備 → `localStorage.getItem('yesmaster.inventory')` 裡有該筆資料
+4. 同一 idempotencyKey 重複呼叫 `grantReward` → 庫存不重複寫入（`appendItem` idempotent）
+5. `WalletService.resetWallet()` → 庫存清空
+6. 打開「🎒 裝備」面板 → 顯示正確件數與等級，零件類型顯示「尚無裝備」
 
 ---
 

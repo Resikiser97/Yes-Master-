@@ -3,12 +3,13 @@
  * @module      account
  * @summary     貨幣讀寫唯一入口（封測 localStorage mock；後端化時只替換本檔底層）
  * @exports     WalletService
- * @depends     config/economyConfig.js, config/equipmentConfig.js
- * @version     v0.0.21.0
+ * @depends     config/economyConfig.js, config/equipmentConfig.js, src/account/equipmentService.js
+ * @version     v0.0.22.0
  */
 
 import { ECONOMY } from '../../config/economyConfig.js';
 import { EQUIPMENT_SLOTS } from '../../config/equipmentConfig.js';
+import { equipmentService, deterministicEquipmentType } from './equipmentService.js';
 
 // 此 wallet 是刪檔封測用 local mock。
 // 正式後端 wallet 上線時，不會信任或遷移 localStorage 數值。
@@ -27,6 +28,7 @@ export const WalletService = {
   grantReward,
   canAfford,
   resetWallet,
+  getInventory: () => equipmentService.getInventory(),
   getTransactions,
 };
 
@@ -73,7 +75,23 @@ function grantReward(reward = {}, context = {}) {
   const current = getWallet();
 
   if (idempotencyKey && hasTransaction(idempotencyKey)) {
-    return { ok: true, duplicate: true, wallet: current, equipment: null };
+    let equipment = null;
+    if (reward?.equipment) {
+      const equipId = `${idempotencyKey}:equip`;
+      equipment = equipmentService.findItemById(equipId);
+      if (!equipment) {
+        equipment = {
+          id: equipId,
+          type: deterministicEquipmentType(idempotencyKey),
+          level: reward.equipment.level,
+          acquiredAt: new Date().toISOString(),
+          source,
+        };
+        equipmentService.appendItem(equipment);
+        console.log('WALLET_EQUIP_RECOVERY', { idempotencyKey, equipment });
+      }
+    }
+    return { ok: true, duplicate: true, wallet: current, equipment };
   }
 
   const delta = rewardToDelta(reward);
@@ -84,10 +102,20 @@ function grantReward(reward = {}, context = {}) {
 
   let equipment = null;
   if (reward?.equipment) {
+    const equipId = idempotencyKey
+      ? `${idempotencyKey}:equip`
+      : createTransactionId();
+    const equipType = idempotencyKey
+      ? deterministicEquipmentType(idempotencyKey)
+      : randomEquipmentType();
     equipment = {
-      type: randomEquipmentType(),
+      id: equipId,
+      type: equipType,
       level: reward.equipment.level,
+      acquiredAt: new Date().toISOString(),
+      source,
     };
+    equipmentService.appendItem(equipment);
     console.log('WALLET_REWARD_EQUIPMENT', { source, reason, equipment });
     notify(context, `獲得 ${equipmentLabel(equipment.type)} Lv${equipment.level} 裝備`);
   }
@@ -103,6 +131,9 @@ function resetWallet() {
   const wallet = normalizeWallet(ECONOMY.shop.walletDefault);
   writeJson(ECONOMY.shop.walletStorageKey, wallet);
   writeJson(TRANSACTION_STORAGE_KEY, []);
+  // MVP resetWallet = 重置整個 mock account economy（錢包＋裝備庫存）。
+  // 正式後端上線後此函數不再使用。
+  equipmentService.resetInventory();
   return wallet;
 }
 
