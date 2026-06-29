@@ -1105,6 +1105,244 @@ API（全部在 `src/net/friendManager.js`，可直接呼叫）：
 
 ---
 
+### T13. 裝備合成 UI（⬜ 待實作 v0.0.26.0）
+
+**版本目標**：v0.0.26.0
+
+#### 問題
+
+裝備庫存（`equipmentService`）與費用曲線（`ECONOMY.synthesis.silverCostPerSynth`）都已定案，但玩家無法在 UI 操作合成。合成邏輯（`synthesizeItems`）也尚未實作。
+
+#### 必讀檔案
+
+1. `config/economyConfig.js` — `ECONOMY.synthesis.silverCostPerSynth`（10 級費用曲線）
+2. `config/equipmentConfig.js` — `EQUIPMENT_SLOTS`、`EQUIPMENT_STYLES`、`EQUIPMENT_CONFIG.maxLevel`（= 10）
+3. `src/account/equipmentService.js` — `countByType()`、`appendItem()`（架構參考；需新增 `removeItemById`、`synthesizeItems`）
+4. `src/account/walletService.js` — `spendWallet()`、`canAfford()`
+5. `src/ui/equipmentPanel.js` — overlay 樣式參考（`el()` 工具函式、textContent 規則）
+6. `src/ui/uiManager.js` — 加入 `openSynthesis()` 入口
+7. `src/ui/lobby.js` — 大廳 header 加入「⚗️ 合成」按鈕
+
+#### 重要風險（必須遵守）
+
+**風險 1：MAX_FRAGMENT_LEVEL 封頂問題**
+
+`equipmentService.js` 第 15 行：`const MAX_FRAGMENT_LEVEL = 4`
+
+`normalizeItem()` 目前用此值擋掉所有 Lv5~10，導致合成產物（Lv5~10）永遠無法存入庫存。
+
+修法：在 `normalizeItem()` 的等級驗證改為依 source 區分：
+
+```js
+import { EQUIPMENT_CONFIG } from '../../config/equipmentConfig.js';
+
+const maxAllowed = item.source === 'synthesis'
+  ? EQUIPMENT_CONFIG.maxLevel   // 10，合成產物可達
+  : MAX_FRAGMENT_LEVEL;         // 4，抽獎盤掉落上限
+if (level > maxAllowed) { ... reject ... }
+```
+
+**風險 2：費用必須從 config 讀取**
+
+合成費用 = `ECONOMY.synthesis.silverCostPerSynth[materialLevel]`
+
+- `materialLevel` = 投入材料的等級（0~9）；index 0 = Lv0→1 費用 3,760 銀
+- 嚴禁硬編任何數字
+
+**風險 3：synthesizeItems 必須是原子操作**
+
+順序：① 驗證 → ② 確認錢夠 → ③ 扣銀幣 → ④ 移除 2 件材料 → ⑤ 加入 1 件產物
+如果任何步驟失敗，必須不寫入（整體 abort），不能出現「扣了錢但材料未消耗」的狀態。
+
+**風險 4：合成條件必須三項同時成立**
+
+- 同 `type`（槽位）
+- 同 `style`（款式 A~J）
+- 同 `level`（等級）
+- `level < EQUIPMENT_CONFIG.maxLevel`（Lv10 不能再合成）
+
+**風險 5：synthesizeItems 的產物 id 格式**
+
+```js
+const resultId = `synth:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
+```
+
+產物 source 必須是 `'synthesis'`（這樣 normalizeItem 才允許 Lv5~10）。
+
+---
+
+#### 修改：`src/account/equipmentService.js`
+
+**新增 export：`removeItemById`、`synthesizeItems`**
+
+```js
+export const equipmentService = {
+  getInventory,
+  appendItem,
+  findItemById,
+  removeItemById,   // ← 新增
+  resetInventory,
+  countByType,
+  synthesizeItems,  // ← 新增
+};
+```
+
+**`removeItemById(id)`**
+
+```js
+function removeItemById(id) {
+  if (!isNonEmptyString(id)) return false;
+  const inventory = getInventory();
+  const next = inventory.filter((item) => item.id !== id);
+  if (next.length === inventory.length) return false;
+  writeJson(ECONOMY.inventory.storageKey, next);
+  return true;
+}
+```
+
+**`synthesizeItems({ materialIds, resultItem })`**
+
+```js
+/**
+ * @param {{ materialIds: [string, string], resultItem: object }} params
+ * @returns {{ ok: true, item: object } | { ok: false, reason: string }}
+ */
+function synthesizeItems({ materialIds, resultItem }) {
+  // 1. 找材料
+  const [a, b] = materialIds.map(findItemById);
+  if (!a || !b) return { ok: false, reason: 'material_not_found' };
+
+  // 2. 驗條件
+  if (a.type !== b.type || a.style !== b.style || a.level !== b.level) {
+    return { ok: false, reason: 'material_mismatch' };
+  }
+  if (a.level >= EQUIPMENT_CONFIG.maxLevel) {
+    return { ok: false, reason: 'already_max_level' };
+  }
+
+  // 3. 驗費用
+  const cost = ECONOMY.synthesis.silverCostPerSynth[a.level];
+  if (!walletService.canAfford({ silver: cost })) {
+    return { ok: false, reason: 'insufficient_silver' };
+  }
+
+  // 4. 原子執行
+  walletService.spendWallet({ silver: cost }, 'synthesis');
+  removeItemById(a.id);
+  removeItemById(b.id);
+  appendItem(resultItem);
+
+  return { ok: true, item: resultItem };
+}
+```
+
+---
+
+#### 新增檔案：`src/ui/synthesisPanel.js`
+
+File header：
+```js
+/**
+ * @file        synthesisPanel.js
+ * @module      ui
+ * @summary     裝備合成 overlay — 選槽位 + 款式，列出可合成組合，顯示費用與結果
+ * @exports     openSynthesisPanel, closeSynthesisPanel
+ * @depends     config/economyConfig.js, config/equipmentConfig.js,
+ *              src/account/equipmentService.js, src/account/walletService.js
+ * @version     v0.0.26.0
+ */
+```
+
+**UI 結構（純 DOM，禁止 innerHTML）**
+
+```
+[overlay 全螢幕遮罩]
+  └─ [panel 容器，金色主題，同 equipmentPanel 風格]
+       ├─ [標題列] ⚗️ 裝備合成  [✕ 關閉]
+       ├─ [槽位 Tab]  頭盔 | 上衣 | 下裝 | 手套 | 靴子  （5 個按鈕）
+       ├─ [款式篩選列] 款式 A | B | C ... J  （10 個按鈕，預設全選）
+       └─ [合成列表區]
+            對每個 type+style 組合，若有可合成選項：
+            顯示「[類型名稱-款式]  Lv N × 數量  →  Lv N+1  費用: X 銀幣  [合成]」
+            若該槽位 + 款式完全無材料 → 顯示「尚無可合成材料」
+```
+
+**合成列表邏輯**
+
+```js
+// 對每個 (type, style) 組合，找出所有等級中擁有 ≥ 2 件的
+function getSynthesisOptions(inventory) {
+  const options = [];
+  for (const type of EQUIPMENT_SLOTS) {
+    for (const style of EQUIPMENT_STYLES) {
+      const items = inventory.filter((i) => i.type === type && i.style === style);
+      // 按等級分組
+      const byLevel = {};
+      for (const item of items) {
+        byLevel[item.level] = byLevel[item.level] ?? [];
+        byLevel[item.level].push(item);
+      }
+      for (const [lvStr, group] of Object.entries(byLevel)) {
+        const lv = Number(lvStr);
+        if (group.length >= 2 && lv < EQUIPMENT_CONFIG.maxLevel) {
+          options.push({ type, style, level: lv, items: group });
+        }
+      }
+    }
+  }
+  return options;
+}
+```
+
+**合成按鈕 onClick**
+
+```js
+function onSynthesisClick({ type, style, level, items }) {
+  const [matA, matB] = items; // 取前 2 件
+  const resultId = `synth:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
+  const result = {
+    id: resultId,
+    type,
+    style,
+    level: level + 1,
+    acquiredAt: new Date().toISOString(),
+    source: 'synthesis',
+  };
+  const res = equipmentService.synthesizeItems({ materialIds: [matA.id, matB.id], resultItem: result });
+  if (res.ok) {
+    showToast(`合成成功：${typeName}-${style} Lv${level + 1}`);
+    refreshPanel(); // 重新渲染列表
+  } else {
+    showToast(`合成失敗：${res.reason}`);
+  }
+}
+```
+
+`showToast` 可 reuse `walletService` 或 `equipmentPanel` 現有的 toast 實作，不要新建。
+
+---
+
+#### 修改：`src/ui/uiManager.js`
+
+新增 `openSynthesis()`，參考 `openEquipment()` 的寫法。
+
+---
+
+#### 修改：`src/ui/lobby.js`
+
+在大廳 header 的裝備按鈕旁新增「⚗️ 合成」按鈕，點擊呼叫 `uiManager.openSynthesis()`。
+
+---
+
+#### 不要做的事
+
+- 不新增任何 Supabase table（localStorage 即可）
+- 不做合成動畫（MVP，toast 即可）
+- 不做材料「手動選擇」UI（自動取前 2 件同 level 同 type 同 style）
+- 不硬編任何銀幣數字，全部從 `ECONOMY.synthesis.silverCostPerSynth` 讀
+
+---
+
 ### T7. 商店 UI（✅ 已完成 v0.0.19.0）
 
 **新增檔案**：`src/ui/shopPanel.js`、`src/ui/uiManager.js`
