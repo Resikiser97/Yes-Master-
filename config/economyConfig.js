@@ -7,7 +7,9 @@
  * @depends     （無）
  * @sourceOfTruth Docs/game-design-plan.md「每日商店系統」「抽獎系統」「貨幣基準轉化率」
  *               Docs/simulation/economy-sim-log.md（Monte Carlo 模擬定案）
- * @version     v0.0.23.0
+ *               Docs/simulation/monster-drop-sim-log.md（怪物掉落定案：候選 C）
+ *               Docs/simulation/equipment-drop-sim-log.md（合成曲線定案：變體 D）
+ * @version     v0.0.25.0
  */
 
 export const ECONOMY = {
@@ -22,6 +24,16 @@ export const ECONOMY = {
   session: {
     goldPerStage: 5,
     ticketsPerStage: 1,
+    // 怪物擊殺掉落銀幣（每隻，多人模式怪物 ×N 掉落 ×N 再 ÷N = 與單人等值）
+    // 定案來源：Docs/simulation/monster-drop-sim-log.md 候選 C
+    monsterSilverDrop: {
+      平民: 4,
+      跑者: 6,
+      猛男: 10,
+      盾兵: 12,
+      工兵: 15,
+      Boss: 40,
+    },
   },
 
   // ─── 抽獎盤 ─────────────────────────────────────────────────────────────────
@@ -70,6 +82,9 @@ export const ECONOMY = {
   synthesis: {
     silverCostPerPiece: 188_000,
     totalPieces: 50,
+    // 逐級費用曲線（index 0 = Lv0→1，index 9 = Lv9→10），合計 = 188,000
+    // 定案來源：Docs/simulation/equipment-drop-sim-log.md 變體 D（仿技能曲線）
+    silverCostPerSynth: [3_760, 5_640, 9_400, 13_936, 16_444, 19_404, 22_897, 27_018, 31_881, 37_620],
   },
 
   // ─── 技能點金幣花費曲線（index 0 = Lv1）────────────────────────────────────
