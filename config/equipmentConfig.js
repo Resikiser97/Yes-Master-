@@ -5,7 +5,7 @@
  * @exports     EQUIPMENT_CONFIG, EQUIPMENT_SLOTS
  * @depends     （無）
  * @sourceOfTruth Docs/lobby-waitingroom-plan.md Phase D、config/gameConfig.js player 區塊
- * @version     v0.0.20.0
+ * @version     v0.0.24.0
  */
 
 export const EQUIPMENT_CONFIG = {
@@ -65,3 +65,5 @@ export const EQUIPMENT_CONFIG = {
 };
 
 export const EQUIPMENT_SLOTS = Object.keys(EQUIPMENT_CONFIG.slots);
+
+export const EQUIPMENT_STYLES = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];

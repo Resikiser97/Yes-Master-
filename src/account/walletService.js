@@ -4,12 +4,12 @@
  * @summary     貨幣讀寫唯一入口（封測 localStorage mock；後端化時只替換本檔底層）
  * @exports     WalletService
  * @depends     config/economyConfig.js, config/equipmentConfig.js, src/account/equipmentService.js, src/account/skillService.js
- * @version     v0.0.23.0
+ * @version     v0.0.24.0
  */
 
 import { ECONOMY } from '../../config/economyConfig.js';
-import { EQUIPMENT_SLOTS } from '../../config/equipmentConfig.js';
-import { equipmentService, deterministicEquipmentType } from './equipmentService.js';
+import { EQUIPMENT_CONFIG, EQUIPMENT_SLOTS, EQUIPMENT_STYLES } from '../../config/equipmentConfig.js';
+import { equipmentService, deterministicEquipment } from './equipmentService.js';
 import { skillService } from './skillService.js';
 
 // 此 wallet 是刪檔封測用 local mock。
@@ -81,9 +81,12 @@ function grantReward(reward = {}, context = {}) {
       const equipId = `${idempotencyKey}:equip`;
       equipment = equipmentService.findItemById(equipId);
       if (!equipment) {
+        // crash window recovery: deterministic seed 保證 type/style 可重建
+        const { type: rType, style: rStyle } = deterministicEquipment(idempotencyKey);
         equipment = {
           id: equipId,
-          type: deterministicEquipmentType(idempotencyKey),
+          type: rType,
+          style: rStyle,
           level: reward.equipment.level,
           acquiredAt: new Date().toISOString(),
           source,
@@ -106,19 +109,20 @@ function grantReward(reward = {}, context = {}) {
     const equipId = idempotencyKey
       ? `${idempotencyKey}:equip`
       : createTransactionId();
-    const equipType = idempotencyKey
-      ? deterministicEquipmentType(idempotencyKey)
-      : randomEquipmentType();
+    const { type: equipType, style: equipStyle } = idempotencyKey
+      ? deterministicEquipment(idempotencyKey)
+      : randomEquipment();
     equipment = {
       id: equipId,
       type: equipType,
+      style: equipStyle,
       level: reward.equipment.level,
       acquiredAt: new Date().toISOString(),
       source,
     };
     equipmentService.appendItem(equipment);
     console.log('WALLET_REWARD_EQUIPMENT', { source, reason, equipment });
-    notify(context, `獲得 ${equipmentLabel(equipment.type)} Lv${equipment.level} 裝備`);
+    notify(context, `獲得 ${equipmentLabel(equipType, equipStyle)} Lv${equipment.level} 裝備`);
   }
 
   return { ...result, equipment };
@@ -230,13 +234,16 @@ function notify(context, message) {
   if (typeof context.toast === 'function') context.toast(message);
 }
 
-function randomEquipmentType() {
-  const index = Math.floor(Math.random() * EQUIPMENT_SLOTS.length);
-  return EQUIPMENT_SLOTS[index];
+function randomEquipment() {
+  return {
+    type: EQUIPMENT_SLOTS[Math.floor(Math.random() * EQUIPMENT_SLOTS.length)],
+    style: EQUIPMENT_STYLES[Math.floor(Math.random() * EQUIPMENT_STYLES.length)],
+  };
 }
 
-function equipmentLabel(type) {
-  return type;
+function equipmentLabel(type, style) {
+  const name = EQUIPMENT_CONFIG.slots[type]?.name ?? type;
+  return style ? `${name}-${style}` : name;
 }
 
 function formatNumber(value) {

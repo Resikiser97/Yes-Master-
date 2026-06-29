@@ -4,10 +4,10 @@
  * @summary     裝備碎片庫存 overlay：持有裝備清單，按類型分組，顯示等級與件數
  * @exports     EquipmentPanel
  * @depends     config/economyConfig.js, config/equipmentConfig.js, src/account/walletService.js
- * @version     v0.0.22.0
+ * @version     v0.0.24.0
  */
 
-import { EQUIPMENT_CONFIG, EQUIPMENT_SLOTS } from '../../config/equipmentConfig.js';
+import { EQUIPMENT_CONFIG, EQUIPMENT_SLOTS, EQUIPMENT_STYLES } from '../../config/equipmentConfig.js';
 import { WalletService } from '../account/walletService.js';
 
 const OVERLAY_ID = 'equipment-overlay';
@@ -96,21 +96,35 @@ export class EquipmentPanel {
     title.style.cssText = 'font-size:15px;color:#fff;font-weight:bold;margin-bottom:8px;';
 
     const body = el('div');
-    body.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;align-items:center;min-height:34px;';
+    body.style.cssText = 'display:flex;flex-direction:column;gap:4px;min-height:34px;';
 
     if (items.length === 0) {
       const empty = el('span', { textContent: '尚無裝備' });
       empty.style.cssText = 'color:#888;font-size:12px;';
       body.appendChild(empty);
     } else {
-      for (const [level, count] of levelCounts(items)) {
-        body.appendChild(levelBadge(level, count));
+      for (const style of EQUIPMENT_STYLES) {
+        const styleItems = items.filter((item) => item.style === style);
+        if (styleItems.length === 0) continue;
+        body.appendChild(styleRow(style, styleItems));
       }
     }
 
     block.append(title, body);
     return block;
   }
+}
+
+function styleRow(style, items) {
+  const row = el('div');
+  row.style.cssText = 'display:flex;gap:5px;align-items:center;flex-wrap:wrap;';
+  const label = el('span', { textContent: `款式 ${style}` });
+  label.style.cssText = 'color:#aaa;font-size:12px;min-width:48px;flex-shrink:0;';
+  row.appendChild(label);
+  for (const [level, count] of levelCounts(items)) {
+    row.appendChild(levelBadge(level, count));
+  }
+  return row;
 }
 
 function levelCounts(items) {

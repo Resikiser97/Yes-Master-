@@ -4,13 +4,13 @@
  * @summary     裝備碎片庫存唯一讀寫入口（localStorage mock；後端化時只替換本檔底層）
  *              注意：此檔管理的是「抽到的裝備碎片」，
  *              和 src/game/equipmentSystem.js（Supabase 裝備等級/數值層）是不同職責。
- * @exports     equipmentService, deterministicEquipmentType
+ * @exports     equipmentService, deterministicEquipment
  * @depends     config/economyConfig.js, config/equipmentConfig.js
- * @version     v0.0.22.0
+ * @version     v0.0.24.0
  */
 
 import { ECONOMY } from '../../config/economyConfig.js';
-import { EQUIPMENT_SLOTS } from '../../config/equipmentConfig.js';
+import { EQUIPMENT_SLOTS, EQUIPMENT_STYLES } from '../../config/equipmentConfig.js';
 
 const MAX_FRAGMENT_LEVEL = 4;
 
@@ -22,13 +22,21 @@ export const equipmentService = {
   countByType,
 };
 
-export function deterministicEquipmentType(seed) {
-  const text = String(seed ?? '');
+// 同一 seed 加不同 salt，確保 type 與 style 的 hash 結果相互獨立
+function deterministicHash(seed, salt) {
+  const text = String(seed ?? '') + salt;
   let hash = 0;
-  for (let index = 0; index < text.length; index += 1) {
-    hash = (Math.imul(hash, 31) + text.charCodeAt(index)) >>> 0;
+  for (let i = 0; i < text.length; i += 1) {
+    hash = (Math.imul(hash, 31) + text.charCodeAt(i)) >>> 0;
   }
-  return EQUIPMENT_SLOTS[hash % EQUIPMENT_SLOTS.length];
+  return hash;
+}
+
+export function deterministicEquipment(seed) {
+  return {
+    type: EQUIPMENT_SLOTS[deterministicHash(seed, ':type') % EQUIPMENT_SLOTS.length],
+    style: EQUIPMENT_STYLES[deterministicHash(seed, ':style') % EQUIPMENT_STYLES.length],
+  };
 }
 
 function getInventory() {
@@ -62,15 +70,23 @@ function resetInventory() {
 }
 
 function countByType() {
-  const counts = EQUIPMENT_SLOTS.reduce((result, type) => {
-    result[type] = { total: 0, maxLevel: 0 };
-    return result;
+  const counts = EQUIPMENT_SLOTS.reduce((acc, type) => {
+    const byStyle = EQUIPMENT_STYLES.reduce((s, style) => {
+      s[style] = { total: 0, maxLevel: 0, items: [] };
+      return s;
+    }, {});
+    acc[type] = { total: 0, maxLevel: 0, byStyle };
+    return acc;
   }, {});
 
   for (const item of getInventory()) {
     const bucket = counts[item.type];
     bucket.total += 1;
     bucket.maxLevel = Math.max(bucket.maxLevel, item.level);
+    const styleBucket = bucket.byStyle[item.style];
+    styleBucket.total += 1;
+    styleBucket.maxLevel = Math.max(styleBucket.maxLevel, item.level);
+    styleBucket.items.push(item);
   }
 
   return counts;
@@ -89,6 +105,10 @@ function normalizeItem(item, { warn }) {
     warnInvalid(warn, 'invalid equipment type', item);
     return null;
   }
+  if (!EQUIPMENT_STYLES.includes(item.style)) {
+    warnInvalid(warn, 'invalid equipment style', item);
+    return null;
+  }
 
   const level = Number(item.level);
   if (!Number.isInteger(level) || level < 0 || level > MAX_FRAGMENT_LEVEL) {
@@ -99,6 +119,7 @@ function normalizeItem(item, { warn }) {
   return {
     id: item.id,
     type: item.type,
+    style: item.style,
     level,
     acquiredAt: isValidDateString(item.acquiredAt) ? item.acquiredAt : new Date().toISOString(),
     source: isNonEmptyString(item.source) ? item.source : 'unknown',

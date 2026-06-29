@@ -420,6 +420,7 @@
 | T9：抽獎盤 UI（gachaPanel.js） | **Codex** | ✅ 已完成 |
 | T10：Email 登入（authScreen + authManager） | **Codex** | ❌ 放棄（Supabase free tier 3封/天上限，不適合測試） |
 | T11：裝備庫存（equipmentService + equipmentPanel） | **Codex** | ✅ 已完成 |
+| T11b：裝備款式補丁（加入 style A~J 維度） | **Codex** | ✅ 已完成 |
 | T12：技能點 UI（skillService + skillPanel） | **Codex** | ✅ 已完成 |
 
 > **B 系列手動項目**（開發者在 Supabase Dashboard 執行，不需 Codex）：
