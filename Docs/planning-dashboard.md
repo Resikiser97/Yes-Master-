@@ -1,5 +1,5 @@
 # Planning 進度 Dashboard
-> 最後更新：2026-06-22（補第0關初始資源包、強制新手教學+5抽抽獎/裝備升級教學、自動Emoji；修正AI開場讀取流程納入 Docs/source-map.md）
+> 最後更新：2026-06-30（T13 合成 UI ✅ v0.0.26.0；合成費用曲線 ✅ 變體 D；怪物掉落 config ✅ 候選 C；MVP 引擎 checklist 建立；T14 monster drop prompt 就緒）
 > 用途：追蹤所有討論過的問題狀態，避免長對話導致脈絡遺失
 > 對應文件：`game-architecture-plan.md`（技術架構）、`game-design-plan.md`（玩法設計）
 
@@ -90,6 +90,9 @@
 | 操作輸入方式 | ✅ | WASD+滑鼠點擊/長按，手機搖桿+專屬挖礦鍵，挖掘能力只影響傷害量不影響次數上限 |
 | 玩家等級XP曲線 | ✅ | 錨點7天Lv20/30天Lv30/180天Lv60，兩段power law拼接 |
 | 銀幣技能點花費曲線 | 🟡 | Lv1~10曲線已定，尚未跟抽獎"少中多"銀幣收入對過 |
+| 裝備合成費用曲線（silverCostPerSynth） | ✅ | 變體 D（仿技能曲線）[3760…37620] 合計 188,000；定案 Docs/simulation/equipment-drop-sim-log.md；v0.0.25.0 |
+| 怪物擊殺掉落銀幣（per kill） | ✅ | config 定案候選 C v0.0.25.0；engine wiring v0.0.27.0；⚠️ idempotencyKey 跨局重複風險待 T15 加 sessionId |
+| 合成 UI（T13 SynthesisPanel） | ✅ | ⚗️ 合成按鈕、費用顯示、選槽位/款式、spendWallet idempotency；v0.0.26.0 |
 | 新手教學／Onboarding流程 | ✅ | 新玩家註冊後強制完成教學，未完成則下次重頭；教學第1關結束送5抽並強制抽獎/裝備升級教學；完成後解鎖單人/多人並出現通關第5關任務獎勵20抽 |
 
 ---
@@ -99,9 +102,11 @@
 ### 玩法數值／模擬（Codex 負責，見 mustsolve.md + simulation/）
 1. ✅ Must Solve 2：怪物職能與敵人設計（數值表已填、波次已實作上線；職能是否逼出不同建築留實玩驗證）
 2. ✅ Must Solve 3：建築策略與方塊取捨（連通性 BFS + 格子化 Hitbox 已上線；生存率差異留實玩驗證）
-3. 🔲 MVP 實作前整理：把 `Docs/source-map.md`、`Docs/waveplan.md`、`Docs/bosscard.md`、`Docs/mvp-validation.md` 轉成開工 checklist
-4. 🔲 每日商店規則細節（廣告刷新3次/6樣商品/銀幣金幣購買邏輯）— 已有初步描述，需要收尾
-5. 🔲 「少中多」實際數值 + 銀幣合成消耗數值 — 連帶要驗證銀幣技能點經濟夠不夠用
+3. 🟡 MVP 實作前整理：引擎狀態 + 開工 checklist 已建立 → `Docs/mvp-engine-checklist.md`；待完成：T14 怪物掉落 engine wiring + T15 關卡結算獎勵
+4. ✅ T14：怪物擊殺掉落銀幣 engine wiring（`combatRuntime.js` v0.0.27.0，`_awardKillSilver` 實裝）
+5. ✅ T15：關卡結算獎勵 + sessionId idempotency 修正（v0.0.28.0；Boss 關入帳 bug 修正）
+6. 🔲 每日商店規則細節（廣告刷新3次/6樣商品/銀幣金幣購買邏輯）— 已有初步描述，需要收尾
+7. 🟡 「少中多」銀幣收入 × 合成消耗交叉驗證 — 合成曲線 ✅ 變體 D 定案；怪物掉落 ✅ 候選 C 定案；銀幣技能點 × 收入交叉驗證仍 ⬜
 6. 🔲 商店 / 成就 / 好友系統 — 非核心玩法
 7. 🔲 新方塊種類擴充設計原則 — 暫不急
 8. 🔲 加時賽30秒結束後仍未清完怪的處理方式

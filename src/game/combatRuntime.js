@@ -3,13 +3,15 @@
  * @module      game（狀態/orchestration 層，非渲染）
  * @summary     敵人生成（debug）、追核心/攻核心、核心普攻/連鎖/站位加成執行，結果寫入 world
  * @exports     spawnDebugEnemies, updateEnemies, coreAttackAnchors, updateCoreCombat
- * @depends     config/enemies.js、config/gameConfig.js、src/logic/combat.js、src/logic/connectivity.js
+ * @depends     config/enemies.js、config/gameConfig.js、config/economyConfig.js、src/account/walletService.js、src/logic/combat.js、src/logic/connectivity.js
  * @sourceOfTruth Docs/game-design-plan.md「核心攻擊與防禦機制」
- * @version     v0.0.20.0
+ * @version     v0.0.28.0
  */
 
 import { ENEMIES } from '../../config/enemies.js';
+import { ECONOMY } from '../../config/economyConfig.js';
 import { GAME_CONFIG } from '../../config/gameConfig.js';
+import { WalletService } from '../account/walletService.js';
 import { computeHit, selectPrimaryTarget, chainHitCount, selectChainTargets, dist2 } from '../logic/combat.js';
 import { computeConnected, isOnFoundation } from '../logic/connectivity.js';
 import { damageCoreHp } from '../logic/coreHealth.js';
@@ -114,7 +116,24 @@ function inCoreRange(enemy, anchors, rangeTiles) {
 }
 
 function pruneDeadEnemies(world) {
+  const killed = world.enemies.filter((enemy) => enemy.hp <= 0);
   world.enemies = world.enemies.filter((enemy) => enemy.hp > 0);
+  return killed;
+}
+
+function _awardKillSilver(killed, sessionId) {
+  for (const enemy of killed) {
+    const isBoss = ENEMIES[enemy.key]?.isBoss;
+    const dropKey = isBoss ? 'Boss' : (ENEMIES[enemy.key]?.zh ?? null);
+    const silver = dropKey != null ? (ECONOMY.session.monsterSilverDrop[dropKey] ?? 0) : 0;
+    if (silver <= 0) continue;
+    WalletService.creditWallet({
+      source: 'combat',
+      reason: 'monster_kill',
+      reward: { silver },
+      idempotencyKey: `kill:${sessionId ?? ''}:${enemy.id}`,
+    });
+  }
 }
 
 function _anyPlayerOnFoundation(world) {
@@ -166,7 +185,8 @@ export function updateCoreCombat(world, dt, cfg = GAME_CONFIG) {
     world.vfx.timer = 0.45;
     world.vfx.bolts = buildAttackBolts(world, targets, world.combat.rng, cfg);
   }
-  pruneDeadEnemies(world);
+  const killed = pruneDeadEnemies(world);
+  _awardKillSilver(killed, world.sessionId);
   world.combat.attackCooldown = 1 / Math.max(0.001, stats.attackSpeed);
   return world.combat;
 }

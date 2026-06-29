@@ -2,10 +2,10 @@
  * @file        world.js
  * @module      game（狀態/orchestration 層，非純邏輯、非渲染）
  * @summary     建立並持有 MVP 世界狀態（地圖/核心/兩深度層/核心數值/鏡頭/玩家），供渲染層讀取
- * @exports     DEFAULT_PLAYER_ID, coreCells, coreCenterTile, createPlayerState, attachPlayerAlias, ensurePlayer, playerCount, createWorld, updateCameraFollow, focusCamera
+ * @exports     DEFAULT_PLAYER_ID, coreCells, coreCenterTile, createPlayerState, attachPlayerAlias, ensurePlayer, playerCount, createSessionId, createWorld, updateCameraFollow, focusCamera
  * @depends     config/gameConfig.js、config/mines.js、src/game/coreSnapshot.js、src/logic/connectivity.js、src/logic/rng.js、src/logic/mineGen.js
  * @sourceOfTruth Docs/game-architecture-plan.md「核心地基系統」、game-design-plan.md「建築維度」
- * @version     v0.0.20.0
+ * @version     v0.0.28.0
  *
  * 座標：tile (col x, row y)。x 0..widthTiles-1（左→右）；y 0..heightTiles-1（0=上、大=下）。
  * 兩深度層（Z）：dirt = 背景泥土地基（Set<"x,y">）；fore = 前景第二層方塊（Map<"x,y", blockKey>）。
@@ -19,6 +19,13 @@ import { createMine } from '../logic/mineGen.js';
 import { refreshCoreSnapshot } from './coreSnapshot.js';
 
 export const DEFAULT_PLAYER_ID = 'p1';
+
+export function createSessionId() {
+  if (typeof globalThis.crypto?.randomUUID === 'function') {
+    return globalThis.crypto.randomUUID();
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
 
 // 核心 2x2 佔的格：水平置中、底部貼地面（groundY 的上方兩列）
 export function coreCells(cfg = GAME_CONFIG) {
@@ -139,6 +146,7 @@ export function createWorld(cfg = GAME_CONFIG) {
     cardModifiers: [],       // 流派型修飾器列表 [{ stat, pct?, add? }]
     phase: 'prep', // prep | night | overtime | gameover | cardOffer
     stage: 0,
+    sessionId: createSessionId(),
     firstGame: false,  // 無存檔首次遊玩 → 顯示新手提示
     tutorialTimer: 0,  // 提示剩餘秒數（> 0 時顯示）
     drops: [],         // 掉落物列表 [{ blockKey, x, y, qty }]（背包滿時溢出，同格同物品合併 qty）

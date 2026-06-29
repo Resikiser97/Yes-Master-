@@ -4,7 +4,7 @@
  * @summary     關卡通關入帳（MVP mock；idempotencyKey 防重複領取）
  * @exports     claimStageReward
  * @depends     src/account/walletService.js, config/economyConfig.js
- * @version     v0.0.20.0
+ * @version     v0.0.28.0
  */
 
 import { ECONOMY } from '../../config/economyConfig.js';
@@ -12,11 +12,12 @@ import { WalletService } from './walletService.js';
 
 export function claimStageReward(completedStage, world) {
   try {
-    // TODO: 多人後端版需改為 `stage-reward:{roomId}:{userId}:{stage}`。
-    const idempotencyKey = `stage-reward:local:${completedStage}`;
+    // TODO: 多人後端版需改為 `stage_clear:{roomId}:{userId}:{stage}`。
+    const sessionId = world?.sessionId ?? '';
+    const idempotencyKey = `stage_clear:${sessionId}:${completedStage}`;
     const result = WalletService.creditWallet({
       source: 'stage',
-      reason: 'stage-clear',
+      reason: 'stage_clear',
       reward: {
         ticket: ECONOMY.session.ticketsPerStage,
         gold: ECONOMY.session.goldPerStage,

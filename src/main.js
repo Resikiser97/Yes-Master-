@@ -23,7 +23,7 @@
 import { GAME_CONFIG } from '../config/gameConfig.js';
 import { BLOCKS } from '../config/blocks.js';
 import { buildTestConfig } from '../config/testPreset.js';
-import { createWorld, ensurePlayer, updateCameraFollow } from './game/world.js';
+import { createWorld, createSessionId, ensurePlayer, updateCameraFollow } from './game/world.js';
 import { startGameLoop } from './game/gameLoop.js';
 import { Renderer } from './render/renderer.js';
 import { Controls } from './input/controls.js';
@@ -115,6 +115,7 @@ export function boot() {
     // 8. World
     const savedWorld = netRole === 'client' ? null : loadWorld(cfg);
     let world = savedWorld ?? createWorld(cfg);
+    world.sessionId ??= createSessionId();
     world.roomId = netRoomId ?? null;
     ensureUiState(world);
     world.uiHitRects ??= [];
@@ -444,7 +445,7 @@ export function boot() {
         // 鐵則9：phaseRuntime 是純邏輯，不得從內部呼叫 wallet/localStorage IO。
         const stageBefore = world.stage;
         updatePhase(world, dt, cfg);
-        if (world.stage !== stageBefore && world.phase !== 'cardOffer') {
+        if (world.stage !== stageBefore) {
           claimStageReward(stageBefore, world);
         }
         updateEnemies(world, dt);

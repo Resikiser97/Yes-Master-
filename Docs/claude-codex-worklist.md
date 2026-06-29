@@ -1105,7 +1105,7 @@ API（全部在 `src/net/friendManager.js`，可直接呼叫）：
 
 ---
 
-### T13. 裝備合成 UI（⬜ 待實作 v0.0.26.0）
+### T13. 裝備合成 UI（✅ 已完成 v0.0.26.0）
 
 **版本目標**：v0.0.26.0
 
@@ -1340,6 +1340,56 @@ function onSynthesisClick({ type, style, level, items }) {
 - 不做合成動畫（MVP，toast 即可）
 - 不做材料「手動選擇」UI（自動取前 2 件同 level 同 type 同 style）
 - 不硬編任何銀幣數字，全部從 `ECONOMY.synthesis.silverCostPerSynth` 讀
+
+---
+
+### T14. 怪物擊殺掉落銀幣 Engine Wiring（✅ 已完成 v0.0.27.0）
+
+**版本目標**：v0.0.27.0
+**Codex Prompt 完整版**：`Docs/codex-prompt-T14.md`（直接交給 Codex 執行）
+
+#### 問題
+
+`config/economyConfig.js` 的 `ECONOMY.session.monsterSilverDrop` 已定案（候選 C），但 `src/game/combatRuntime.js` 的 `pruneDeadEnemies` 只過濾死亡敵人、沒有任何 wallet 呼叫。殺怪不掉銀幣。
+
+#### 只改一個檔案
+
+`src/game/combatRuntime.js`
+
+#### 核心改動摘要
+
+1. 新增 imports：`ECONOMY`（economyConfig）、`WalletService`（walletService）
+2. `pruneDeadEnemies(world)` 改為回傳 `killed` 陣列
+3. 新增 `_awardKillSilver(killed)`：Boss → 'Boss' → 40 銀；普通怪 → ENEMIES[key].zh → monsterSilverDrop 查表
+4. `updateCoreCombat` 中 `pruneDeadEnemies(world)` → `const killed = pruneDeadEnemies(world); _awardKillSilver(killed);`
+5. 版本號 → v0.0.27.0
+
+#### 重要限制
+
+- `WalletService` 路徑：`'../account/walletService.js'`（src/game 層級）
+- idempotencyKey 格式：`kill:${enemy.id}`（enemy.id 每場遊戲唯一，格式 `1-civilian-0`）
+- 找不到 ENEMIES 定義 → `silver = 0`，不呼叫 wallet（不能 throw）
+- 多人廣播 kill drop **不在本任務範圍**
+
+---
+
+### T15. 關卡結算獎勵 + T14 idempotencyKey 修正（✅ 已完成 v0.0.28.0）
+
+**版本目標**：v0.0.28.0
+**Codex Prompt 完整版**：`Docs/codex-prompt-T15.md`（直接交給 Codex 執行）
+
+#### 問題
+
+1. `_waveClear` 過關後沒有呼叫 `creditWallet`，玩家拿不到金幣＋票券
+2. T14 的 `kill:${enemy.id}` 跨局 enemy.id 重複，新局同 id 怪不入帳
+
+#### 改三個檔案摘要
+
+| 檔案 | 改動 |
+|---|---|
+| `src/game/world.js` | `createWorld` 加 `sessionId`（uuid fallback）|
+| `src/game/phaseRuntime.js` | `_waveClear` 新增 `_awardStageClear`（creditWallet gold+ticket）|
+| `src/game/combatRuntime.js` | `_awardKillSilver(killed, sessionId)`，key 改為 `kill:${sessionId}:${enemy.id}` |
 
 ---
 
