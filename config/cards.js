@@ -5,7 +5,7 @@
  * @exports     CARDS, CARD_OFFER_RULES
  * @depends     （無）
  * @sourceOfTruth Docs/bosscard.md（唯一卡片主檔）
- * @version     v0.0.20.0
+ * @version     v0.0.30.0
  *
  * tier：'weak'（偏弱/功能）| 'standard'（標準）| 'strong'（偏強）
  * type：'resource' | 'ability' | 'core' | 'archetype'
@@ -38,7 +38,7 @@ export const CARDS = {
     effect: { kind: 'playerStat', stat: 'moveSpeed', add: 20 } },
   repairInstinct: { zh: '縫補本能', type: 'ability', tier: 'standard', value: 100, lane: '修復流',
     effect: { kind: 'playerStat', stat: 'repair', add: 25 } },
-  spiritBeat:     { zh: '靈動鼓點', type: 'ability', tier: 'strong', value: 100, lane: '核心輸出',
+  spiritBeat:     { zh: '魔法鼓點', type: 'ability', tier: 'strong', value: 100, lane: '核心輸出',
     effect: { kind: 'playerStat', stat: 'spirit', add: 20 } },
 
   // 核心型 ---------------------------------------------------------------
@@ -62,7 +62,7 @@ export const CARDS = {
     effect: { kind: 'modifier', mods: [{ stat: 'nightMiningPct', pct: 20 }, { stat: 'coreHpMax', pct: null, add: -10 }] } },
   towerCraft:     { zh: '高塔工法', type: 'archetype', tier: 'strong', value: 100, lane: '高塔/延伸流',
     risk: ['有代價'],
-    effect: { kind: 'modifier', mods: [{ stat: 'heightCostPct', pct: -10 }, { stat: 'repairPct', pct: -10 }] } },
+    effect: { kind: 'modifier', mods: [{ stat: 'heightBonusPct', pct: 10 }, { stat: 'repairPct', pct: -10 }] } },
 };
 
 // 出卡規則（MVP：固定 3 槽位 + 小隨機，見 bosscard.md「出卡規則」）

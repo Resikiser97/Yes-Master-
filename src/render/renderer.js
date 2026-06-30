@@ -3,14 +3,15 @@
  * @module      render（渲染層，非純邏輯）
  * @summary     將世界狀態畫到 canvas：鏡頭捲動 + 地圖/方塊/核心/玩家/敵人/VFX/HUD/收合面板
  * @exports     Renderer
- * @depends     config/gameConfig.js
+ * @depends     config/gameConfig.js, src/logic/coreStats.js
  * @sourceOfTruth Docs/game-design-plan.md「建築維度」「遊戲內 UI 設計」
- * @version     v0.0.20.0
+ * @version     v0.0.30.0
  *
  * 渲染層只「讀」world 狀態畫圖，不寫任何遊戲規則（鐵則 9）。
  */
 
 import { GAME_CONFIG } from '../../config/gameConfig.js';
+import { computeSpiritBonusPct } from '../logic/coreStats.js';
 import { BLOCKS } from '../../config/blocks.js';
 import { ENEMIES } from '../../config/enemies.js';
 import { WAVES } from '../../config/waves.js';
@@ -454,11 +455,13 @@ export class Renderer {
     ctx.fillText(expanded ? '▲ 點擊頭像收合' : '▼ 點擊頭像展開', x + w / 2, dividerY + 4);
 
     if (expanded) {
-      const spiritPct = ((this.cfg.player?.spirit ?? 0) / 100 * 10
-        + (this.cfg.mode === 'single' ? (this.cfg.player?.spiritSinglePlayerBonusPct ?? 0) : 0)).toFixed(0);
+      const players = world.players?.size
+        ? [...world.players.values()]
+        : world.player ? [world.player] : [];
+      const spiritPct = computeSpiritBonusPct(players, this.cfg).toFixed(0);
       const repairPerSec = Math.floor(((this.cfg.player?.repair ?? 0) / 60) * 100) / 100;
       const rows = [
-        ['靈動能力', `核心加成 ${spiritPct}%`, '#FFD700'],
+        ['魔法能力', `核心加成 ${spiritPct}%`, '#FFD700'],
         ['背負能力', String(this.cfg.player?.carry ?? world.player?.capacity ?? 0), '#FF9800'],
         ['修復能力', `${repairPerSec.toFixed(2)}/s`, '#E91E63'],
         ['移動速度', String(this.cfg.player?.moveSpeed ?? world.player?.moveSpeed ?? 0), '#F44336'],

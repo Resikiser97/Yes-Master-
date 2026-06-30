@@ -150,7 +150,6 @@ function testClientCanChooseCardsOnHost() {
   ensurePlayer(world, 'p2', cfg);
   world.phase = 'cardOffer';
   world.pendingCardOffer = [{ key: 'ironFangCore' }];
-  const attackBefore = world.coreStats.attack;
 
   applyInput(world, 'p2', {
     sequenceId: 4,
@@ -160,7 +159,8 @@ function testClientCanChooseCardsOnHost() {
 
   assert.equal(world.phase, 'prep');
   assert.equal(world.pendingCardOffer, null);
-  assert.equal(world.coreStats.attack, attackBefore + 2);
+  // ironFangCore 的 +2 存在 cardBonuses（規範來源），spirit 乘算後 coreStats 數值非整數故不用
+  assert.equal(world.cardBonuses?.attack, 2);
 }
 
 function testCardChoiceDoesNotSerializeBuildAction() {

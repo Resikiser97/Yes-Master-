@@ -17,6 +17,7 @@ import './uiState.test.js';
 import './multiplayerState.test.js';
 import './multiplayerInput.test.js';
 import './roomManager.test.js';
+import './coreSnapshot.test.js';
 
 function fakeRng(value = 0) {
   return { next: () => value };

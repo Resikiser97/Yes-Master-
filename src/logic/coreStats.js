@@ -2,10 +2,10 @@
  * @file        coreStats.js
  * @module      logic（pure）
  * @summary     由「已放置方塊計數」即時換算核心六大數值（純函式，config 驅動）
- * @exports     countPlacedBlocks, computeCoreStats
+ * @exports     countPlacedBlocks, computeCoreStats, computeSpiritBonusPct, computeHeightBonus
  * @depends     config/gameConfig.js、config/blocks.js
  * @sourceOfTruth Docs/game-design-plan.md「核心攻擊與防禦機制」
- * @version     v0.0.20.0
+ * @version     v0.0.30.0
  *
  * 不寫死任何加成倍率：倍率全部來自 BLOCKS[block].bonus（Magic Number 禁令）。
  */
@@ -73,3 +73,42 @@ export function computeCoreStats(blockCounts = {}, opts = {}) {
   return stats;
 }
 
+export function computeSpiritBonusPct(players = [], cfg = GAME_CONFIG) {
+  const gameCfg = cfg ?? GAME_CONFIG;
+  const list = [...(players ?? [])].filter(Boolean);
+  if (list.length === 0) return 0;
+  const totalSpirit = list.reduce((sum, player) => {
+    const spirit = Number(player?.spirit ?? gameCfg.player?.spirit ?? 0);
+    return Number.isFinite(spirit) ? sum + spirit : sum;
+  }, 0);
+  const singleBonus = gameCfg.mode === 'single'
+    ? Number(gameCfg.player?.spiritSinglePlayerBonusPct ?? 0)
+    : 0;
+  return totalSpirit / 100 * 10 + (Number.isFinite(singleBonus) ? singleBonus : 0);
+}
+
+/**
+ * 計算「高塔工法」加成：高於地面指定格數的前景方塊額外貢獻 bonusPct% 的數值。
+ * 回傳的物件格式與 computeCoreStats 的 stats 相同，直接加算至 coreStats 即可。
+ */
+export function computeHeightBonus(fore, groundY, bonusPct, blockDefs = BLOCKS, aboveGroundTiles = GAME_CONFIG.core.heightBonusAboveGroundTiles) {
+  const ground = Number(groundY ?? GAME_CONFIG.map.groundY);
+  const height = Number(aboveGroundTiles ?? GAME_CONFIG.core.heightBonusAboveGroundTiles);
+  const pct = Number(bonusPct ?? 0);
+  if (!Number.isFinite(ground) || !Number.isFinite(height) || !Number.isFinite(pct) || pct === 0) return {};
+  const threshold = ground - height;
+  const extra = {};
+  for (const [key, blockKey] of fore ?? new Map()) {
+    const y = Number(String(key).split(',')[1]);
+    if (!Number.isFinite(y)) continue;
+    if (y >= threshold) continue;
+    const def = blockDefs[blockKey];
+    if (!def?.bonus) continue;
+    for (const [bonusKey, perBlock] of Object.entries(def.bonus)) {
+      const statKey = BONUS_TO_STAT[bonusKey];
+      const value = Number(perBlock);
+      if (statKey && Number.isFinite(value)) extra[statKey] = (extra[statKey] ?? 0) + value * (pct / 100);
+    }
+  }
+  return extra;
+}

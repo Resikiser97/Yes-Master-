@@ -5,12 +5,12 @@
  * @exports     GAME_CONFIG
  * @depends     （無）
  * @sourceOfTruth Docs/game-design-plan.md、Docs/game-architecture-plan.md、Docs/waveplan.md
- * @version     v0.0.23.0
+ * @version     v0.0.30.0
  */
 
 export const GAME_CONFIG = {
   // 版本同步點之一（見 .claude/instructions.md 版本號同步鐵則）
-  version: 'v0.0.23.0',
+  version: 'v0.0.30.0',
 
   // MVP 模式角標（單人 / 多人），方便錄影分辨測試版本
   mode: 'single', // 'single' | 'multi'
@@ -85,6 +85,8 @@ export const GAME_CONFIG = {
     },
     // 防禦減傷公式係數：reduction = N / (defenseK + N)
     defenseK: 100,
+    // 高塔工法：高於地面此格數以上的前景方塊才吃高度加成
+    heightBonusAboveGroundTiles: 50,
   },
 
   // 玩家（哥布林）基礎六數值
