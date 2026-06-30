@@ -5,7 +5,7 @@
  * @exports     serializeSnapshot, serializeDelta, applySnapshot, applyDelta
  * @depends     game/world.js, game/coreSnapshot.js
  * @sourceOfTruth Docs/game-architecture-plan.md「Multiplayer 架構 → State Sync」
- * @version     v0.0.20.0
+ * @version     v0.0.29.0
  */
 import { GAME_CONFIG } from '../../config/gameConfig.js';
 import { createWorld, attachPlayerAlias, ensurePlayer, createPlayerState } from '../game/world.js';
@@ -65,6 +65,8 @@ export function serializeDelta(prevSnapshot, world) {
     schema: 1,
     syncTick: snapshot.syncTick,
     players: snapshot.players,
+    cardBonuses: snapshot.cardBonuses,
+    cardModifiers: snapshot.cardModifiers,
     enemies: snapshot.enemies,
     drops: snapshot.drops,
     storage: snapshot.storage,
@@ -159,6 +161,8 @@ function applyPartialState(world, state, cfg) {
       })),
     };
   }
+  if ('cardBonuses' in state) world.cardBonuses = { ...(state.cardBonuses ?? {}) };
+  if ('cardModifiers' in state) world.cardModifiers = (state.cardModifiers ?? []).map(m => ({ ...m }));
 }
 
 function serializePlayer(player) {
@@ -172,9 +176,13 @@ function serializePlayer(player) {
     renderY: player.renderY,
     moveSpeed: player.moveSpeed,
     inventory: { ...(player.inventory ?? {}) },
-    capacity: player.capacity,
+    capacity: player.capacity ?? GAME_CONFIG.player.carry,
+    carry: player.carry ?? player.capacity ?? GAME_CONFIG.player.carry,
     slots: player.slots,
     fatigue: player.fatigue,
+    mining: player.mining ?? GAME_CONFIG.player.mining,
+    repair: player.repair ?? GAME_CONFIG.player.repair,
+    spirit: player.spirit ?? GAME_CONFIG.player.spirit ?? 0,
     online: player.online !== false,
     intent: player.intent ?? null,
     intentAt: player.intentAt ?? 0,

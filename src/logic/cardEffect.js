@@ -5,7 +5,7 @@
  * @exports     applyCardEffect
  * @depends     config/cards.js
  * @sourceOfTruth Docs/bosscard.md「卡片效果」
- * @version     v0.0.20.0
+ * @version     v0.0.29.0
  *
  * 呼叫方須在此函式之後呼叫 refreshCoreSnapshot(world, { applyHpMaxDelta: true })
  * 以把 cardBonuses 合入核心數值快照，並正確夾取 coreHp。
@@ -48,7 +48,15 @@ function _applyCoreStat(world, effect) {
 function _applyPlayerStat(world, effect) {
   const players = world.players?.values?.() ?? [world.player];
   for (const player of players) {
-    player[effect.stat] = (player[effect.stat] ?? 0) + effect.add;
+    if (effect.stat === 'carry') {
+      const cfgBase = world.cfg?.player?.carry ?? 0;
+      const next = (player.capacity ?? player.carry ?? cfgBase) + effect.add;
+      player.capacity = next;
+      player.carry = next;
+      continue;
+    }
+    const cfgBase = world.cfg?.player?.[effect.stat] ?? 0;
+    player[effect.stat] = (player[effect.stat] ?? cfgBase) + effect.add;
   }
 }
 

@@ -17,11 +17,26 @@ function testCoreStatEffect() {
 
 function testPlayerStatEffect() {
   const world = createWorld(GAME_CONFIG);
+  const baseCap = world.player.capacity;
   applyCardEffect(world, 'carry', {
     carry: { effect: { kind: 'playerStat', stat: 'carry', add: 25 } },
   });
 
-  assert.equal(world.player.carry, 25);
+  assert.equal(world.player.capacity, baseCap + 25);
+  assert.equal(world.player.carry, baseCap + 25);
+}
+
+function testRepairMiningFallback() {
+  const world = createWorld(GAME_CONFIG);
+  const player = world.player;
+  delete player.repair;
+  delete player.mining;
+
+  applyCardEffect(world, 'repairInstinct');
+  applyCardEffect(world, 'miningPower');
+
+  assert.equal(player.repair, GAME_CONFIG.player.repair + 25);
+  assert.equal(player.mining, GAME_CONFIG.player.mining + 25);
 }
 
 function testResourceEffect() {
@@ -48,5 +63,6 @@ function testModifierEffect() {
 
 testCoreStatEffect();
 testPlayerStatEffect();
+testRepairMiningFallback();
 testResourceEffect();
 testModifierEffect();

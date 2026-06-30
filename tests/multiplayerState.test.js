@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 
 import { GAME_CONFIG } from '../config/gameConfig.js';
 import { createWorld, ensurePlayer } from '../src/game/world.js';
-import { serializeSnapshot, applySnapshot } from '../src/net/stateSync.js';
+import { refreshCoreSnapshot } from '../src/game/coreSnapshot.js';
+import { applyCardEffect } from '../src/logic/cardEffect.js';
+import { serializeSnapshot, serializeDelta, applySnapshot, applyDelta } from '../src/net/stateSync.js';
 
 function testPlayerAliasUpdatesLocalPlayer() {
   const world = createWorld(GAME_CONFIG);
@@ -44,7 +46,76 @@ function testSnapshotRoundTripKeepsPlayers() {
   assert.equal(target.buildDestroyMode, true);
 }
 
+function testSnapshotPlayerStats() {
+  const world = createWorld(GAME_CONFIG);
+  applyCardEffect(world, 'miningPower');
+  applyCardEffect(world, 'repairInstinct');
+  applyCardEffect(world, 'carryBoost');
+  applyCardEffect(world, 'spiritBeat');
+
+  const snap = serializeSnapshot(world);
+  const restored = applySnapshot(null, snap, GAME_CONFIG);
+  const p = restored.player;
+
+  assert.equal(p.mining, world.player.mining);
+  assert.equal(p.repair, world.player.repair);
+  assert.equal(p.carry, world.player.carry);
+  assert.equal(p.spirit, world.player.spirit);
+  assert.equal(p.spirit, GAME_CONFIG.player.spirit + 20);
+  assert.equal(p.capacity, world.player.capacity);
+}
+
+function testSnapshotCardState() {
+  const world = createWorld(GAME_CONFIG);
+  applyCardEffect(world, 'nightRepairShift');
+  world.cardBonuses.hpMax = 25;
+
+  const snap = serializeSnapshot(world);
+  const restored = applySnapshot(null, snap, GAME_CONFIG);
+
+  assert.deepEqual(restored.cardModifiers, world.cardModifiers);
+  assert.deepEqual(restored.cardBonuses, world.cardBonuses);
+}
+
+function testDeltaCardModifiers() {
+  {
+    const world = createWorld(GAME_CONFIG);
+    const prevSnap = serializeSnapshot(world);
+    applyCardEffect(world, 'nightRepairShift');
+    applyCardEffect(world, 'miningPower');
+    const delta = serializeDelta(prevSnap, world);
+
+    assert.ok('cardModifiers' in delta, 'delta missing cardModifiers');
+    assert.ok('cardBonuses' in delta, 'delta missing cardBonuses');
+
+    const client = createWorld(GAME_CONFIG);
+    applyDelta(client, delta, GAME_CONFIG);
+
+    assert.deepEqual(client.cardModifiers, world.cardModifiers);
+    assert.equal(client.player.mining, world.player.mining);
+  }
+
+  {
+    const world = createWorld(GAME_CONFIG);
+    const baseHpMax = world.coreStats.hpMax;
+    const prevSnap = serializeSnapshot(world);
+
+    applyCardEffect(world, 'greedyMinePact');
+    refreshCoreSnapshot(world, { applyHpMaxDelta: true });
+
+    const delta = serializeDelta(prevSnap, world);
+    const client = createWorld(GAME_CONFIG);
+    applyDelta(client, delta, GAME_CONFIG);
+
+    assert.deepEqual(client.cardModifiers, world.cardModifiers);
+    assert.equal(client.coreStats.hpMax, baseHpMax - 10);
+  }
+}
+
 testPlayerAliasUpdatesLocalPlayer();
 testSnapshotRoundTripKeepsPlayers();
+testSnapshotPlayerStats();
+testSnapshotCardState();
+testDeltaCardModifiers();
 
 console.log('multiplayer state tests passed');

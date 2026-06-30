@@ -5,7 +5,7 @@
  * @exports     updateMining, collectDrops, tryDeposit, tryPlace, tryRemove, computeBuildPreview, updateRepair, damageCore, healCore, applyDebugAction, tryPlaceRect, tryRemoveRect, toggleBuildPlanMode, previewPlaceRect
  * @depends     config/gameConfig.js、config/blocks.js、src/game/coreSnapshot.js、src/game/combatRuntime.js、src/logic/mining.js、src/logic/mineGen.js、src/logic/inventory.js、src/logic/connectivity.js、src/logic/building.js、src/logic/coreHealth.js、src/logic/drops.js
  * @sourceOfTruth Docs/game-design-plan.md「操作輸入方式」「方塊系統」「遊戲內 UI 設計」
- * @version     v0.0.20.0
+ * @version     v0.0.29.0
  */
 
 import { GAME_CONFIG } from '../../config/gameConfig.js';
@@ -24,6 +24,14 @@ import { createRng } from '../logic/rng.js';
 import { ensurePlayer } from './world.js';
 
 const DEBUG_CARD_OFFER_SEED = 20260624 + 8888;
+
+function _sumModifier(mods, stat) {
+  return (mods ?? []).reduce((sum, m) => {
+    if (m?.stat !== stat) return sum;
+    const pct = Number(m.pct ?? 0);
+    return Number.isFinite(pct) ? sum + pct : sum;
+  }, 0);
+}
 
 // 挖礦：長按時鎖定最近礦格，依「挖掘能力 × 每秒敲擊數 × dt」累積傷害，達耐久即出塊進背包
 // 進度持久化：停手或換格時把 m.damage 存入 world.mineProgress[tk]；
@@ -61,7 +69,11 @@ export function updateMining(world, isMining, dt, cfg = GAME_CONFIG, playerId = 
   const hits = Math.floor(m.hitTimer * hitsPerSec);
   if (hits > 0) {
     m.hitTimer -= hits / hitsPerSec;
-    m.damage += cfg.player.mining * hits;
+    const baseMining = player.mining ?? cfg.player.mining;
+    const isNight = world.phase === 'night' || world.phase === 'overtime';
+    const nightPct = isNight ? _sumModifier(world.cardModifiers, 'nightMiningPct') : 0;
+    const effectiveMining = Math.max(0, baseMining * (1 + nightPct / 100));
+    m.damage += effectiveMining * hits;
   }
 
   const need = durabilityToBreak(target.blockKey);
@@ -230,7 +242,12 @@ export function updateRepair(world, isRepairing, dt, cfg = GAME_CONFIG, playerId
     return repairState;
   }
 
-  const out = repairCoreHp(world.coreHp, world.coreStats.hpMax, player.fatigue, dt, cfg.player.repair);
+  const baseRepair = player.repair ?? cfg.player.repair;
+  const isNight = world.phase === 'night' || world.phase === 'overtime';
+  const repairPct = _sumModifier(world.cardModifiers, 'repairPct')
+    + (isNight ? _sumModifier(world.cardModifiers, 'nightRepairPct') : 0);
+  const effectiveRepair = Math.max(0, baseRepair * (1 + repairPct / 100));
+  const out = repairCoreHp(world.coreHp, world.coreStats.hpMax, player.fatigue, dt, effectiveRepair);
   world.coreHp = out.hp;
   player.fatigue = out.fatigue;
   Object.assign(repairState, { active: out.healed > 0, canRepair: true, reason: null, healed: out.healed });

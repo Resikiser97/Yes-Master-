@@ -77,7 +77,7 @@
 
 | 項目 | 說明 | 優先 |
 |---|---|---|
-| **cardModifiers 消費** | cards.js 有 modifier effect（nightRepairPct、nightMiningPct、heightCostPct 等），但 actions.js / phaseRuntime.js 沒有讀取並套用它們 | P1 |
+| ~~cardModifiers 消費~~ | ~~actions.js / phaseRuntime.js 沒有讀取並套用~~  | ✅ **T16 已完成 v0.0.29.0**；heightCostPct 延後 T17（無高度成本模型）；spiritBeat 消費 T17+ |
 | **Boss door attack** | enemies.js 有 `doorAttack: true`，但 combatRuntime.js 沒有判斷建築高度 ≥ 5 格後讓 Boss 從門口攻擊 | P1（模擬驗證前可暫不實作，純數值模擬不影響）|
 | **卡片顯示標籤** | bosscard.md 已定義類型標籤/流派標籤/風險標籤，UI 目前是否顯示？ | P1 |
 | **多人卡片投票 UI** | 多人房要讓所有玩家看到同一組卡、各自點選後多數決 | P1（P2P 架構已有，UI 需確認）|

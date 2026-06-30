@@ -1373,6 +1373,25 @@ function onSynthesisClick({ type, style, level, items }) {
 
 ---
 
+### T16. cardModifiers 消費 + playerStat 基準值修正（✅ 已完成 v0.0.29.0）
+
+**版本目標**：v0.0.29.0
+**Codex Prompt 完整版**：`Docs/codex-prompt-T16.md`
+
+#### 改動摘要（7 個檔案）
+
+| 檔案 | 改動 |
+|---|---|
+| `src/game/world.js` | `createPlayerState` 加 `carry/mining/repair/spirit` |
+| `src/logic/cardEffect.js` | `_applyPlayerStat` carry→capacity+carry 同步；fallback 改 cfg base |
+| `src/game/actions.js` | `_sumModifier`（isFinite 防污染）；`updateMining`/`updateRepair` 套 modifier + clamp |
+| `src/game/coreSnapshot.js` | `coreHpMax` modifier → `cardAdd.hpMax`；add 防污染 |
+| `src/net/stateSync.js` | `serializePlayer` 加 4 欄位；delta 補 `cardBonuses/cardModifiers`；`applyPartialState` 補套 |
+| `tests/cardEffect.test.js` | `testPlayerStatEffect` 驗 baseCap+25；補 `testRepairMiningFallback` |
+| `tests/multiplayerState.test.js` | 保留既有 2 個測試；追加 snapshot/delta roundtrip + greedyMinePact hpMax |
+
+---
+
 ### T15. 關卡結算獎勵 + T14 idempotencyKey 修正（✅ 已完成 v0.0.28.0）
 
 **版本目標**：v0.0.28.0

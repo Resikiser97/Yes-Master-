@@ -105,6 +105,7 @@
 3. 🟡 MVP 實作前整理：引擎狀態 + 開工 checklist 已建立 → `Docs/mvp-engine-checklist.md`；待完成：T14 怪物掉落 engine wiring + T15 關卡結算獎勵
 4. ✅ T14：怪物擊殺掉落銀幣 engine wiring（`combatRuntime.js` v0.0.27.0，`_awardKillSilver` 實裝）
 5. ✅ T15：關卡結算獎勵 + sessionId idempotency 修正（v0.0.28.0；Boss 關入帳 bug 修正）
+6. ✅ T16：cardModifiers 消費 + playerStat 基準值修正（v0.0.29.0；7 個檔案；delta sync 修正；npm test 全過）
 6. 🔲 每日商店規則細節（廣告刷新3次/6樣商品/銀幣金幣購買邏輯）— 已有初步描述，需要收尾
 7. 🟡 「少中多」銀幣收入 × 合成消耗交叉驗證 — 合成曲線 ✅ 變體 D 定案；怪物掉落 ✅ 候選 C 定案；銀幣技能點 × 收入交叉驗證仍 ⬜
 6. 🔲 商店 / 成就 / 好友系統 — 非核心玩法
