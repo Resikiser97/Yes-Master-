@@ -2,10 +2,10 @@
  * @file        phaseRuntime.js
  * @module      game（orchestration 層，非純邏輯）
  * @summary     晝夜階段狀態機：prep→night→overtime→gameover/waveClear；正式波次出怪與加時賽
- * @exports     initPhaseState, updatePhase
+ * @exports     initPhaseState, updatePhase, resolveCardOffer, submitCardVote, eligibleCardVotePlayerIds
  * @depends     config/gameConfig.js、config/waves.js、src/logic/waveGen.js、src/logic/spawnPosition.js、src/logic/rng.js
  * @sourceOfTruth Docs/waveplan.md「晝夜節奏」「怪物生成安全規則」「夜晚加時賽/狂暴模式」
- * @version     v0.0.20.0
+ * @version     v0.0.32.0
  *
  * phase 轉換：
  *   prep（30s）→ day（60s，可建造/挖礦，無敵人）→ night（60s，分批出怪）
@@ -29,6 +29,7 @@ import { playerCount } from './world.js';
 
 // 出怪隨機序列 seed（與礦山 RNG 獨立，固定可重現）
 const WAVE_RNG_SEED = 20260624;
+const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
 
 // 清完第幾關（stage 1-indexed）後進入卡片選擇（10/20/30）
 const BOSS_STAGES = new Set([10, 20, 30]);
@@ -227,6 +228,7 @@ function _enterCardOffer(world) {
   world.phase           = 'cardOffer';
   world.phaseTimer      = 0;
   world.pendingCardOffer = generateOffer(offerRng, world.stage);
+  world.cardVotes       = {};
 }
 
 /**
@@ -247,4 +249,43 @@ export function resolveCardOffer(world, chosenIndex, cfg = GAME_CONFIG) {
   world.pendingCardOffer = null;
   world.phase      = 'prep';
   world.phaseTimer = cfg.phases.prepSeconds;
+}
+
+export function eligibleCardVotePlayerIds(world) {
+  const entries = [...(world?.players ?? new Map()).entries()]
+    .filter(([, player]) => player?.online !== false);
+  if (entries.length) return entries.map(([id]) => id);
+  return [world?.localPlayerId ?? 'local'];
+}
+
+export function submitCardVote(world, playerId, index, cfg = GAME_CONFIG) {
+  if (world.phase !== 'cardOffer') return;
+  if (!world.pendingCardOffer) return;
+
+  const choice = Number(index);
+  if (!Number.isInteger(choice) || choice < 0 || choice >= world.pendingCardOffer.length) return;
+
+  const eligibleIds = eligibleCardVotePlayerIds(world);
+  if (!eligibleIds.includes(playerId)) return;
+
+  world.cardVotes = world.cardVotes ?? {};
+  world.cardVotes[playerId] = choice;
+
+  const allVoted = eligibleIds.every((id) => hasOwn(world.cardVotes, id));
+  if (!allVoted) return;
+
+  const counts = {};
+  for (const id of eligibleIds) {
+    const vote = world.cardVotes[id];
+    if (Number.isInteger(vote)) counts[vote] = (counts[vote] ?? 0) + 1;
+  }
+
+  const entries = Object.entries(counts);
+  if (!entries.length) return;
+  const winnerIndex = Number(
+    entries.sort((a, b) => b[1] - a[1] || Number(a[0]) - Number(b[0]))[0][0],
+  );
+
+  world.cardVotes = {};
+  resolveCardOffer(world, winnerIndex, cfg);
 }

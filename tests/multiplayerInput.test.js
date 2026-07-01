@@ -157,6 +157,16 @@ function testClientCanChooseCardsOnHost() {
     actions: [{ kind: 'cardChoice', index: 0 }],
   }, cfg.time.fixedStepSeconds, cfg);
 
+  assert.equal(world.phase, 'cardOffer');
+  assert.notEqual(world.pendingCardOffer, null);
+  assert.equal(world.cardVotes?.p2, 0);
+
+  applyInput(world, 'p1', {
+    sequenceId: 5,
+    move: { x: 0, y: 0 },
+    actions: [{ kind: 'cardChoice', index: 0 }],
+  }, cfg.time.fixedStepSeconds, cfg);
+
   assert.equal(world.phase, 'prep');
   assert.equal(world.pendingCardOffer, null);
   // ironFangCore 的 +2 存在 cardBonuses（規範來源），spirit 乘算後 coreStats 數值非整數故不用

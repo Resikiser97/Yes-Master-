@@ -5,7 +5,7 @@
  * @exports     createInputValidator
  * @depends     logic/building.js, logic/connectivity.js
  * @sourceOfTruth Docs/game-architecture-plan.md「反作弊／輸入驗證機制 → 各 Event 驗證規則」
- * @version     v0.0.20.0
+ * @version     v0.0.32.0
  */
 import { validatePlacement, validateRemoval } from '../logic/building.js';
 import { key } from '../logic/connectivity.js';
@@ -82,7 +82,15 @@ function validateAction(action, { world, playerId, cfg }) {
       reach: cfg.buildLimits.buildReachTiles ?? cfg.buildLimits.placeReachTiles,
     }, action.x, action.y);
   }
-  if (['buildPlanToggle', 'destroyToggle', 'placeRect', 'removeRect', 'cardChoice'].includes(action.kind)) {
+  if (action.kind === 'cardChoice') {
+    if (world.phase !== 'cardOffer') return reject('not_card_offer');
+    const idx = Number(action.index);
+    if (!Number.isInteger(idx)) return reject('bad_card_index');
+    const offerLen = world.pendingCardOffer?.length ?? 0;
+    if (idx < 0 || idx >= offerLen) return reject('bad_card_index');
+    return { ok: true };
+  }
+  if (['buildPlanToggle', 'destroyToggle', 'placeRect', 'removeRect'].includes(action.kind)) {
     return { ok: true };
   }
   if (action.kind === 'deposit') {

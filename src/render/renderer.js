@@ -3,9 +3,9 @@
  * @module      render（渲染層，非純邏輯）
  * @summary     將世界狀態畫到 canvas：鏡頭捲動 + 地圖/方塊/核心/玩家/敵人/VFX/HUD/收合面板
  * @exports     Renderer
- * @depends     config/gameConfig.js, src/logic/coreStats.js
+ * @depends     config/gameConfig.js, src/logic/coreStats.js, src/game/phaseRuntime.js
  * @sourceOfTruth Docs/game-design-plan.md「建築維度」「遊戲內 UI 設計」
- * @version     v0.0.31.0
+ * @version     v0.0.32.0
  *
  * 渲染層只「讀」world 狀態畫圖，不寫任何遊戲規則（鐵則 9）。
  */
@@ -17,6 +17,7 @@ import { ENEMIES } from '../../config/enemies.js';
 import { WAVES } from '../../config/waves.js';
 import { SPRITE_SHEETS, getFrameRect } from '../../config/sprites.js';
 import { coreAttackAnchors } from '../game/combatRuntime.js';
+import { eligibleCardVotePlayerIds } from '../game/phaseRuntime.js';
 import { inventoryWeight } from '../logic/inventory.js';
 import { durabilityToBreak } from '../logic/mining.js';
 
@@ -1300,7 +1301,7 @@ export class Renderer {
       return `第 ${waveNum} 關　加時 ${fmt1(elapsed)} s　攻擊 x${fmt1(world.combat?.overtimeMultiplier ?? 1)} 倍　敵人剩 ${world.enemies?.length ?? 0} 隻`;
     }
     if (world.phase === 'gameover') {
-      return `GAME OVER　第 ${waveNum} 關　按 Q 重試`;
+      return `GAME OVER　第 ${waveNum} 關　按 Q 重試　Esc 返回`;
     }
     if (world.phase === 'cardOffer') {
       return `第 ${waveNum} 關清關！　選擇一張卡片繼續`;
@@ -1419,15 +1420,42 @@ export class Renderer {
     const ctx = this.ctx;
     const { width: vw, height: vh } = this.viewport;
     ctx.save();
-    ctx.fillStyle = 'rgba(0,0,0,0.72)';
+
+    ctx.fillStyle = 'rgba(0,0,0,0.78)';
     ctx.fillRect(0, 0, vw, vh);
+
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#f2f2f2';
+    const cx = vw / 2;
+    const cy = vh / 2;
+
+    ctx.fillStyle = '#f87171';
     ctx.font = 'bold 48px sans-serif';
-    ctx.fillText('GAME OVER', vw / 2, vh / 2 - 18);
+    ctx.fillText('GAME OVER', cx, cy - 80);
+
+    ctx.fillStyle = '#e2e8f0';
     ctx.font = '18px sans-serif';
-    ctx.fillText(`第 ${(world.stage ?? 0) + 1} 關　按 Q 重試`, vw / 2, vh / 2 + 28);
+    ctx.fillText(`第 ${(world.stage ?? 0) + 1} 關`, cx, cy - 36);
+
+    const sr = world.sessionRewards ?? {};
+    const hasRewards = (sr.silver ?? 0) > 0 || (sr.gold ?? 0) > 0 || (sr.ticket ?? 0) > 0;
+    if (hasRewards) {
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '13px sans-serif';
+      ctx.fillText('本機已入帳', cx, cy + 4);
+
+      const parts = [];
+      if ((sr.gold ?? 0) > 0) parts.push(`金幣 +${sr.gold}`);
+      if ((sr.silver ?? 0) > 0) parts.push(`銀幣 +${sr.silver}`);
+      if ((sr.ticket ?? 0) > 0) parts.push(`票券 +${sr.ticket}`);
+      ctx.fillStyle = '#fbbf24';
+      ctx.font = 'bold 15px sans-serif';
+      ctx.fillText(parts.join('　'), cx, cy + 26);
+    }
+
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '14px sans-serif';
+    ctx.fillText('按 Q 重試　／　按 Esc 返回', cx, cy + (hasRewards ? 62 : 28));
     ctx.restore();
   }
 
@@ -1461,7 +1489,28 @@ export class Renderer {
     ctx.fillText('（點擊卡片繼續）', vw / 2, vh / 2 - 100);
 
     for (let i = 0; i < cards.length; i++) {
-      this._drawCardPanel(cards[i], world.cardOfferRects[i], i === world.cardHoverIndex);
+      const rect = world.cardOfferRects[i];
+      this._drawCardPanel(cards[i], rect, i === world.cardHoverIndex);
+      if (world.cardVotes?.[world.localPlayerId] === i) {
+        ctx.save();
+        ctx.strokeStyle = '#4ade80';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
+        ctx.restore();
+      }
+    }
+
+    const eligibleIds = eligibleCardVotePlayerIds(world);
+    if (eligibleIds.length > 1) {
+      const votes = world.cardVotes ?? {};
+      const voteCount = eligibleIds.filter((id) => Number.isInteger(votes[id])).length;
+      ctx.save();
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '13px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`${voteCount} / ${eligibleIds.length} 玩家已投票`, vw / 2, y - 22);
+      ctx.restore();
     }
     ctx.restore();
   }

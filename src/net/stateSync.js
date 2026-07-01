@@ -5,7 +5,7 @@
  * @exports     serializeSnapshot, serializeDelta, applySnapshot, applyDelta
  * @depends     game/world.js, game/coreSnapshot.js
  * @sourceOfTruth Docs/game-architecture-plan.md「Multiplayer 架構 → State Sync」
- * @version     v0.0.29.0
+ * @version     v0.0.32.0
  */
 import { GAME_CONFIG } from '../../config/gameConfig.js';
 import { createWorld, attachPlayerAlias, ensurePlayer, createPlayerState } from '../game/world.js';
@@ -47,6 +47,7 @@ export function serializeSnapshot(world) {
     cardBonuses: { ...(world.cardBonuses ?? {}) },
     cardModifiers: (world.cardModifiers ?? []).map(m => ({ ...m })),
     pendingCardOffer: world.pendingCardOffer ? world.pendingCardOffer.map(c => ({ ...c, effect: { ...(c.effect ?? {}) } })) : null,
+    cardVotes: { ...(world.cardVotes ?? {}) },
     mineProgress: { ...(world.mineProgress ?? {}) },
     clock: { ...(world.clock ?? {}) },
     vfx: {
@@ -81,6 +82,7 @@ export function serializeDelta(prevSnapshot, world) {
     coreStats: snapshot.coreStats,
     combat: snapshot.combat,
     pendingCardOffer: snapshot.pendingCardOffer,
+    cardVotes: snapshot.cardVotes,
     clock: snapshot.clock,
     vfx: snapshot.vfx,
   };
@@ -151,6 +153,7 @@ function applyPartialState(world, state, cfg) {
   if ('pendingCardOffer' in state) {
     world.pendingCardOffer = state.pendingCardOffer ? state.pendingCardOffer.map(c => ({ ...c })) : null;
   }
+  if ('cardVotes' in state) world.cardVotes = { ...(state.cardVotes ?? {}) };
   if (state.clock) world.clock = { ...world.clock, ...state.clock };
   if (state.vfx) {
     world.vfx = {

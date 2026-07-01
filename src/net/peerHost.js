@@ -5,7 +5,7 @@
  * @exports     startPeerHost
  * @depends     net/protocol.js, net/peerRuntime.js, net/roomManager.js, net/strikeTracker.js, game/world.js
  * @sourceOfTruth Docs/game-architecture-plan.md「P2P 安全限制 → Handshake 流程」
- * @version     v0.0.20.0
+ * @version     v0.0.32.0
  */
 import { GAME_CONFIG } from '../../config/gameConfig.js';
 import { ensurePlayer } from '../game/world.js';
@@ -109,6 +109,7 @@ export async function startPeerHost({ roomId, cfg = GAME_CONFIG, world = null, o
     const now = Date.now();
     for (const [peerKey, session] of peers) {
       if (now - session.lastPongAt > 3000) {
+        if (world?.players?.has(session.slotId)) world.players.get(session.slotId).online = false;
         session.conn.close?.();
         peers.delete(peerKey);
       } else {

@@ -16,6 +16,7 @@ import './saveManager.test.js';
 import './uiState.test.js';
 import './multiplayerState.test.js';
 import './multiplayerInput.test.js';
+import './cardVote.test.js';
 import './roomManager.test.js';
 import './coreSnapshot.test.js';
 
@@ -205,4 +206,4 @@ testRestartStageClearsCombatPhase();
 testDebugTogglePause();
 testCoreCombatCreatesFixedVfxBolts();
 
-console.log('All tests passed (v0.0.16.0)');
+console.log(`All tests passed (${GAME_CONFIG.version})`);

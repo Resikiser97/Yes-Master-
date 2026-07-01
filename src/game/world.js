@@ -5,7 +5,7 @@
  * @exports     DEFAULT_PLAYER_ID, coreCells, coreCenterTile, createPlayerState, attachPlayerAlias, ensurePlayer, playerCount, createSessionId, createWorld, updateCameraFollow, focusCamera
  * @depends     config/gameConfig.js、config/mines.js、src/game/coreSnapshot.js、src/logic/connectivity.js、src/logic/rng.js、src/logic/mineGen.js
  * @sourceOfTruth Docs/game-architecture-plan.md「核心地基系統」、game-design-plan.md「建築維度」
- * @version     v0.0.29.0
+ * @version     v0.0.32.0
  *
  * 座標：tile (col x, row y)。x 0..widthTiles-1（左→右）；y 0..heightTiles-1（0=上、大=下）。
  * 兩深度層（Z）：dirt = 背景泥土地基（Set<"x,y">）；fore = 前景第二層方塊（Map<"x,y", blockKey>）。
@@ -146,6 +146,7 @@ export function createWorld(cfg = GAME_CONFIG) {
     clock: { elapsedSeconds: 0, fixedStepSeconds: cfg.time.fixedStepSeconds, updateTick: 0 },
     syncTick: 0,
     pendingCardOffer: null,  // generateOffer() 結果（phase='cardOffer' 時非 null）
+    cardVotes: {},           // 多人投票暫存：{ [playerId]: cardIndex }；phase='cardOffer' 有效
     cardBonuses: {},         // 累積卡片 coreStat 加值 → computeCoreStats opts.cardAdd
     cardModifiers: [],       // 流派型修飾器列表 [{ stat, pct?, add? }]
     phase: 'prep', // prep | night | overtime | gameover | cardOffer
@@ -168,6 +169,7 @@ export function createWorld(cfg = GAME_CONFIG) {
       backpackExpanded: true,
       coreExpanded: false,
     },
+    sessionRewards: { silver: 0, gold: 0, ticket: 0 }, // 本機已入帳摘要（顯示用，不寫存檔）
     uiHitRects: [],
   };
   attachPlayerAlias(world);

@@ -5,7 +5,7 @@
  * @exports     spawnDebugEnemies, updateEnemies, coreAttackAnchors, updateCoreCombat
  * @depends     config/enemies.js、config/gameConfig.js、config/economyConfig.js、src/account/walletService.js、src/logic/combat.js、src/logic/connectivity.js
  * @sourceOfTruth Docs/game-design-plan.md「核心攻擊與防禦機制」
- * @version     v0.0.28.0
+ * @version     v0.0.32.0
  */
 
 import { ENEMIES } from '../../config/enemies.js';
@@ -121,18 +121,21 @@ function pruneDeadEnemies(world) {
   return killed;
 }
 
-function _awardKillSilver(killed, sessionId) {
+function _awardKillSilver(killed, sessionId, sessionRewards) {
   for (const enemy of killed) {
     const isBoss = ENEMIES[enemy.key]?.isBoss;
     const dropKey = isBoss ? 'Boss' : (ENEMIES[enemy.key]?.zh ?? null);
     const silver = dropKey != null ? (ECONOMY.session.monsterSilverDrop[dropKey] ?? 0) : 0;
     if (silver <= 0) continue;
-    WalletService.creditWallet({
+    const result = WalletService.creditWallet({
       source: 'combat',
       reason: 'monster_kill',
       reward: { silver },
       idempotencyKey: `kill:${sessionId ?? ''}:${enemy.id}`,
     });
+    if (result.ok && !result.duplicate && sessionRewards) {
+      sessionRewards.silver = (sessionRewards.silver ?? 0) + silver;
+    }
   }
 }
 
@@ -186,7 +189,7 @@ export function updateCoreCombat(world, dt, cfg = GAME_CONFIG) {
     world.vfx.bolts = buildAttackBolts(world, targets, world.combat.rng, cfg);
   }
   const killed = pruneDeadEnemies(world);
-  _awardKillSilver(killed, world.sessionId);
+  _awardKillSilver(killed, world.sessionId, world.sessionRewards);
   world.combat.attackCooldown = 1 / Math.max(0.001, stats.attackSpeed);
   return world.combat;
 }

@@ -4,12 +4,12 @@
  * @summary     房主端 Input buffer：收集/驗證 Input 後路由至 actions / phaseRuntime，並同步玩家 auto/manual intent
  * @exports     createInputBuffer, serializeControls, applyInput
  * @depends     logic/playerMovement.js, game/world.js, game/actions.js, game/phaseRuntime.js, net/validation.js
- * @version     v0.0.20.0
+ * @version     v0.0.32.0
  */
 import { movePlayer } from '../logic/playerMovement.js';
 import { ensurePlayer } from '../game/world.js';
 import { updateMining, collectDrops, tryDeposit, tryPlace, tryRemove, updateRepair, applyDebugAction, toggleBuildPlanMode, tryPlaceRect, tryRemoveRect } from '../game/actions.js';
-import { resolveCardOffer } from '../game/phaseRuntime.js';
+import { submitCardVote } from '../game/phaseRuntime.js';
 import { createInputValidator } from './validation.js';
 
 export function createInputBuffer({ cfg, validator = createInputValidator({ cfg }) } = {}) {
@@ -160,6 +160,6 @@ function applyAction(world, playerId, action, cfg) {
   } else if (action.kind === 'removeRect') {
     tryRemoveRect(world, action.blockKey, action.x1, action.y1, action.x2, action.y2, cfg);
   } else if (action.kind === 'cardChoice') {
-    resolveCardOffer(world, action.index, cfg);
+    submitCardVote(world, playerId, action.index, cfg);
   }
 }

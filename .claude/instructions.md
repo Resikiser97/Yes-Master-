@@ -151,6 +151,17 @@ project_summary：[已更新 | 無需變動] → 一句話說明
 10. **重大分析結果必須立刻寫入 `config/` 常數**：任何蒙特卡羅模擬、平衡計算、或數值設計分析的定案結果，**當場**寫入 `config/` 對應常數檔（目前經濟數值 → `config/economyConfig.js`）作為 Single Source of Truth。不得只留在 chat history 或 `Docs/simulation/` 中。原始模擬腳本與 log 保留在 `Docs/simulation/` 作為推導依據，但**一切下游計算（活動、事件、商店、道具設計）必須 import config，不得重新硬編或重複推算**。
 11. **批次檔案替換一律用 Bash `sed -i`，絕對禁止用 PowerShell foreach 讀寫檔案**：PowerShell `foreach ($f in $files)` 迴圈內若誤用 `$_` 而非 `$f`，`Get-Content` 會靜默回傳 `$null`，`Set-Content` 隨即將目標檔案**清空為 0 bytes**，且不報任何明顯錯誤（只輸出 Get-Content 參數警告）。此 bug 曾在 v0.0.19.0 升版時一次清空 71 個 src/config 檔案，須 `git restore` 全量還原。**批次文字替換唯一允許的方式：`find src config -name "*.js" -exec sed -i 's/old/new/g' {} +`（Bash 工具執行）**。
 
+### 5.1 多人 / 權威端 / stateSync 防錯鐵則
+
+凡是任務會改到多人遊戲、投票、房主權威、狀態同步、或本局結算顯示，AI 必須先做「四路徑一致性檢查」，不能只改單一入口：
+
+1. **Host 本機路徑 + Remote client input 路徑都要改**：本專案多人架構是 client 送 input，host 套用 input 後廣播 state；但 host 自己的輸入常在 `main.js` 直接處理，不會經過 `src/net/inputBuffer.js`。任何多人動作若只改 `inputBuffer.js`，通常會留下「房主一套、客戶端一套」的 bug。
+2. **要被 client 看見的 world state 必須同步三件套**：新增會影響 UI 或 client 行為的 world 欄位時，必須同時檢查 `serializeSnapshot()`、`serializeDelta()`、`applyPartialState()`。只補 delta 會讓 full snapshot / 新加入玩家 / 5 秒全量同步遺漏狀態。
+3. **顯示用 state 要先定義是否跨端同步**：若欄位只存在本機（例如 MVP local wallet 結算摘要），不得讓多人 client 誤以為已入帳。要嘛同步為「隊伍摘要」，要嘛標示/限制為「本機/房主摘要」，不能模糊。
+4. **多人全員條件必須排除離線玩家**：`world.players` 會保留 `online=false` 的斷線玩家；投票、ready、all-voted 類邏輯不得直接用 `world.players.keys()` 當全員名單，必須過濾 `player.online !== false`。
+5. **網路 action 必須防壞資料**：`cardChoice`、投票 index、玩家 id 等網路輸入必須檢查 phase、整數 index、範圍、玩家是否 eligible；不要只靠 UI 不送壞資料。
+6. **測試要覆蓋既有路徑，不只新增 happy path**：新增多人機制時，必須更新既有測試（例如原本 first-wins 的測試），並新增 host 本機、remote client、snapshot/delta roundtrip、離線玩家/壞 index 的測試。
+
 ---
 
 ## 6. git 推送

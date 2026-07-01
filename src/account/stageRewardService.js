@@ -4,7 +4,7 @@
  * @summary     關卡通關入帳（MVP mock；idempotencyKey 防重複領取）
  * @exports     claimStageReward
  * @depends     src/account/walletService.js, config/economyConfig.js
- * @version     v0.0.28.0
+ * @version     v0.0.32.0
  */
 
 import { ECONOMY } from '../../config/economyConfig.js';
@@ -24,6 +24,11 @@ export function claimStageReward(completedStage, world) {
       },
       idempotencyKey,
     });
+
+    if (result.ok && !result.duplicate && world?.sessionRewards) {
+      world.sessionRewards.gold = (world.sessionRewards.gold ?? 0) + (ECONOMY.session.goldPerStage ?? 0);
+      world.sessionRewards.ticket = (world.sessionRewards.ticket ?? 0) + (ECONOMY.session.ticketsPerStage ?? 0);
+    }
 
     console.log('STAGE_REWARD_CREDIT', {
       completedStage,

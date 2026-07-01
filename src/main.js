@@ -14,7 +14,7 @@
  *              src/net/netSession.js、src/net/inputBuffer.js、src/net/syncScheduler.js、
  *              src/account/stageRewardService.js
  * @sourceOfTruth Docs/game-architecture-plan.md「MVP 開發範圍」
- * @version     v0.0.20.0
+ * @version     v0.0.32.0
  *
  * 手機模式：TouchControls + setupOrientationGuard + 動態 tilePx resize。
  * 電腦模式：Controls（鍵盤/滑鼠）+ resize 仍可動態縮放視窗。
@@ -31,7 +31,7 @@ import { TouchControls } from './input/touchControls.js';
 import { movePlayer } from './logic/playerMovement.js';
 import { updateMining, collectDrops, tryDeposit, tryPlace, tryRemove, computeBuildPreview, updateRepair, applyDebugAction, toggleBuildPlanMode, tryPlaceRect, tryRemoveRect, previewPlaceRect } from './game/actions.js';
 import { updateEnemies, updateCoreCombat } from './game/combatRuntime.js';
-import { updatePhase, resolveCardOffer } from './game/phaseRuntime.js';
+import { updatePhase, submitCardVote } from './game/phaseRuntime.js';
 import { saveWorld, loadWorld } from './storage/saveManager.js';
 import { clearSave } from './storage/saveLocal.js';
 import { refreshCoreSnapshot } from './game/coreSnapshot.js';
@@ -405,7 +405,7 @@ export function boot() {
         controls.cardOfferRects = world.cardOfferRects ?? null;
         if (world.phase === 'cardOffer') {
           const cardChoice = controls.consumeCardChoice();
-          if (cardChoice != null) resolveCardOffer(world, cardChoice, cfg);
+          if (cardChoice != null) submitCardVote(world, world.localPlayerId, cardChoice, cfg);
         }
 
         updateMining(world, controls.isMining(), dt, cfg);
@@ -476,6 +476,14 @@ export function boot() {
         updateCameraFollow(world, alpha, renderDt);
         renderer.render(world);
       },
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      if (world.phase !== 'gameover') return;
+      loop.stop?.();
+      netSession?.close?.();
+      window.location.reload();
     });
 
     const app = {
