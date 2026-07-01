@@ -5,7 +5,7 @@
  * @exports     Renderer
  * @depends     config/gameConfig.js, src/logic/coreStats.js
  * @sourceOfTruth Docs/game-design-plan.md「建築維度」「遊戲內 UI 設計」
- * @version     v0.0.30.0
+ * @version     v0.0.31.0
  *
  * 渲染層只「讀」world 狀態畫圖，不寫任何遊戲規則（鐵則 9）。
  */
@@ -69,16 +69,45 @@ const parseKey = (k) => k.split(',').map(Number);
 const fmt1 = (n) => Number(n ?? 0).toFixed(1).replace(/\.0$/, '');
 const fmt2 = (n) => Number(n ?? 0).toFixed(2).replace(/0$/, '').replace(/\.0$/, '');
 
+const STAT_ZH = {
+  hpMax: '血量上限',
+  attack: '攻擊',
+  attackSpeed: '攻速',
+  defense: '防禦',
+  range: '範圍',
+  chain: '連鎖',
+  magicPct: '魔法%',
+  carry: '背負能力',
+  mining: '挖礦力',
+  repair: '修復能力',
+  spirit: '靈力',
+  moveSpeed: '移動速度',
+  nightRepairPct: '夜間修復',
+  nightMiningPct: '夜間挖礦',
+  repairPct: '修復效率',
+  heightBonusPct: '高度加成',
+  coreHpMax: '核心血量上限',
+};
+
 function cardEffectText(effect = {}) {
   if (effect.hint) return effect.hint;
   if (effect.kind === 'coreStat') {
+    const statZh = STAT_ZH[effect.stat] ?? effect.stat;
     const heal = effect.heal != null ? `，回復 ${fmt2(effect.heal)}` : '';
-    return `核心 ${effect.stat} +${fmt2(effect.add)}${heal}`;
+    return `核心${statZh} +${fmt2(effect.add)}${heal}`;
   }
-  if (effect.kind === 'playerStat') return `玩家 ${effect.stat} +${fmt2(effect.add)}`;
+  if (effect.kind === 'playerStat') {
+    const statZh = STAT_ZH[effect.stat] ?? effect.stat;
+    return `${statZh} +${fmt2(effect.add)}`;
+  }
   if (effect.kind === 'resource') return `獲得 ${fmtItems(effect.grant ?? {})}`;
   if (effect.kind === 'modifier') {
-    return (effect.mods ?? []).map((m) => `${m.stat} ${m.pct != null ? `${m.pct}%` : fmt2(m.add)}`).join(' / ');
+    return (effect.mods ?? []).map((m) => {
+      const statZh = STAT_ZH[m.stat] ?? m.stat;
+      if (m.pct != null) return `${statZh} ${m.pct >= 0 ? '+' : ''}${m.pct}%`;
+      const add = m.add ?? 0;
+      return `${statZh} ${add >= 0 ? '+' : ''}${fmt2(add)}`;
+    }).join(' / ');
   }
   return '效果待確認';
 }
@@ -1439,9 +1468,9 @@ export class Renderer {
 
   _drawCardPanel(card, rect, hovered = false) {
     const ctx = this.ctx;
-    const tierLabelMap = { strong: '稀有', standard: '普通', weak: '基礎' };
     const tierColorMap = { strong: '#e6c64d', standard: '#7fd0e0', weak: '#8a8a8a' };
-    const tierLabel = tierLabelMap[card.tier] ?? card.tier ?? 'tier?';
+    const typeZhMap = { resource: '資源', ability: '能力', core: '核心', archetype: '流派' };
+    const typeZh = typeZhMap[card.type] ?? card.type ?? '未知';
     const borderColor = tierColorMap[card.tier] ?? tierColorMap.standard;
     ctx.save();
     ctx.fillStyle = hovered ? '#252f3e' : '#1e2630';
@@ -1463,22 +1492,29 @@ export class Renderer {
 
     ctx.font = '12px sans-serif';
     ctx.fillStyle = borderColor;
-    ctx.fillText(`${card.type ?? 'unknown'}・${tierLabel}`, rect.x + 14, rect.y + 66);
+    ctx.fillText(`[${typeZh}]`, rect.x + 14, rect.y + 62);
+
+    if (card.lane) {
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText(`[${card.lane}]`, rect.x + 14, rect.y + 78);
+    }
 
     ctx.fillStyle = '#d4dce8';
     ctx.font = '14px sans-serif';
-    wrapText(ctx, cardEffectText(card.effect), rect.x + 14, rect.y + 96, rect.w - 28, 20, 5);
+    wrapText(ctx, cardEffectText(card.effect), rect.x + 14, rect.y + 96, rect.w - 28, 19, 4);
 
     ctx.strokeStyle = 'rgba(255,255,255,0.08)';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(rect.x + 14, rect.y + rect.h - 40);
-    ctx.lineTo(rect.x + rect.w - 14, rect.y + rect.h - 40);
+    ctx.moveTo(rect.x + 14, rect.y + rect.h - 38);
+    ctx.lineTo(rect.x + rect.w - 14, rect.y + rect.h - 38);
     ctx.stroke();
 
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '12px sans-serif';
-    ctx.fillText(`價值 ${card.value ?? '-'}`, rect.x + 14, rect.y + rect.h - 28);
+    if (card.risk?.length) {
+      ctx.fillStyle = '#f87171';
+      ctx.font = '12px sans-serif';
+      ctx.fillText(card.risk.map((r) => `[${r}]`).join(' '), rect.x + 14, rect.y + rect.h - 24);
+    }
     ctx.restore();
   }
 
