@@ -20,6 +20,8 @@ import './cardVote.test.js';
 import './roomManager.test.js';
 import './coreSnapshot.test.js';
 import './combatRuntime.test.js';
+import './shopPanel.test.js';
+import './skillService.test.js';
 
 function fakeRng(value = 0) {
   return { next: () => value };

@@ -111,11 +111,10 @@
 4. ✅ T14：怪物擊殺掉落銀幣 engine wiring（`combatRuntime.js` v0.0.27.0，`_awardKillSilver` 實裝）
 5. ✅ T15：關卡結算獎勵 + sessionId idempotency 修正（v0.0.28.0；Boss 關入帳 bug 修正）
 6. ✅ T16：cardModifiers 消費 + playerStat 基準值修正（v0.0.29.0；7 個檔案；delta sync 修正；npm test 全過）
-6. 🔲 每日商店規則細節（廣告刷新3次/6樣商品/銀幣金幣購買邏輯）— 已有初步描述，需要收尾
-7. 🟡 「少中多」銀幣收入 × 合成消耗交叉驗證 — 合成曲線 ✅ 變體 D 定案；怪物掉落 ✅ 候選 C 定案；銀幣技能點 × 收入交叉驗證仍 ⬜
-6. 🔲 商店 / 成就 / 好友系統 — 非核心玩法
-7. 🔲 新方塊種類擴充設計原則 — 暫不急
-8. 🔲 加時賽30秒結束後仍未清完怪的處理方式
+6. ✅ 每日商店規則細節 — `Docs/simulation/economy-sim-log.md`（2026-06-28）任務5/6 已模擬定案商店定價與機率權重，數字已寫入 `config/economyConfig.js` shop 區塊並與引擎 wiring（`src/ui/shopPanel.js` 每日重置/廣告刷新上限/購買扣款發獎；`src/account/skillService.js` 技能升級成本）。**唯一缺口：`shopPanel.js`/`skillService.js` 零測試覆蓋** → 已寫 Codex prompt `Docs/history/codex-prompt-T22.md` 補測試
+7. ✅ 「少中多」銀幣/金幣收入 × 技能點/合成消耗交叉驗證 — 合成曲線 ✅ 變體 D 定案；怪物掉落 ✅ 候選 C 定案；銀幣/金幣技能點交叉驗證 ✅ 已跑（`economy-sim-log.md` 任務3：正常玩家技能單屬性81.5天／扣商店後，極限玩家全屬性84天），與商店機率權重（任務6：裝備加速7.7%/技能加速9.7%，均低於10%上限）一併定案，`skillGoldCost` 已寫入 config 並 wiring 進 `skillService.js`
+8. 🔲 商店 / 成就 / 好友系統 — 非核心玩法
+9. 🔲 新方塊種類擴充設計原則 — 暫不急
 
 ### 架構審查（Claude 負責，與Codex交叉確認後同步文件）
 1. ✅ PeerJS 連線拓撲（Star／房主中心，已與Codex確認，已同步文件）

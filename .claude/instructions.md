@@ -162,6 +162,15 @@ project_summary：[已更新 | 無需變動] → 一句話說明
 5. **網路 action 必須防壞資料**：`cardChoice`、投票 index、玩家 id 等網路輸入必須檢查 phase、整數 index、範圍、玩家是否 eligible；不要只靠 UI 不送壞資料。
 6. **測試要覆蓋既有路徑，不只新增 happy path**：新增多人機制時，必須更新既有測試（例如原本 first-wins 的測試），並新增 host 本機、remote client、snapshot/delta roundtrip、離線玩家/壞 index 的測試。
 
+### 5.2 Node 測試 / DOM overlay 防錯鐵則
+
+凡是在純 Node 測試中測 `src/ui/*Panel.js` 這類 DOM overlay，AI 必須先做「副作用呼叫鏈檢查」：
+
+1. **不能只 stub 第一個看到的 DOM 方法**：例如 `ShopPanel.purchase()` 不只會呼叫 `render()`，成功發獎與失敗提示還會經由 `toast()` 碰 `document.body` / `window.setTimeout()`。測試前要沿呼叫鏈檢查所有會碰 `document`、`window`、canvas、計時器、localStorage 的方法，逐一 stub 或 mock。
+2. **Node 沒有 `document` / jsdom**：除非任務明確新增 DOM 測試環境，測試不得假設瀏覽器全域存在；constructor 若有 `container ?? document.body`，測試必須傳非 null container。
+3. **localStorage mock 要看實際 import graph**：若 service 已被其他測試或上層 import module cache 載入，不能假設「本測試 dynamic import 前 mock」一定是首次載入。服務若是在呼叫時讀 `localStorage` 可接受；若在 import-time 捕捉 storage，就必須重構或隔離測試。
+4. **測試也要遵守 config Single Source of Truth**：商店價格、技能成本、掉落量等數值不要硬編在測試期望值中；先從 `config/*` 找到對應 item / cost，再用該值斷言行為，除非該測試的目的就是鎖定某個 config 常數本身。
+
 ---
 
 ## 6. git 推送
