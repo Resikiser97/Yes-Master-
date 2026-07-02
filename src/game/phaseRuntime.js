@@ -5,7 +5,7 @@
  * @exports     initPhaseState, updatePhase, resolveCardOffer, submitCardVote, eligibleCardVotePlayerIds
  * @depends     config/gameConfig.js、config/waves.js、src/logic/waveGen.js、src/logic/spawnPosition.js、src/logic/rng.js
  * @sourceOfTruth Docs/waveplan.md「晝夜節奏」「怪物生成安全規則」「夜晚加時賽/狂暴模式」
- * @version     v0.0.32.0
+ * @version     v0.0.33.0
  *
  * phase 轉換：
  *   prep（30s）→ day（60s，可建造/挖礦，無敵人）→ night（60s，分批出怪）
@@ -114,7 +114,7 @@ function _startNight(world, cfg) {
  * 將 buildWave 回傳的 { enemies, schedule } 拆成分批出怪佇列。
  *
  * 輸入：
- *   wave.enemies  — [{ id, key, hp, attack, moveSpeed, attackRange, defense, ... }]
+ *   wave.enemies  — [{ id, key, hp, attack, moveSpeed, attackRange, height, doorAttack, defense, ... }]
  *   wave.schedule — [{ second: N, count: M }, ...]（buildSpawnSchedule 產生，0~4 秒分 5 批）
  *
  * 輸出：
@@ -175,6 +175,8 @@ function _updateNight(world, dt, cfg) {
         defense: def.defense ?? base.defense ?? 0,
         moveSpeed: def.moveSpeed ?? base.moveSpeed ?? 0,
         attackRange: def.attackRange ?? base.attackRange ?? 1,
+        height: def.height ?? base.height ?? 0,
+        doorAttack: def.doorAttack ?? base.doorAttack ?? false,
         attackCooldown: 0,
       });
     }

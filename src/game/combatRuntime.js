@@ -5,7 +5,7 @@
  * @exports     spawnDebugEnemies, updateEnemies, coreAttackAnchors, updateCoreCombat
  * @depends     config/enemies.js、config/gameConfig.js、config/economyConfig.js、src/account/walletService.js、src/logic/combat.js、src/logic/connectivity.js
  * @sourceOfTruth Docs/game-design-plan.md「核心攻擊與防禦機制」
- * @version     v0.0.32.0
+ * @version     v0.0.33.0
  */
 
 import { ENEMIES } from '../../config/enemies.js';
@@ -34,6 +34,8 @@ function createEnemy(world, enemyKey, x, y) {
     defense: def.defense,
     moveSpeed: def.moveSpeed,
     attackRange: def.attackRange,
+    height: def.height ?? 0,
+    doorAttack: def.doorAttack ?? false,
     attackCooldown: 0,
   };
 }
@@ -55,13 +57,15 @@ export function updateEnemies(world, dt) {
   if (world.phase === 'gameover') return;
 
   for (const enemy of world.enemies) {
-    const target = nearestCoreCell(world, enemy);
+    const target = _nearestStructureCell(world, enemy);
     if (!target) continue;
 
     const dx = target.x - enemy.x;
     const dy = target.y - enemy.y;
     const d = Math.hypot(dx, dy);
-    const range = enemy.attackRange ?? 1;
+    const range = enemy.doorAttack
+      ? (enemy.height ?? 0) + (enemy.attackRange ?? 1)
+      : (enemy.attackRange ?? 1);
 
     if (d <= range) {
       enemy.isAttacking = true;
@@ -82,9 +86,10 @@ export function updateEnemies(world, dt) {
   }
 }
 
-function nearestCoreCell(world, enemy) {
+function _nearestStructureCell(world, enemy) {
   let best = null;
   let bestD2 = Infinity;
+
   for (const [x, y] of world.core ?? []) {
     const d2 = dist2(enemy, { x, y });
     if (d2 < bestD2) {
@@ -92,8 +97,31 @@ function nearestCoreCell(world, enemy) {
       best = { x, y };
     }
   }
+
+  for (const k of world.dirt ?? []) {
+    const [x, y] = k.split(',').map(Number);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+    const d2 = dist2(enemy, { x, y });
+    if (d2 < bestD2) {
+      bestD2 = d2;
+      best = { x, y };
+    }
+  }
+
+  for (const k of (world.fore ?? new Map()).keys()) {
+    const [x, y] = k.split(',').map(Number);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+    const d2 = dist2(enemy, { x, y });
+    if (d2 < bestD2) {
+      bestD2 = d2;
+      best = { x, y };
+    }
+  }
+
   return best;
 }
+
+// MVP 可接受：每個敵人每 tick 掃 core+dirt+fore。若後期成為效能熱點，另開任務做快取或 spatial index。
 
 function _applyCoreDamage(world, amount) {
   const current = world.coreHp ?? world.coreStats?.hpMax ?? 0;

@@ -94,6 +94,11 @@
 | 怪物擊殺掉落銀幣（per kill） | ✅ | config 定案候選 C v0.0.25.0；engine wiring v0.0.27.0；⚠️ idempotencyKey 跨局重複風險待 T15 加 sessionId |
 | 合成 UI（T13 SynthesisPanel） | ✅ | ⚗️ 合成按鈕、費用顯示、選槽位/款式、spendWallet idempotency；v0.0.26.0 |
 | 新手教學／Onboarding流程 | ✅ | 新玩家註冊後強制完成教學，未完成則下次重頭；教學第1關結束送5抽並強制抽獎/裝備升級教學；完成後解鎖單人/多人並出現通關第5關任務獎勵20抽 |
+| 靈力（spirit）→ 核心加成 wiring（T17） | ✅ | `computeSpiritBonusPct` 乘進 coreStats.attack/attackSpeed；高塔工法改 heightBonusPct 加成；v0.0.30.0 |
+| 卡片 UI 標籤（T18） | ✅ | 卡面顯示 type/lane/risk 標籤 + 效果文字中文化（STAT_ZH）；v0.0.31.0 |
+| 多人卡片投票 + GameOver 結算（T19+T20） | ✅ | eligible 玩家多數決投票（排除離線）、host/remote 四路徑一致、sessionRewards 本機摘要顯示；peerHost ping-timeout offline bug 附帶修復；v0.0.32.0 |
+| 加時賽收尾規則 | ✅ | 定案維持現況：30 秒加時結束仍未清完怪 → 強制 GameOver（核心判定陣亡），不再另做特殊處理；`waveplan.md` line 137 已載明 |
+| Boss 門口攻擊（T21） | 🟡 | 已寫 Codex prompt `Docs/history/codex-prompt-T21.md`：任何已放置方塊(dirt/fore)與 world.core 同為敵人有效攻擊目標；doorAttack Boss(20/30) 有效攻擊距離=height+attackRange；boss10 與小怪不吃此加成。開發者確認取代 mustsolve.md「建築高度>=5門檻」的模擬抽象敘述 |
 
 ---
 

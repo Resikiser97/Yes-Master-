@@ -1,11 +1,11 @@
 /**
  * @file        waves.js
  * @module      config
- * @summary     1-30 關單人基準波次組成、成長規則、Boss 門口攻擊、加時與 21-30 阻擋區
- * @exports     WAVES, GROWTH, BOSS_RULES, OVERTIME, BLOCKER_BAND
+ * @summary     1-30 關單人基準波次組成、成長規則、加時與 21-30 阻擋區
+ * @exports     WAVES, GROWTH, OVERTIME, BLOCKER_BAND
  * @depends     enemies.js（敵人 key）
  * @sourceOfTruth Docs/waveplan.md（唯一波次主檔）
- * @version     v0.0.20.0
+ * @version     v0.0.33.0
  */
 
 // 單人基準波次：每關各敵人數量。多人倍率由 waveGen 套（普通怪 xN、Boss N 隻）
@@ -57,12 +57,6 @@ export const GROWTH = {
   },
 };
 
-// Boss 規則
-export const BOSS_RULES = {
-  // 建築高度 >= 此值時，doorAttack 的 Boss 可從門口直接攻擊核心 Hitbox（不吃預射距離）
-  doorAttackHeightTiles: 5,
-};
-
 // 夜晚加時賽（狂暴）：60 秒未清完 → 30 秒加時，每 5 秒攻擊 x2；30 秒結束仍未清 → 強制 GameOver
 export const OVERTIME = {
   triggerAfterSeconds: 60,
@@ -79,4 +73,3 @@ export const BLOCKER_BAND = {
   minAttackPressureEvery2Stages: 1,      // 最低每 2 關至少等效 +1 攻擊壓力
   seed: 20260622,
 };
-

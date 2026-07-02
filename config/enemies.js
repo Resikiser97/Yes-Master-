@@ -5,7 +5,7 @@
  * @exports     ENEMIES
  * @depends     （無）
  * @sourceOfTruth Docs/waveplan.md「敵人成長規則」、Docs/simulation/simulation-log-2.md
- * @version     v0.0.20.0
+ * @version     v0.0.33.0
  *
  * ⚠️ 交接給 Codex（見 Docs/claude-codex-worklist.md 任務 A / B）：
  *   - 請只填 hp / attack / moveSpeed（工兵另含 attackRange）= 目前為 null。
@@ -33,13 +33,16 @@ export const ENEMIES = {
     hp: 35, attack: 1, moveSpeed: 4 },
 
   // Boss（不吃普通怪成長/數量倍率；各有獨立規則，見 waveplan.md）----------
+  // doorAttack: true 的 Boss 有效攻擊距離 = height + attackRange（見 combatRuntime.js updateEnemies）。
+  // doorAttack: false 或一般小怪，維持原始 attackRange，不吃 height 加成。
+  // 任何已放置方塊（dirt/fore）都與 world.core 一樣是敵人的有效攻擊目標，沒有獨立的方塊 HP。
   boss10:   { zh: '小隊長', isBoss: true, height: 4, attackRange: 1, defense: 0,
     hp: 260, attack: 3, moveSpeed: 3,
     doorAttack: false }, // 第 10 Boss 不套用完整門口攻擊
 
   boss20:   { zh: 'Boss20', isBoss: true, height: 4, attackRange: 2, defense: 0,
     hp: 650, attack: 6, moveSpeed: 2.8,
-    doorAttack: true, // 第 20 Boss 起套用門口攻擊（建築高度 >=5 格時可門口攻擊核心）
+    doorAttack: true, // 有效距離 = height + attackRange（不檢查建築高度門檻）
     // 多人門檻：3 人血量 +30%、4 人血量 +50%（waveGen 套用）
     multiHpBonusPct: { 3: 30, 4: 50 } },
 
@@ -47,4 +50,3 @@ export const ENEMIES = {
     hp: 1200, attack: 10, moveSpeed: 2.6,
     doorAttack: true },
 };
-
