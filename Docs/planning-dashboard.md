@@ -1,5 +1,5 @@
 # Planning 進度 Dashboard
-> 最後更新：2026-06-30（T13 合成 UI ✅ v0.0.26.0；合成費用曲線 ✅ 變體 D；怪物掉落 config ✅ 候選 C；MVP 引擎 checklist 建立；T14 monster drop prompt 就緒）
+> 最後更新：2026-07-02（T21 Boss 門口攻擊 ✅ v0.0.33.0；T22 商店/技能點測試覆蓋 ✅ v0.0.34.0；商店系統與技能點花費曲線確認已模擬定案完成，非待辦）
 > 用途：追蹤所有討論過的問題狀態，避免長對話導致脈絡遺失
 > 對應文件：`game-architecture-plan.md`（技術架構）、`game-design-plan.md`（玩法設計）
 
@@ -77,7 +77,7 @@
 | 雙倍獎勵充能系統 | ✅ | 取代體力系統；F2P上限1/VIP上限3，4hr回1點，整場獎勵翻倍，結算後選用；正常玩家實際使用模式＝4場各1hr，頭尾2場x2、中間1倍(非整天x2) |
 | 成就系統 | 🔲 | 僅在首頁UI提及，無細節 |
 | 好友/私聊系統 | 🔲 | 僅在首頁UI提及，無細節 |
-| 商店系統 | 🔲 | 僅在首頁UI提及，無細節；「每日商店」規則已有初步描述，待細談 |
+| 商店系統 | ✅ | 每日商店規則已模擬定案（`economy-sim-log.md` 任務5/6）並寫入 `config/economyConfig.js`、引擎 wiring 進 `src/ui/shopPanel.js`；測試覆蓋 T22 v0.0.34.0 已補齊 |
 | 30關官方結算 / Endless Mode | ✅ | 無上限可無限玩，30關後怪物數值可爆炸式提升，曲線細節未定 |
 | 怪物生成/移動/分批邏輯 | 🟡 | 落點(攻擊範圍+10~20格)/分批公式/組成公式已定，移動速度仍是假設(5格/秒)待確認 |
 | 怪物攻擊機制(攻速/加時賽) | ✅ | 攻速2秒1次，60秒未清完進入30秒加時賽(每5秒攻擊力翻倍)，加時賽30秒結束仍未清完=強制GameOver |
@@ -89,7 +89,7 @@
 | 核心攻擊範圍單位 | ✅ | 確認=px(50px=5格)，與地圖10px/格換算一致 |
 | 操作輸入方式 | ✅ | WASD+滑鼠點擊/長按，手機搖桿+專屬挖礦鍵，挖掘能力只影響傷害量不影響次數上限 |
 | 玩家等級XP曲線 | ✅ | 錨點7天Lv20/30天Lv30/180天Lv60，兩段power law拼接 |
-| 銀幣技能點花費曲線 | 🟡 | Lv1~10曲線已定，尚未跟抽獎"少中多"銀幣收入對過 |
+| 技能點花費曲線 | ✅ | 實際為**金幣**曲線（非銀幣，`game-design-plan.md:1034` 定案：技能用金幣、合成用銀幣，兩條線互不干擾）；Lv1~10 已跟「少中多」收入交叉驗證（`economy-sim-log.md` 任務3/6）；`ECONOMY.skillGoldCost` 已 wiring 進 `skillService.js`，測試覆蓋 T22 v0.0.34.0 |
 | 裝備合成費用曲線（silverCostPerSynth） | ✅ | 變體 D（仿技能曲線）[3760…37620] 合計 188,000；定案 Docs/simulation/equipment-drop-sim-log.md；v0.0.25.0 |
 | 怪物擊殺掉落銀幣（per kill） | ✅ | config 定案候選 C v0.0.25.0；engine wiring v0.0.27.0；⚠️ idempotencyKey 跨局重複風險待 T15 加 sessionId |
 | 合成 UI（T13 SynthesisPanel） | ✅ | ⚗️ 合成按鈕、費用顯示、選槽位/款式、spendWallet idempotency；v0.0.26.0 |
@@ -98,7 +98,8 @@
 | 卡片 UI 標籤（T18） | ✅ | 卡面顯示 type/lane/risk 標籤 + 效果文字中文化（STAT_ZH）；v0.0.31.0 |
 | 多人卡片投票 + GameOver 結算（T19+T20） | ✅ | eligible 玩家多數決投票（排除離線）、host/remote 四路徑一致、sessionRewards 本機摘要顯示；peerHost ping-timeout offline bug 附帶修復；v0.0.32.0 |
 | 加時賽收尾規則 | ✅ | 定案維持現況：30 秒加時結束仍未清完怪 → 強制 GameOver（核心判定陣亡），不再另做特殊處理；`waveplan.md` line 137 已載明 |
-| Boss 門口攻擊（T21） | 🟡 | 已寫 Codex prompt `Docs/history/codex-prompt-T21.md`：任何已放置方塊(dirt/fore)與 world.core 同為敵人有效攻擊目標；doorAttack Boss(20/30) 有效攻擊距離=height+attackRange；boss10 與小怪不吃此加成。開發者確認取代 mustsolve.md「建築高度>=5門檻」的模擬抽象敘述 |
+| Boss 門口攻擊（T21） | ✅ | 任何已放置方塊(dirt/fore)與 world.core 同為敵人有效攻擊目標；doorAttack Boss(20/30) 有效攻擊距離=height+attackRange；boss10 與小怪不吃此加成；`config/waves.js` 舊 `doorAttackHeightTiles` 門檻殘留已清除；v0.0.33.0 |
+| 商店/技能點測試覆蓋（T22） | ✅ | `tests/shopPanel.test.js`（8 cases）+ `tests/skillService.test.js`（5 cases）；零 src 邏輯改動；v0.0.34.0。⚠️ 已知風險：`ShopPanel.isValidState()` 對 `refreshCount` 只驗型別，未擋 NaN/負數/超過上限，留待後續小任務補防呆 |
 
 ---
 
@@ -111,10 +112,12 @@
 4. ✅ T14：怪物擊殺掉落銀幣 engine wiring（`combatRuntime.js` v0.0.27.0，`_awardKillSilver` 實裝）
 5. ✅ T15：關卡結算獎勵 + sessionId idempotency 修正（v0.0.28.0；Boss 關入帳 bug 修正）
 6. ✅ T16：cardModifiers 消費 + playerStat 基準值修正（v0.0.29.0；7 個檔案；delta sync 修正；npm test 全過）
-6. ✅ 每日商店規則細節 — `Docs/simulation/economy-sim-log.md`（2026-06-28）任務5/6 已模擬定案商店定價與機率權重，數字已寫入 `config/economyConfig.js` shop 區塊並與引擎 wiring（`src/ui/shopPanel.js` 每日重置/廣告刷新上限/購買扣款發獎；`src/account/skillService.js` 技能升級成本）。**唯一缺口：`shopPanel.js`/`skillService.js` 零測試覆蓋** → 已寫 Codex prompt `Docs/history/codex-prompt-T22.md` 補測試
+6. ✅ 每日商店規則細節 — `Docs/simulation/economy-sim-log.md`（2026-06-28）任務5/6 已模擬定案商店定價與機率權重，數字已寫入 `config/economyConfig.js` shop 區塊並與引擎 wiring（`src/ui/shopPanel.js` 每日重置/廣告刷新上限/購買扣款發獎；`src/account/skillService.js` 技能升級成本）。測試覆蓋 T22 v0.0.34.0 已補齊（8+5 cases）
 7. ✅ 「少中多」銀幣/金幣收入 × 技能點/合成消耗交叉驗證 — 合成曲線 ✅ 變體 D 定案；怪物掉落 ✅ 候選 C 定案；銀幣/金幣技能點交叉驗證 ✅ 已跑（`economy-sim-log.md` 任務3：正常玩家技能單屬性81.5天／扣商店後，極限玩家全屬性84天），與商店機率權重（任務6：裝備加速7.7%/技能加速9.7%，均低於10%上限）一併定案，`skillGoldCost` 已寫入 config 並 wiring 進 `skillService.js`
-8. 🔲 商店 / 成就 / 好友系統 — 非核心玩法
-9. 🔲 新方塊種類擴充設計原則 — 暫不急
+8. ✅ T21：Boss 門口攻擊（`combatRuntime.js` v0.0.33.0，`_nearestStructureCell` + doorAttack 距離公式實裝）
+9. ✅ T22：商店/技能點測試覆蓋（v0.0.34.0）
+10. 🔲 商店 / 成就 / 好友系統 — 非核心玩法
+11. 🔲 新方塊種類擴充設計原則 — 暫不急
 
 ### 架構審查（Claude 負責，與Codex交叉確認後同步文件）
 1. ✅ PeerJS 連線拓撲（Star／房主中心，已與Codex確認，已同步文件）
