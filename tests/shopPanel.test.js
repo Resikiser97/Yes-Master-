@@ -62,6 +62,52 @@ function testIsValidStateRejectsMalformed() {
     }),
     true,
   );
+
+  const validSlots = Array(ECONOMY.shop.slotsPerDay).fill('gold_pack_s');
+  const validPurchases = Array(ECONOMY.shop.slotsPerDay).fill(false);
+
+  assert.equal(
+    panel.isValidState({ slots: validSlots, purchases: validPurchases, refreshCount: NaN }),
+    false,
+    'NaN refreshCount must be rejected',
+  );
+  assert.equal(
+    panel.isValidState({ slots: validSlots, purchases: validPurchases, refreshCount: -1 }),
+    false,
+    'negative refreshCount must be rejected',
+  );
+  assert.equal(
+    panel.isValidState({ slots: validSlots, purchases: validPurchases, refreshCount: 1.5 }),
+    false,
+    'fractional refreshCount must be rejected',
+  );
+  assert.equal(
+    panel.isValidState({
+      slots: validSlots,
+      purchases: validPurchases,
+      refreshCount: ECONOMY.shop.maxRefreshesPerDay + 1,
+    }),
+    false,
+    'refreshCount above maxRefreshesPerDay must be rejected',
+  );
+  assert.equal(
+    panel.isValidState({
+      slots: validSlots,
+      purchases: validPurchases,
+      refreshCount: ECONOMY.shop.maxRefreshesPerDay,
+    }),
+    true,
+    'refreshCount exactly at maxRefreshesPerDay is still valid',
+  );
+
+  const invalidPurchases = Array.from({ length: ECONOMY.shop.slotsPerDay }, (_, index) => (
+    index === 0 ? 'true' : false
+  ));
+  assert.equal(
+    panel.isValidState({ slots: validSlots, purchases: invalidPurchases, refreshCount: 0 }),
+    false,
+    'purchases array with non-boolean entries must be rejected',
+  );
 }
 
 function testGenerateSlotsProducesValidItemIds() {

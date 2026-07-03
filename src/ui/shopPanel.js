@@ -4,7 +4,7 @@
  * @summary     每日商店 overlay：6 格加權隨機品項、金幣/銀幣購買、每日重置、刷新上限
  * @exports     ShopPanel
  * @depends     config/economyConfig.js, src/account/walletService.js, uiManager
- * @version     v0.0.20.0
+ * @version     v0.0.35.0
  */
 
 import { ECONOMY } from '../../config/economyConfig.js';
@@ -109,7 +109,10 @@ export class ShopPanel {
         && value.slots.every((id) => this.itemMap.has(id))
         && Array.isArray(value.purchases)
         && value.purchases.length === ECONOMY.shop.slotsPerDay
-        && typeof value.refreshCount === 'number',
+        && value.purchases.every((flag) => typeof flag === 'boolean')
+        && Number.isInteger(value.refreshCount)
+        && value.refreshCount >= 0
+        && value.refreshCount <= ECONOMY.shop.maxRefreshesPerDay,
     );
   }
 
