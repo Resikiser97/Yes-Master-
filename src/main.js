@@ -14,7 +14,7 @@
  *              src/net/netSession.js、src/net/inputBuffer.js、src/net/syncScheduler.js、
  *              src/account/stageRewardService.js
  * @sourceOfTruth Docs/game-architecture-plan.md「MVP 開發範圍」
- * @version     v0.0.32.0
+ * @version     v0.0.36.0
  *
  * 手機模式：TouchControls + setupOrientationGuard + 動態 tilePx resize。
  * 電腦模式：Controls（鍵盤/滑鼠）+ resize 仍可動態縮放視窗。
@@ -222,6 +222,9 @@ export function boot() {
               prevPhase = world.phase;
             }
           },
+          onDisconnected: () => console.warn('[net] disconnected, attempting reconnect...'),
+          onReconnected: () => console.info('[net] reconnected'),
+          onReconnectFailed: () => console.warn('[net] reconnect failed after max attempts, giving up'),
         }).then((session) => {
           netSession = session;
           console.info('[net] client ready', session.slotId);
@@ -272,7 +275,13 @@ export function boot() {
           const debugActions = controls.consumeDebugActions()
             .filter((action) => action !== 'resetSave');
           if (netSession?.sendInput) {
-            netSession.sendInput(serializeControls(controls, world, cfg, inputSequenceId++, { debugActions }));
+            netSession.sendInput(serializeControls(
+              controls,
+              world,
+              cfg,
+              inputSequenceId++,
+              { debugActions, connectionEpoch: netSession.connectionEpoch },
+            ));
           }
           updateMining(world, !!controls.isMining?.(), dt, cfg);
           if (world.hotbarTooltip?.timer > 0) world.hotbarTooltip.timer = Math.max(0, world.hotbarTooltip.timer - dt);

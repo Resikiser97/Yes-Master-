@@ -5,7 +5,7 @@
  * @exports     startPeerHost
  * @depends     net/protocol.js, net/peerRuntime.js, net/roomManager.js, net/strikeTracker.js, game/world.js
  * @sourceOfTruth Docs/game-architecture-plan.md「P2P 安全限制 → Handshake 流程」
- * @version     v0.0.32.0
+ * @version     v0.0.36.0
  */
 import { GAME_CONFIG } from '../../config/gameConfig.js';
 import { ensurePlayer } from '../game/world.js';
@@ -20,6 +20,7 @@ export async function startPeerHost({ roomId, cfg = GAME_CONFIG, world = null, o
   if (roomId) await updateHostPeer(roomId, peerId, cfg);
 
   const peers = new Map();
+  const epochs = new Map();
   const strikes = createStrikeTracker();
   let nextSlot = 2;
 
@@ -63,17 +64,37 @@ export async function startPeerHost({ roomId, cfg = GAME_CONFIG, world = null, o
       let message;
       try { message = decode(raw); } catch { return; }
 
-      if (!peers.has(conn.peer)) {
+      const currentSession = peers.get(conn.peer);
+      if (!currentSession || currentSession.conn !== conn) {
         if (message.type !== MSG.AUTH) return;
         clearTimeout(authTimer);
         try {
           const verified = await verifyRoomJoinToken(message.payload?.token, cfg);
           if (roomId && verified.room_id !== roomId) throw new Error('room mismatch');
           const slotId = host.reserveSlot(verified);
-          if (world) ensurePlayer(world, slotId, cfg);
-          const session = { conn, uid: verified.uid, slotId, connectedAt: Date.now(), lastPongAt: Date.now() };
+          if (currentSession && currentSession.slotId !== slotId) throw new Error('slot mismatch');
+          if (world) {
+            ensurePlayer(world, slotId, cfg);
+            const player = world.players.get(slotId);
+            if (player) player.online = true;
+          }
+          const nextEpoch = (epochs.get(slotId) ?? 0) + 1;
+          epochs.set(slotId, nextEpoch);
+          const session = {
+            conn,
+            uid: verified.uid,
+            slotId,
+            connectedAt: Date.now(),
+            lastPongAt: Date.now(),
+            connectionEpoch: nextEpoch,
+          };
           peers.set(conn.peer, session);
-          sendConn(conn, makeMessage(MSG.AUTH_OK, { slotId, peerId, hostEpoch: message.payload?.hostEpoch ?? 1 }));
+          sendConn(conn, makeMessage(MSG.AUTH_OK, {
+            slotId,
+            peerId,
+            hostEpoch: message.payload?.hostEpoch ?? 1,
+            connectionEpoch: nextEpoch,
+          }));
           host._onPeerReady?.(conn.peer, session);
         } catch (error) {
           sendConn(conn, makeMessage(MSG.AUTH_FAIL, { reason: error.message }));
@@ -84,6 +105,10 @@ export async function startPeerHost({ roomId, cfg = GAME_CONFIG, world = null, o
 
       const session = peers.get(conn.peer);
       if (message.type === MSG.INPUT) {
+        if (message.payload?.connectionEpoch !== session.connectionEpoch) {
+          sendConn(conn, makeMessage(MSG.REJECT, { reason: 'bad_epoch' }));
+          return;
+        }
         host._onInput?.(session.slotId, message.payload, conn.peer);
       } else if (message.type === MSG.CHAT) {
         host._onChat?.(message, conn.peer);
@@ -96,6 +121,7 @@ export async function startPeerHost({ roomId, cfg = GAME_CONFIG, world = null, o
 
     conn.on('close', () => {
       const session = peers.get(conn.peer);
+      if (!session || session.conn !== conn) return;
       if (session && world?.players?.has(session.slotId)) world.players.get(session.slotId).online = false;
       peers.delete(conn.peer);
     });
@@ -109,9 +135,10 @@ export async function startPeerHost({ roomId, cfg = GAME_CONFIG, world = null, o
     const now = Date.now();
     for (const [peerKey, session] of peers) {
       if (now - session.lastPongAt > 3000) {
+        if (peers.get(peerKey) !== session) continue;
         if (world?.players?.has(session.slotId)) world.players.get(session.slotId).online = false;
         session.conn.close?.();
-        peers.delete(peerKey);
+        if (peers.get(peerKey) === session) peers.delete(peerKey);
       } else {
         sendConn(session.conn, makeMessage(MSG.PING, { t: now }));
       }

@@ -5,7 +5,7 @@
  * @exports     createInputValidator
  * @depends     logic/building.js, logic/connectivity.js
  * @sourceOfTruth Docs/game-architecture-plan.md「反作弊／輸入驗證機制 → 各 Event 驗證規則」
- * @version     v0.0.32.0
+ * @version     v0.0.36.0
  */
 import { validatePlacement, validateRemoval } from '../logic/building.js';
 import { key } from '../logic/connectivity.js';
@@ -16,14 +16,22 @@ const DEFAULT_LIMITS = {
 };
 
 export function createInputValidator({ cfg, limits = DEFAULT_LIMITS } = {}) {
-  const last = new Map();
+  const last = new Map(); // playerId -> { epoch, sequenceId, actionAt }
 
   return function validateInput(input, { world, playerId } = {}) {
     if (!input || typeof input !== 'object') return reject('malformed');
     if (!Number.isInteger(input.sequenceId) || input.sequenceId < 0) return reject('bad_sequence');
+    if (!Number.isInteger(input.connectionEpoch) || input.connectionEpoch < 1) return reject('bad_epoch');
 
     const now = Date.now();
-    const state = last.get(playerId) ?? { sequenceId: -1, actionAt: 0 };
+    let state = last.get(playerId);
+    if (!state || input.connectionEpoch > state.epoch) {
+      state = { epoch: input.connectionEpoch, sequenceId: -1, actionAt: 0 };
+      last.set(playerId, state);
+    } else if (input.connectionEpoch < state.epoch) {
+      return reject('stale_epoch');
+    }
+
     if (input.sequenceId <= state.sequenceId) return reject('replay');
     if (input.sequenceId - state.sequenceId > limits.maxSequenceGap && state.sequenceId >= 0) return reject('sequence_gap');
 
@@ -42,7 +50,6 @@ export function createInputValidator({ cfg, limits = DEFAULT_LIMITS } = {}) {
     }
 
     state.sequenceId = input.sequenceId;
-    last.set(playerId, state);
     return { ok: true };
   };
 }

@@ -18,7 +18,7 @@ function testMovementInputsAreNotRateLimited() {
   const validate = createInputValidator({ cfg });
 
   for (let i = 0; i < 10; i++) {
-    const out = validate({ sequenceId: i, move: { x: 1, y: 0 }, action: null }, { world, playerId: 'p2' });
+    const out = validate({ sequenceId: i, connectionEpoch: 1, move: { x: 1, y: 0 }, action: null }, { world, playerId: 'p2' });
     assert.equal(out.ok, true);
   }
 }
@@ -123,7 +123,8 @@ function testClientBuildPlanToggleIsLocalBeforeSending() {
     consumeCardChoice: () => null,
   };
 
-  const input = serializeControls(controls, world, cfg, 6);
+  const input = serializeControls(controls, world, cfg, 6, { connectionEpoch: 2 });
+  assert.equal(input.connectionEpoch, 2);
   assert.equal(world.buildPlanMode, true);
   assert.deepEqual(input.actions, [{ kind: 'buildPlanToggle', active: true }]);
 }

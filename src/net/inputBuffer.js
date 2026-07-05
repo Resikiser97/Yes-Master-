@@ -4,7 +4,7 @@
  * @summary     房主端 Input buffer：收集/驗證 Input 後路由至 actions / phaseRuntime，並同步玩家 auto/manual intent
  * @exports     createInputBuffer, serializeControls, applyInput
  * @depends     logic/playerMovement.js, game/world.js, game/actions.js, game/phaseRuntime.js, net/validation.js
- * @version     v0.0.32.0
+ * @version     v0.0.36.0
  */
 import { movePlayer } from '../logic/playerMovement.js';
 import { ensurePlayer } from '../game/world.js';
@@ -12,17 +12,27 @@ import { updateMining, collectDrops, tryDeposit, tryPlace, tryRemove, updateRepa
 import { submitCardVote } from '../game/phaseRuntime.js';
 import { createInputValidator } from './validation.js';
 
-export function createInputBuffer({ cfg, validator = createInputValidator({ cfg }) } = {}) {
+export function createInputBuffer({
+  cfg,
+  validator = createInputValidator({ cfg }),
+  now = () => Date.now(),
+  maxQueueAgeMs = 5000,
+} = {}) {
   const queue = new Map();
   return {
     push(playerId, input) {
       if (!queue.has(playerId)) queue.set(playerId, []);
-      queue.get(playerId).push(input);
+      queue.get(playerId).push({ input, receivedAt: now() });
     },
     drain(world, dt, onReject = null) {
-      for (const [playerId, inputs] of queue) {
-        while (inputs.length) {
-          const input = inputs.shift();
+      const nowTs = now();
+      for (const [playerId, entries] of queue) {
+        while (entries.length) {
+          const { input, receivedAt } = entries.shift();
+          if (nowTs - receivedAt > maxQueueAgeMs) {
+            onReject?.(playerId, 'stale_queue', input);
+            continue;
+          }
           const valid = validator(input, { world, playerId });
           if (!valid.ok) {
             onReject?.(playerId, valid.reason, input);
@@ -45,6 +55,7 @@ export function serializeControls(controls, world, cfg, sequenceId, extra = {}) 
   const manualIntent = controls.consumeManualIntent?.();
   return {
     sequenceId,
+    connectionEpoch: extra.connectionEpoch ?? null,
     move: controls.getMoveVector?.() ?? { x: 0, y: 0 },
     mining: !!controls.isMining?.(),
     repairing: !!controls.isRepairing?.(),

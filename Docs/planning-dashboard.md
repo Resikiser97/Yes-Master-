@@ -1,5 +1,5 @@
 # Planning 進度 Dashboard
-> 最後更新：2026-07-02（T21 Boss 門口攻擊 ✅ v0.0.33.0；T22 商店/技能點測試覆蓋 ✅ v0.0.34.0；商店系統與技能點花費曲線確認已模擬定案完成，非待辦）
+> 最後更新：2026-07-05（T24 P2P 重連功能鏈 ✅ v0.0.36.0；T23 ShopPanel state 防壞資料 ✅ v0.0.35.0；P2P connection_epoch / queue timeout 已接上，仍需實機多人重連測試）
 > 用途：追蹤所有討論過的問題狀態，避免長對話導致脈絡遺失
 > 對應文件：`game-architecture-plan.md`（技術架構）、`game-design-plan.md`（玩法設計）
 
@@ -34,13 +34,13 @@
 | 玩家帳號資料結構 | ✅ | 六大屬性/裝備庫存/技能點/抽獎盤狀態/雙倍獎勵充能，跨房間通用，獨立於Save File |
 | Save File 資料結構 | ✅ | 5層定案：地圖/進度/玩家(背包)/共享資源/房間，含Slot鎖定規則 |
 | RLS 權限設計 | 🟡 | 正式 save_files owner_id=uid 可行；多人 active save（不分私人房/公開房）需走 Edge Function 驗 current_host_uid + room active + data_revision，不能只靠 owner_id=uid。**P0 開工第一件事**（沒有 RLS = 任何登入玩家可讀所有人存檔） |
-| P2P（PeerJS）安全限制 | 🟡 部分實作 | ✅ 已做：room_join_token handshake、slot 由房主分配、StrikeTracker 反作弊。⚠️ 未做：connection_epoch+sequence_id 防重放、host_received_at queue timeout、Edge Function rate limit |
+| P2P（PeerJS）安全限制 | ✅ | ✅ 已做：room_join_token handshake、slot 由房主分配、StrikeTracker 反作弊、connection_epoch+sequence_id 防重放、host_received_at queue timeout、重連 maxAttempts 防轟炸；⚠️ Edge Function rate limit 仍屬後端部署層補強 |
 | JWT Token 過期與 refresh | ✅ 已實作 | authManager.js `onAuthStateChange` 已接 Supabase 內建靜默刷新 |
 | XSS 防護規範 | ✅ 已實作 | waitingRoom.js 全部玩家輸入用 `textContent`，無 innerHTML 拼接 |
 | Save File 內容驗證（防篡改） | ⚠️ | 已知風險，低優先，暫不處理 |
 | 多人聯機上線 | ✅ | PeerJS P2P（Star 拓撲）+ Supabase Auth（Google OAuth/匿名）+ 房間系統（建房/列表/踢人/開始）正式上線；localStorage 存檔仍保留作為單人備援 |
 | 反作弊／輸入驗證機制 | ✅ | 房主端 Sliding Window（點擊100ms/長按200ms）+ 移動50ms Rate Limit + 互動距離≤2格+結構合法性 + 三級違規（輕微不計/可疑累積5Strike/明顯立即踢）+ Event序號防重放 + Strike以uid+room_id+slot_id保留到場結束（重連不清零），已同步進 game-architecture-plan.md |
-| 斷線重連機制 | ✅ | Slot保留到遊戲結束；reconnect 用綁原slot_id的 room_join_token（後端 verify）；斷線期間角色凍結、靈動buff暫停；重連後Full Snapshot+新connection_epoch；遊戲結束時背包轉塔內資源欄，已同步進 game-architecture-plan.md |
+| 斷線重連機制 | ✅ | T24 已完成 client 自動重連 wiring、reconnect token、connection_epoch 重置序號基準、重連後 Full Snapshot、peerHost stale close 防護；⚠️ 仍需開兩分頁做實機斷線/重連驗證 |
 | Save File／帳號資料版本相容性 | ✅ | Schema Versioning 已定案：schema_version+data_revision+idempotent Migration chain+條件式回寫+並發保護，已同步進 game-architecture-plan.md |
 | 金流／儲值串接方案 | ✅ | MVP不接真金流（刪檔封測階段玩家無法付費）；架構已設計（Stripe+Edge Function+Webhook idempotency+ECPay/NewebPay）；訂閱失敗降級/退款chargeback處理在接真金流前補完 |
 | 隱私權／法規合規 | ✅ | 上線前8項必做（含抽獎機率公開規格、未成年保護、客服聯絡等）；上線後補GDPR刪除流程；暫不做CCPA/SOC2，已同步進 game-architecture-plan.md |
@@ -99,7 +99,9 @@
 | 多人卡片投票 + GameOver 結算（T19+T20） | ✅ | eligible 玩家多數決投票（排除離線）、host/remote 四路徑一致、sessionRewards 本機摘要顯示；peerHost ping-timeout offline bug 附帶修復；v0.0.32.0 |
 | 加時賽收尾規則 | ✅ | 定案維持現況：30 秒加時結束仍未清完怪 → 強制 GameOver（核心判定陣亡），不再另做特殊處理；`waveplan.md` line 137 已載明 |
 | Boss 門口攻擊（T21） | ✅ | 任何已放置方塊(dirt/fore)與 world.core 同為敵人有效攻擊目標；doorAttack Boss(20/30) 有效攻擊距離=height+attackRange；boss10 與小怪不吃此加成；`config/waves.js` 舊 `doorAttackHeightTiles` 門檻殘留已清除；v0.0.33.0 |
-| 商店/技能點測試覆蓋（T22） | ✅ | `tests/shopPanel.test.js`（8 cases）+ `tests/skillService.test.js`（5 cases）；零 src 邏輯改動；v0.0.34.0。⚠️ 已知風險：`ShopPanel.isValidState()` 對 `refreshCount` 只驗型別，未擋 NaN/負數/超過上限，留待後續小任務補防呆 |
+| 商店/技能點測試覆蓋（T22） | ✅ | `tests/shopPanel.test.js`（8 cases）+ `tests/skillService.test.js`（5 cases）；零 src 邏輯改動；v0.0.34.0 |
+| ShopPanel state 防壞資料修復（T23） | ✅ | `isValidState()` 補 `refreshCount` 整數/範圍檢查 + `purchases` 元素型別檢查，防止玩家寫壞 localStorage 繞過每日刷新上限；v0.0.35.0 |
+| P2P 重連功能鏈（T24） | ✅ | `reconnect.js` 接入可重試 controller；`validation.js` 改 connectionEpoch-aware；`inputBuffer.js` 加 host_received_at queue timeout；`peerClient.js` 自動重連；`peerHost.js` 指派 epoch 並防 stale close 誤殺新連線；v0.0.36.0 |
 
 ---
 
@@ -108,7 +110,7 @@
 ### 玩法數值／模擬（Codex 負責，見 mustsolve.md + simulation/）
 1. ✅ Must Solve 2：怪物職能與敵人設計（數值表已填、波次已實作上線；職能是否逼出不同建築留實玩驗證）
 2. ✅ Must Solve 3：建築策略與方塊取捨（連通性 BFS + 格子化 Hitbox 已上線；生存率差異留實玩驗證）
-3. 🟡 MVP 實作前整理：引擎狀態 + 開工 checklist 已建立 → `Docs/mvp-engine-checklist.md`；待完成：T14 怪物掉落 engine wiring + T15 關卡結算獎勵
+3. ✅ MVP 實作前整理：引擎狀態 + 開工 checklist 已建立 → `Docs/mvp-engine-checklist.md`；T14/T15 已完成（見下方）
 4. ✅ T14：怪物擊殺掉落銀幣 engine wiring（`combatRuntime.js` v0.0.27.0，`_awardKillSilver` 實裝）
 5. ✅ T15：關卡結算獎勵 + sessionId idempotency 修正（v0.0.28.0；Boss 關入帳 bug 修正）
 6. ✅ T16：cardModifiers 消費 + playerStat 基準值修正（v0.0.29.0；7 個檔案；delta sync 修正；npm test 全過）
