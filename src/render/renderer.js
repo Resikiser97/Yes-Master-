@@ -5,7 +5,7 @@
  * @exports     Renderer
  * @depends     config/gameConfig.js, src/logic/coreStats.js, src/game/phaseRuntime.js
  * @sourceOfTruth Docs/game-design-plan.md「建築維度」「遊戲內 UI 設計」
- * @version     v0.0.32.0
+ * @version     v0.0.38.0
  *
  * 渲染層只「讀」world 狀態畫圖，不寫任何遊戲規則（鐵則 9）。
  */
@@ -250,7 +250,7 @@ export class Renderer {
       this._drawHotbarTooltip(world);
       this._drawModeHint(world);
       this._drawVersionLabel();
-      this._drawExitButton();
+      this._drawExitButton(world);
     }
     this._drawIntentWheel(world);
     if (world.phase === 'gameover') this._drawGameOverOverlay(world);
@@ -1011,7 +1011,7 @@ export class Renderer {
     ctx.restore();
   }
 
-  _drawExitButton() {
+  _drawExitButton(world) {
     const ctx = this.ctx;
     const { width: vw, height: vh } = this.viewport;
     const w = 58, h = 24;
@@ -1028,6 +1028,10 @@ export class Renderer {
     ctx.fillStyle = '#F44336';
     ctx.fillText('EXIT', x + w / 2, y + h / 2 + 1);
     ctx.restore();
+
+    world.uiHitRects ??= [];
+    world.uiHitRects = world.uiHitRects.filter((r) => r.id !== 'exitButton');
+    world.uiHitRects.push({ id: 'exitButton', x, y, w, h });
   }
 
   _drawModeHint(world) {
