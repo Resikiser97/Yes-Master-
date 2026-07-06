@@ -4,7 +4,7 @@
  * @summary     等待室：玩家 slot 卡片 + PeerJS 聊天 + 開始遊戲
  * @exports     showWaitingRoom
  * @depends     src/net/authManager.js, src/net/supabaseClient.js, src/net/peerHost.js, src/net/peerClient.js, src/net/protocol.js, src/net/friendManager.js, src/ui/characterPopup.js
- * @version     v0.0.20.0
+ * @version     v0.0.37.0
  */
 
 import { getCurrentUser, getProfile } from '../net/authManager.js';
@@ -28,10 +28,12 @@ let _tabCloseHandlers = null;
 
 export async function showWaitingRoom({ roomId, roomName, role, inputMode, diffMode, maxPlayers = 4, onStart, onBack }) {
   _cleanup();
+  document.getElementById('waitingroom-overlay')?.remove();
 
   const user = await getCurrentUser();
   const profile = user ? await getProfile(user.id) : null;
   const displayName = profile?.display_name || 'Goblin';
+  let memberErrorShown = false;
 
   let chatLogEl = null;
 
@@ -150,6 +152,7 @@ export async function showWaitingRoom({ roomId, roomName, role, inputMode, diffM
   requestAnimationFrame(() => { overlay.style.opacity = '1'; });
 
   _addChat(chatLogEl, '系統', `歡迎來到 ${roomName}！`);
+  _renderSlots(slotsArea, _fallbackMembers(), maxPlayers, role, roomId, netSession, chatLogEl, onBack);
 
   // --- PeerJS connection ---
   try {
@@ -183,6 +186,19 @@ export async function showWaitingRoom({ roomId, roomName, role, inputMode, diffM
             setTimeout(() => { overlay.remove(); alert('你已被踢出房間'); if (onBack) onBack(); }, 400);
           }
         },
+        onDisconnected: () => {
+          console.warn('[net] waiting room disconnected, attempting reconnect...');
+          _addChat(chatLogEl, '系統', '連線中斷，嘗試重連...');
+        },
+        onReconnected: () => {
+          console.info('[net] waiting room reconnected');
+          _addChat(chatLogEl, '系統', '已重新連線');
+          refreshMembers();
+        },
+        onReconnectFailed: () => {
+          console.warn('[net] waiting room reconnect failed');
+          _addChat(chatLogEl, '系統', '重連失敗，請退出房間後重新加入');
+        },
       });
       _addChat(chatLogEl, '系統', '已連線！');
     }
@@ -194,8 +210,16 @@ export async function showWaitingRoom({ roomId, roomName, role, inputMode, diffM
   async function refreshMembers() {
     try {
       const members = await getRoomMembers(roomId);
+      memberErrorShown = false;
       _renderSlots(slotsArea, members || [], maxPlayers, role, roomId, netSession, chatLogEl, onBack);
-    } catch (e) { /* silent */ }
+    } catch (e) {
+      if (!memberErrorShown) console.warn('[waitingRoom] getRoomMembers failed', e);
+      _renderSlots(slotsArea, _fallbackMembers(), maxPlayers, role, roomId, netSession, chatLogEl, onBack);
+      if (!memberErrorShown) {
+        memberErrorShown = true;
+        _addChat(chatLogEl, '系統', `成員列表暫時載入失敗：${e.message || e}`);
+      }
+    }
   }
 
   refreshMembers();
@@ -210,6 +234,20 @@ export async function showWaitingRoom({ roomId, roomName, role, inputMode, diffM
 
   // --- Best-effort tab close handling ---
   _tabCloseHandlers = _setupTabCloseHandlers(roomId);
+
+  function _fallbackMembers() {
+    if (!user) return [];
+    return [{
+      user_id: user.id,
+      slot_id: role === 'host' ? 'p1' : 'p?',
+      display_name: displayName,
+      player_level: profile?.player_level ?? 1,
+      role: role === 'host' ? 'host' : 'player',
+      is_host: role === 'host',
+      online: true,
+      join_order: 0,
+    }];
+  }
 }
 
 function _launchGame(overlay, diffMode, inputMode, roomId, role, onStart) {

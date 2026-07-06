@@ -4,7 +4,7 @@
  * @summary     登入/訪客 overlay — Google OAuth + 匿名登入
  * @exports     showAuthScreen
  * @depends     src/net/authManager.js
- * @version     v0.0.20.0
+ * @version     v0.0.37.0
  */
 
 import { signInWithGoogle, signInAnonymously, getCurrentUser, ensureProfile, onAuthStateChange } from '../net/authManager.js';
@@ -15,6 +15,7 @@ const GOLD_BORDER = 'rgba(212,160,23,0.45)';
 const GOLD_BG = 'rgba(212,160,23,0.12)';
 
 export async function showAuthScreen(onAuthed) {
+  document.getElementById('auth-overlay')?.remove();
   const existing = await getCurrentUser();
   if (existing) {
     await ensureProfile(existing);
@@ -48,8 +49,13 @@ export async function showAuthScreen(onAuthed) {
   let sub = null;
   const finishAuth = async (user) => {
     if (settled) return;
-    await ensureProfile(user);
     settled = true;
+    try {
+      await ensureProfile(user);
+    } catch (err) {
+      settled = false;
+      throw err;
+    }
     sub?.unsubscribe?.();
     _dismiss(overlay, () => onAuthed(user));
   };

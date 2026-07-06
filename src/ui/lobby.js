@@ -4,7 +4,7 @@
  * @summary     多人大廳：房間列表（公開/朋友/房間號碼 tab）+ 建房 popup + 商店/抽獎/裝備/技能/合成入口
  * @exports     showLobby
  * @depends     src/net/roomManager.js, src/net/authManager.js, src/net/friendManager.js, src/ui/waitingRoom.js, src/ui/friendsPanel.js, src/ui/uiManager.js
- * @version     v0.0.26.0
+ * @version     v0.0.37.0
  */
 
 import { listRooms, createRoom, joinRoom } from '../net/roomManager.js';
@@ -26,6 +26,8 @@ let pollTimer = null;
 
 export async function showLobby(inputMode, onStart) {
   _cleanup();
+  document.getElementById('lobby-overlay')?.remove();
+  document.getElementById('auth-overlay')?.remove();
 
   const user = await getCurrentUser();
   if (!user) {
@@ -46,8 +48,8 @@ export async function showLobby(inputMode, onStart) {
     textContent: 'GOBLIN NEST',
     style: `font-family:Georgia,'Times New Roman',serif;font-size:clamp(20px,4vw,36px);font-weight:bold;letter-spacing:6px;color:${GOLD};text-shadow:2px 2px 0px #7a5500;`,
   });
-  const leftActions = _el('div', {
-    style: 'position:absolute;left:0;top:4px;display:flex;gap:8px;flex-wrap:wrap;max-width:42%;',
+  const accountActions = _el('div', {
+    style: 'display:flex;flex-direction:column;gap:8px;flex:0 0 112px;align-self:flex-start;',
   });
   const shopBtn = _btn('每日商店');
   shopBtn.addEventListener('click', openShop);
@@ -59,13 +61,10 @@ export async function showLobby(inputMode, onStart) {
   skillsBtn.addEventListener('click', openSkills);
   const synthesisBtn = _btn('⚗️ 合成');
   synthesisBtn.addEventListener('click', openSynthesis);
-  leftActions.append(shopBtn, gachaBtn, equipmentBtn, skillsBtn, synthesisBtn);
   const friendsBtn = _btn('👥 好友');
-  friendsBtn.style.position = 'absolute';
-  friendsBtn.style.right = '0';
-  friendsBtn.style.top = '4px';
   friendsBtn.addEventListener('click', showFriendsPanel);
-  header.append(leftActions, title, friendsBtn);
+  accountActions.append(shopBtn, gachaBtn, equipmentBtn, skillsBtn, synthesisBtn, friendsBtn);
+  header.append(title);
 
   const sub = _el('div', {
     textContent: '多 人 大 廳',
@@ -122,7 +121,7 @@ export async function showLobby(inputMode, onStart) {
     style: `flex:1;border:2px solid ${GOLD_BORDER};background:rgba(0,0,0,0.6);padding:12px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;min-height:300px;max-height:70vh;`,
   });
   const roomIdPanel = _el('div', {
-    style: 'display:none;flex-direction:column;gap:12px;padding:16px;',
+    style: 'display:none;flex:1;min-width:0;flex-direction:column;gap:12px;padding:16px;',
   });
   const roomIdInput = _el('input', {
     placeholder: '輸入房間 ID',
@@ -168,6 +167,7 @@ export async function showLobby(inputMode, onStart) {
   main.appendChild(tabs);
   main.appendChild(panel);
   main.appendChild(roomIdPanel);
+  main.appendChild(accountActions);
 
   overlay.append(header, sub, main);
   document.body.appendChild(overlay);

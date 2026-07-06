@@ -5,7 +5,7 @@
  *              斷線後自動排程重連（沿用同一個 Peer 物件，重新 issue reconnect token + 重做 handshake）
  * @exports     startPeerClient
  * @depends     net/protocol.js, net/peerRuntime.js, net/roomManager.js, net/reconnect.js
- * @version     v0.0.36.0
+ * @version     v0.0.37.0
  */
 import { GAME_CONFIG } from '../../config/gameConfig.js';
 import { MSG, decode, encode, makeMessage } from './protocol.js';
@@ -33,6 +33,33 @@ export async function startPeerClient({
   await waitForPeerOpen(peer);
 
   let closing = false;
+  let browserOffline = false;
+  let disconnectedNotified = false;
+
+  const isBrowserOffline = () => (
+    typeof globalThis.navigator !== 'undefined'
+      && globalThis.navigator.onLine === false
+  );
+  const notifyDisconnected = () => {
+    if (disconnectedNotified) return;
+    disconnectedNotified = true;
+    onDisconnected?.();
+  };
+  const scheduleReconnect = () => {
+    if (closing || isBrowserOffline()) return;
+    reconnectCtl.schedule();
+  };
+  const handleBrowserOffline = () => {
+    if (closing || !client.slotId) return;
+    browserOffline = true;
+    notifyDisconnected();
+    client.conn?.close?.();
+  };
+  const handleBrowserOnline = () => {
+    if (closing || !browserOffline) return;
+    browserOffline = false;
+    scheduleReconnect();
+  };
 
   const client = {
     role: 'client',
@@ -53,9 +80,19 @@ export async function startPeerClient({
     close() {
       closing = true;
       reconnectCtl.cancel();
+      removeNetworkListeners();
       client.conn?.close?.();
       peer.destroy?.();
     },
+  };
+
+  const addNetworkListeners = () => {
+    globalThis.addEventListener?.('offline', handleBrowserOffline);
+    globalThis.addEventListener?.('online', handleBrowserOnline);
+  };
+  const removeNetworkListeners = () => {
+    globalThis.removeEventListener?.('offline', handleBrowserOffline);
+    globalThis.removeEventListener?.('online', handleBrowserOnline);
   };
 
   const reconnectCtl = createReconnectController({
@@ -67,10 +104,11 @@ export async function startPeerClient({
       try {
         await attemptConnect(reconnectToken);
         reconnectCtl.cancel();
+        disconnectedNotified = false;
         onReconnected?.();
       } catch (err) {
         console.warn('[net] reconnect attempt failed', err);
-        reconnectCtl.schedule();
+        scheduleReconnect();
       }
     },
   });
@@ -128,12 +166,13 @@ export async function startPeerClient({
           return;
         }
         if (closing) return;
-        onDisconnected?.();
-        reconnectCtl.schedule();
+        notifyDisconnected();
+        scheduleReconnect();
       });
     });
   }
 
+  addNetworkListeners();
   await attemptConnect(initialToken);
   return client;
 }

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Yes, Master! — MVP</title>
   <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="data:," />
   <meta name="theme-color" content="#D4A017" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black" />
@@ -41,7 +42,19 @@
     document.addEventListener('dragstart', e => e.preventDefault());
     document.addEventListener('selectstart', e => e.preventDefault());
   </script>
-  <script src="/api/env"></script>
+  <script>
+    (async () => {
+      try {
+        if (['127.0.0.1', 'localhost', '::1'].includes(location.hostname)) return;
+        const res = await fetch('/api/env', { cache: 'no-store' });
+        if (!res.ok) return;
+        const script = await res.text();
+        if (script.trim()) new Function(script)();
+      } catch {
+        // Local static servers usually do not provide /api/env; config/gameConfig.js has safe defaults.
+      }
+    })();
+  </script>
   <script type="module" src="./src/main.js"></script>
 </body>
 </html>
