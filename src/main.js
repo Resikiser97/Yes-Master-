@@ -11,10 +11,10 @@
  *              src/logic/playerMovement.js、
  *              src/storage/saveManager.js、src/storage/saveLocal.js、
  *              src/ui/splash.js、src/ui/mobileLayout.js、src/ui/uiState.js、
- *              src/net/netSession.js、src/net/inputBuffer.js、src/net/syncScheduler.js、
+ *              src/net/netSession.js、src/net/inputBuffer.js、src/net/syncScheduler.js、src/net/roomManager.js、
  *              src/account/stageRewardService.js
  * @sourceOfTruth Docs/game-architecture-plan.md「MVP 開發範圍」
- * @version     v0.0.38.0
+ * @version     v0.0.39.0
  *
  * 手機模式：TouchControls + setupOrientationGuard + 動態 tilePx resize。
  * 電腦模式：Controls（鍵盤/滑鼠）+ resize 仍可動態縮放視窗。
@@ -43,6 +43,7 @@ import { SPRITE_SHEETS } from '../config/sprites.js';
 import { parseNetLaunch, createNetSession } from './net/netSession.js';
 import { createInputBuffer, serializeControls } from './net/inputBuffer.js';
 import { createHostSyncScheduler, createClientSyncApplier } from './net/syncScheduler.js';
+import { heartbeatRoom } from './net/roomManager.js';
 import { claimStageReward } from './account/stageRewardService.js';
 
 export function boot() {
@@ -193,6 +194,32 @@ export function boot() {
     let hostSync = null;
     let clientSync = null;
     let inputSequenceId = 0;
+    let gameHeartbeatTimer = null;
+    let gameHeartbeatWarned = false;
+
+    const stopGameHeartbeat = () => {
+      if (!gameHeartbeatTimer) return;
+      clearInterval(gameHeartbeatTimer);
+      gameHeartbeatTimer = null;
+    };
+
+    const startGameHeartbeat = () => {
+      if (cfg.mode !== 'multi' || !netRoomId || gameHeartbeatTimer) return;
+
+      const beat = () => {
+        heartbeatRoom(netRoomId, cfg)
+          .then(() => { gameHeartbeatWarned = false; })
+          .catch((err) => {
+            if (!gameHeartbeatWarned) {
+              gameHeartbeatWarned = true;
+              console.warn('[net] game heartbeat failed', err);
+            }
+          });
+      };
+
+      beat();
+      gameHeartbeatTimer = setInterval(beat, 10_000);
+    };
 
     if (cfg.mode === 'multi' && netRoomId && !netSession) {
       if (netRole === 'host') {
@@ -253,6 +280,7 @@ export function boot() {
     } else if (cfg.mode === 'multi') {
       console.warn('[net] missing room id; use ?mode=multi&role=host|client&room=ROOM_ID');
     }
+    startGameHeartbeat();
 
     const consumeDebugActions = () => {
       for (const action of controls.consumeDebugActions()) {
@@ -270,6 +298,7 @@ export function boot() {
       update: (dt) => {
         if (controls.pendingUiClick === 'exitButton') {
           controls.pendingUiClick = null;
+          stopGameHeartbeat();
           loop.stop?.();
           netSession?.close?.();
           window.location.reload();
@@ -497,6 +526,7 @@ export function boot() {
     window.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
       if (world.phase !== 'gameover') return;
+      stopGameHeartbeat();
       loop.stop?.();
       netSession?.close?.();
       window.location.reload();
@@ -504,7 +534,7 @@ export function boot() {
 
     const app = {
       world, renderer, controls, loop, config: cfg,
-      stop: () => { controls.detach(); loop.stop(); },
+      stop: () => { stopGameHeartbeat(); controls.detach(); loop.stop(); },
     };
     if (typeof window !== 'undefined') window.__YES_MASTER__ = app;
   });

@@ -327,6 +327,35 @@ P2P（PeerJS），採用 Star（房主中心）拓撲，非 Full Mesh
 玩家操作 → 送給房主 → 房主驗證/處理 → 房主廣播結果給其他玩家
 ```
 
+### 本機雙分頁測試（單機模擬 host + client）
+
+```
+.claude/launch.json 有兩組 dev server 設定：
+  mvp   → npx serve . -l 5173（原本就有）
+  mvp2  → npx serve . -l 5174（2026-07-06 新增，供本機雙開測試用）
+
+用法：一個分頁跑 mvp（當 host，建房），另一個分頁跑 mvp2（當 client，用房間 ID 加入）。
+兩個 port 各自是獨立的瀏覽器 origin，localStorage/Supabase auth session 不會互相污染，
+可以用兩個不同的匿名帳號模擬真正的兩位玩家，不需要兩台實體裝置或另外開無痕視窗。
+
+PeerJS 訊令走公用雲端 broker，不依賴哪個本機 port 服務頁面，
+所以 5173 和 5174 兩個實例可以直接互連，行為等同兩台不同機器。
+```
+
+**已知限制（2026-07-06 實測發現，不是本機測試工具的 bug，是留意事項）**：
+```
+waitingRoom.js 每 10 秒呼叫一次 heartbeatRoom()，
+room-heartbeat 更新 room_memberships.last_seen_at + rooms.last_seen_at。
+背景有排程定期呼叫 cleanup-rooms：
+  房間若 60 秒內沒有任一成員 online=true 且 last_seen_at 夠新 → 標記 status='completed'
+  status != 'active' 之後，start-room / 加入流程都會直接失敗（room not found）
+
+heartbeatRoom() 呼叫失敗時是 best-effort 靜默吞掉（.catch(() => {})），
+如果測試環境網路不穩定（例如 Claude Code 沙盒瀏覽器工具偶發 ERR_INTERNET_DISCONNECTED），
+心跳可能連續失敗超過 60 秒，房間就會被自動判定為已結束，需要重新建房才能繼續測試。
+本機正常網路環境下不會遇到這個問題。
+```
+
 ### slot_id 正式定義（canonical）
 ```
 slot_id ∈ { P1, P2, P3, P4 }
