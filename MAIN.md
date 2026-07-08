@@ -1,9 +1,15 @@
 # MAIN.md — 函式級參考
 
+> ⚠️ **歷史快照（凍結於 v0.0.20.0，2026-06-28）**：本檔自 v0.0.21.0 起停止維護，
+> 之後新增/修改的函式（wallet/shop/skill/synthesis 系列、cardVote、connection_epoch
+> reconnect 鏈、doorAttack、game heartbeat 等）**完全不在本檔內**。
+> 查現行函式一律直接 grep `src/`/`config/`——file header 的 `@exports`/`@summary` 每任務都有維護，比本檔可靠。
+> 現行進度與任務紀錄：`Docs/planning-dashboard.md` + `Docs/history/codex-prompt-T*.md` + git log。
+>
 > 版本：v0.0.20.0
 > 類型：**代碼優先**（文件描述錯了，以代碼為準去改本檔）。
 > ⚠️ **正式多人聯機上線**（PeerJS P2P + Supabase Auth + 房間系統）：移動/挖礦/背包/塔內資源/掉落物自動撿取/跟隨鏡頭/初版建造/核心數值回饋/核心 HP 與修復/核心戰鬥/正式波次晝夜/卡片選擇（hover+tier中文）/localStorage 存檔/新手教學提示/**debug 浮層（` 鍵）+ T 暫停**/**測試難度 preset（1~30 關）**/**手機觸控 UI + 動態 canvas 縮放 + 📣意圖選單**/**固定 bolt 電擊 VFX + 正式攻擊範圍可視化**/**快捷列圖示（手機 + 鍵盤 HUD）**/**sprite 基礎設施**/**規劃模式（B 鍵拖拽建造+資源預檢）+ 拆除模式（V 鍵材質選擇性拆除）**/**快捷列 10 格（1~0）+ 滑鼠點擊**/**梯子無限方塊**/**挖礦進度條持久化**/**可展開波次情報 + 核心數值 HUD 收合**/**多人大廳（Auth + Lobby + WaitingRoom + PeerJS 聊天）+ 等級/好友/裝備/成就/排行榜系統**已成完整循環。
-> 規則：新增 / 刪除函式必須同步本檔（見 `.claude/instructions.md` 開發鐵則）。
+> 規則（已於 2026-07-07 廢止）：~~新增 / 刪除函式必須同步本檔~~ → 改為維護各檔 file header（見 `.claude/instructions.md`）。
 >
 > 註：原本的「planning 進入點 / source map」已移至 `Docs/source-map.md`。
 > 規劃決策總索引：`Docs/planning-dashboard.md`。

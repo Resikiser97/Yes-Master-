@@ -4,7 +4,7 @@
  * @summary     Supabase friendships 表操作：送出、接受、刪除好友與查詢清單
  * @exports     sendFriendRequest, acceptFriendRequest, declineFriendRequest, deleteFriend, removeFriend, listFriends, listPendingRequests
  * @depends     config/gameConfig.js、src/net/supabaseClient.js
- * @sourceOfTruth Docs/lobby-waitingroom-plan.md Phase C
+ * @sourceOfTruth Docs/history/lobby-waitingroom-plan.md Phase C
  * @version     v0.0.20.0
  */
 

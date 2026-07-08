@@ -10,8 +10,8 @@
 ## 0. 一句話總結
 
 這個專案用「文件即記憶」的方式協作。你每次開場必須依序讀
-`DOC_INTEGRITY → ARCH → QUICKREF → CHANGELOG → VERSION_RULES → Docs/source-map → MAIN`，
-工作完必須跑 `sync-docs`（更新版本號 + 同步所有頂部標版本的文件 + 寫 CHANGELOG + 報告）。
+`Docs/source-map.md → Docs/planning-dashboard.md → 任務相關檔案`，
+工作完必須做收尾同步（版本號 + file header + dashboard + sync 報告）。
 版本號 `v0.x.y.z` 你**只能動 y 和 z**。遇到任何不明確的地方**先問，不要猜**。
 
 ---
@@ -19,104 +19,84 @@
 ## 1. 開場讀取儀式（每次對話開始，依序讀）
 
 ```
-1. DOC_INTEGRITY.md   ← 文件規範與 Source of Truth 優先級
-2. ARCH.md            ← 架構全貌、模組清單
-3. QUICKREF.md        ← 當前版本號、檔案地圖、持久化 key、技術陷阱表
-4. CHANGELOG.md       ← 最新版本與近期變更
-5. VERSION_RULES.md   ← 版本號規則
-6. Docs/source-map.md ← 專案知識 source map / 規劃文件入口
-7. Docs/planning-dashboard.md ← Planning 階段進度總表
-8. MAIN.md            ← 只在需要查特定函式/模組時才細讀
-9. 確認 .claude/skills/ 下有哪些 Skill 可用
+1. Docs/source-map.md          ← 專案知識地圖（哪個知識在哪個檔案、誰有維護誰已凍結）
+2. Docs/planning-dashboard.md  ← 進度總表 + 任務紀錄（T 任務狀態、已知風險）
+3. 任務相關檔案：
+   - 架構/多人/安全：Docs/game-architecture-plan.md
+   - 玩法/數值/平衡：Docs/game-design-plan.md、Docs/waveplan.md、Docs/bosscard.md、Docs/mustsolve.md
+   - 經濟數值：config/economyConfig.js（Single Source of Truth）+ Docs/simulation/
+4. 當前版本號：config/gameConfig.js 的 GAME_CONFIG.version（canonical）
+5. 近期變更：git log --oneline -15
+6. 確認 .claude/skills/ 下有哪些 Skill 可用
 ```
 
-> 注意：`MAIN.md` 是「函式級參考」。專案知識 source map 在 `Docs/source-map.md`，
-> 規劃決策總索引在 `Docs/planning-dashboard.md`（Planning 階段）。
+> ⚠️ **凍結文件警告（2026-07-07 文檔重整定案）**：根目錄的
+> `ARCH.md`（凍結於 v0.0.18.0）、`QUICKREF.md` / `CHANGELOG.md` / `MAIN.md` / `project_summary.md`
+>（凍結於 v0.0.20.0）皆為歷史快照，**不再維護、不可當現況讀**，各檔頂部有明確凍結橫幅。
+> `DOC_INTEGRITY.md` / `VERSION_RULES.md` 的規則本身仍有效（文件優先級、版本號格式）。
+> 已完結的實作計劃/交接文件一律歸檔在 `Docs/history/`（含全部 codex-prompt-T*.md 任務紀錄）。
 
 ---
 
 ## 2. 收尾同步儀式（sync-docs）— 整套架構的心臟
 
-當「任務完成」或開發者輸入 `sync-docs` 時，**固定執行以下 Step 1~8**：
+> **2026-07-07 修訂**：原版要求每任務同步 CHANGELOG/QUICKREF/MAIN/project_summary 四份根目錄文件，
+> 該儀式自 v0.0.21.0 起實際上已由「planning-dashboard + prompt 歸檔 + git log」取代
+>（四份文件凍結為歷史快照，見各檔頂部橫幅）。以下為對齊實際運作的現行版本。
+
+當「任務完成」或開發者輸入 `sync-docs` 時，**固定執行以下 Step 1~6**：
 
 ```
-Step 1   讀本次變更範圍（看 CHANGELOG 最新條目 / git diff）
-Step 1.5 File header 檢查（每次 sync-docs 都做，不限新增/刪除檔案）：
-         - 若本次改動涉及任何 .js → 掃描所有 src/**/*.js 與 config/**/*.js 的 header
-         - 逐檔檢查四項：
-           1. 是否有 header
-           2. @version 是否與 config/gameConfig.js 的 GAME_CONFIG.version 一致
-           3. @summary / @exports / @depends 是否明顯與目前檔案職責不符
-           4. 是否殘留「已完成步驟」的過期 TODO 描述
-         - 不符就修；輸出檢查結果等開發者確認（規範見 .claude/skills/file-header.md）
-Step 2   更新 CHANGELOG.md：頂部版本號 + 新增本版條目（新增/修復/調整）
-Step 3   更新 QUICKREF.md：版本號必做；檔案地圖 / key / 陷阱有變才動
-Step 4   更新 MAIN.md：版本號必做；函式 / 模組有變才動
-Step 5   更新 project_summary.md：版本號 + 「最近完成的工作」必做
-Step 6   判斷是否需要對玩家公告（Patchnote）→ 需要則等開發者確認後才寫
-Step 7   驗收 grep（必跑，命令見下方「sync-docs 驗收 grep」）：
-         A. 版本同步 grep：src/config header 沒有舊 @version（人工比對 GAME_CONFIG.version）
-         B. 舊狀態描述 grep：docs/header 沒有過期進度描述
-         C. TODO grep：TODO 仍符合目前 worklist 狀態
-         D. 若 grep 有結果 → 逐項判斷：修正 / 保留並說明原因
-Step 8   輸出 sync 報告 → commit → push
+Step 1   讀本次變更範圍（git diff / git status）
+Step 2   File header 檢查（本次改動涉及的每個 .js）：
+         1. 是否有 header
+         2. @version 是否更新到本次目標版本
+         3. @summary / @exports / @depends 是否與目前檔案職責相符（改了 export 必同步）
+         4. 是否殘留「已完成步驟」的過期 TODO 描述
+         （規範見 .claude/skills/file-header.md）
+Step 3   版本號同步：config/gameConfig.js 的 @version + GAME_CONFIG.version（canonical，
+         兩處都要改）+ 本次所有修改檔案的 header @version → 同一版本號
+Step 4   更新 Docs/planning-dashboard.md：任務狀態、已知風險、頂部「最後更新」戳記
+Step 5   任務 prompt 歸檔：本次任務的 codex-prompt-T*.md 放進 Docs/history/
+        （若任務是直接執行沒有 prompt，在 dashboard 記錄即可）
+Step 6   輸出 sync 報告（改了哪些檔案、解了什麼問題、測試結果、已知風險）
+         → 等開發者說「可以 commit」→ commit（message 帶版本號）→ 等指示 push
 ```
 
 ### 版本號同步鐵則
 
 > 完成 commit 時，**所有版本同步點必須同步成同一個版本號**，缺一即視為同步未完成。
 
-`config/gameConfig.js` 已存在，其 `GAME_CONFIG.version` 是**程式版本的 canonical source**。
-本專案版本同步點分兩類，**A + B 全部一致才算完成**：
-
-**A. 頂部標版本號的文件（4 份）**
-- `CHANGELOG.md`
-- `QUICKREF.md`
-- `project_summary.md`
-- `MAIN.md`
-
-**B. 程式版本**
-- `config/gameConfig.js` 的 `GAME_CONFIG.version`（canonical）
-- 所有 `src/**/*.js`、`config/**/*.js` 的 file header `@version`，必須同步到同一版本
-
-> sync-docs 報告需**分開列**「文件頂部版本同步」與「source/config header @version 同步」。
+- `config/gameConfig.js` 的 `GAME_CONFIG.version` 是**程式版本的 canonical source**（header `@version` 與 `version:` 欄位兩處）
+- 本次任務**修改到的** `src/**/*.js`、`config/**/*.js` file header `@version` 同步到同一版本
+- 未修改的檔案 header 保持原版本號（代表該檔最後變更的版本），**不需要**全倉庫刷版本
 
 ### sync-docs 驗收 grep（建議命令）
 
-> 用 ripgrep（rg）。第 A 條只「列出」所有 header version，AI **必須人工**跟
-> `GAME_CONFIG.version` 比對，不能看到有結果就當錯。
-
 ```
-# A. 版本：列出 src/config 所有 header @version（人工比對 gameConfig.version）
-rg -n "@version\s+v0\.0\.[0-9]+\.[0-9]+" src config
+# A. 版本：確認本次目標版本號已寫入 gameConfig 與本次修改的檔案
+rg -n "@version" config/gameConfig.js <本次修改的檔案>
 
-# B. 舊狀態描述 / 過期步驟 TODO（應為空）
-rg -n "尚無可玩畫面|render loop 待接|input 待接|渲染/輸入層多為 TODO|TODO：步驟 2|TODO：步驟 3" src config project_summary.md MAIN.md QUICKREF.md CHANGELOG.md Docs/claude-codex-worklist.md
+# B. 過期狀態描述 / 舊任務 TODO（應為空或合理保留）
+rg -n "待 Claude 寫 prompt|待模擬|待開工|TODO：步驟" src config
 
-# C. 過期「尚無此檔 / 待開工」描述（應為空或合理保留；排除本規則檔避免自我命中）
-rg -n "目前尚無此檔|待開工填|開工後納入" DOC_INTEGRITY.md ARCH.md QUICKREF.md MAIN.md project_summary.md .claude/CLAUDE.md .claude/skills
+# C. 搬移文件後的斷鏈檢查（引用已歸檔文件的路徑必須帶 Docs/history/）
+rg -n "Docs/(claude-codex-worklist|claude-code-handoff|mvp-engine-checklist|ui-plan|integration-plan|lobby-waitingroom-plan|multiplayer-implementation-plan)" src config Docs/*.md .claude .codex/AGENTS.md
 ```
 
 ---
 
-## 3. sync-docs 收尾報告固定格式
+## 3. sync 報告固定格式
 
 ```
-── sync-docs 完成 ──
+── sync 完成 ──
 版本：v0.x.y.z
-Patchnote      ：[已寫入 | 不影響玩家，跳過]
-CHANGELOG.md   ：[已更新 | 無需變動] → 一句話說明
-QUICKREF.md    ：[已更新 | 無需變動] → 一句話說明
-MAIN.md        ：[已更新 | 無需變動] → 一句話說明
-project_summary：[已更新 | 無需變動] → 一句話說明
-版本號同步：
-- 文件頂部版本（4 份 .md）：✅ / ❌
-- config/gameConfig.js：✅ / ❌
-- src/config file header @version：✅ / ❌
-驗收 grep：
-- 舊版本號：✅ 無殘留 / ❌ 列出檔案
-- 舊狀態描述：✅ 無殘留 / ❌ 列出檔案
-- 過期 TODO：✅ 無殘留 / ❌ 列出檔案與處理理由
+變更檔案：[清單]
+解決問題：[一句話]
+測試：node tests/index.js → [結果]
+planning-dashboard：[已更新 | 無需變動]
+prompt 歸檔：[Docs/history/codex-prompt-Txx.md | 無 prompt]
+已知風險：[清單 | 無]
 ────────────────────
 ```
 
@@ -139,7 +119,7 @@ project_summary：[已更新 | 無需變動] → 一句話說明
 2. **Magic Number 禁令**：數值只能放在 `config/`，邏輯層不准寫死數字。
 2. **不准用名稱字串做邏輯判斷**（如 `name.includes('蠍王')），要在 config 為該對象加專屬欄位來判斷。
 3. **UI 文字一律走語言包** `t('key')`，不准硬寫字串。
-4. **改函式必同步 MAIN.md**：新增 / 刪除函式必須同步更新 `MAIN.md`。
+4. **改函式必同步 file header**（2026-07-07 修訂，原「同步 MAIN.md」已廢止——MAIN.md 凍結為歷史快照）：新增 / 刪除 / 改名 export 的函式，必須同步該檔 header 的 `@exports`；職責變了同步 `@summary`。
 5. **新檔必加 file header**：新增原始碼檔必須加檔頭（規範見 `.claude/skills/file-header.md`）。
 6. **換行一律 LF**（用 `.gitattributes` 強制）。
 7. **前端一律 ES Module**（全模組化）。
@@ -195,10 +175,133 @@ project_summary：[已更新 | 無需變動] → 一句話說明
 
 ---
 
+## 8. 任務規格模板（目標 / 指標 / 邊界，2026-07-07 起強制）
+
+任何 AI（Claude / Codex / 未來加入的模型）撰寫或接收任務規格（codex-prompt、直接實作前的計劃）時，
+**必須包含以下四段，缺任一段視為規格不完整、不得開工**：
+
+```
+1. 背景（目標 Goal）    ：為什麼做、解決什麼問題、前提是否已驗證
+2. 修改檔案（範圍 Scope）：逐檔列出改什麼；檔案數與清單明確
+3. 完成標準（指標 Metric）：可執行的驗收命令（node tests/index.js、node --check、rg 檢查）
+                          + 行為斷言（「X 情況下應 Y」）。不可只寫「功能正常」
+4. 邊界（Boundaries）    ：不改哪些檔案、不做哪些事、適用的鐵則編號（如 5.1/5.2）、
+                          已知風險與本次刻意不處理的項目
+```
+
+歷史範例（結構已驗證有效）：`Docs/history/codex-prompt-T21.md` ~ `T26.md`。
+審核方（通常是 Claude）驗收時**逐條對照完成標準執行**，不憑報告文字採信。
+
+---
+
+## 9. 檔案組織與分檔原則（永續協作）
+
+### 分層依賴方向（機器檢查：tests/docIntegrity.test.js）
+
+```
+config/     ← 純資料，零依賴（數值的 Single Source of Truth）
+src/logic/  ← 純函式；只准 import config/ 與 logic/ 自身
+              禁止：import game/render/ui/input/net/account；禁止 DOM/localStorage/
+              Math.random()/Date.now()（隨機與時間一律參數注入）
+src/game/   ← orchestration；可 import config/logic/account
+src/net/    ← 多人傳輸；可 import config/logic/game
+src/ui|render|input/ ← 表現層；可 import 下層，彼此之間盡量不依賴
+src/account/ ← 持久化 service（localStorage mock）；不可被 logic import；
+              equipmentService 禁止 import walletService（防循環）
+```
+
+### 新增檔案決策樹
+
+```
+是數值/常數？          → config/<領域>Config.js（鐵則 2：Magic Number 禁令）
+是規則運算（可純函式）？ → src/logic/（必須可單獨測試）
+是遊戲狀態協調？        → src/game/
+是網路/多人？          → src/net/
+是 DOM overlay？       → src/ui/*Panel.js（測試需遵守鐵則 5.2）
+是 canvas 繪製？       → src/render/
+是帳號持久化？          → src/account/*Service.js（後端化時只換底層）
+是後端邏輯？           → supabase/functions/<name>/index.ts（Edge Function）
+```
+
+### 分檔紀律
+
+- 一檔一責：header `@summary` 一句話說不清職責 = 該拆了。
+- 新檔案目標 400 行內；既有大檔（如 renderer.js）**不主動重構**，等該檔有實質任務時順勢拆。
+- 拆檔/改 export 時：header `@exports` 同步 + 舊引用全改（`rg` 驗證零殘留）+ 測試全過，三者缺一不可。
+
+### 前後端分離預留（未來方向）
+
+- `src/account/*Service.js` 是未來後端 API 的邊界：介面（函式簽名）不變，底層從 localStorage 換成 fetch。
+- 純邏輯不碰 IO（鐵則 9）就是為了這一天——後端化時 logic/ 層零改動。
+- `supabase/functions/` 已是實際後端程式碼：改動它必須同步部署（`supabase functions deploy`），
+  repo 內的 .ts 與線上部署版本的一致性由開發者確認。
+
+---
+
+## 10. 偏移矯正協議（Drift Recovery）
+
+AI 沒有記憶、模型會輪替、任何規則都會被忘記——所以**偏移偵測必須靠機器，矯正必須有固定程序**。
+
+### 偏移訊號（任一觸發即進入矯正程序）
+
+1. `node tests/index.js` 紅（含 docIntegrity 的文件完整性檢查）
+2. CI 紅（GitHub Actions，AI 可用 `gh run list --limit 5` 讀結果）
+3. file header 與檔案實際內容矛盾（@exports 缺漏、@summary 過期）
+4. planning-dashboard 狀態與程式碼現實矛盾（例：標 ✅ 但功能不存在）
+5. 發現文件宣稱的規則已連續多個版本沒人遵守（= 規則已死，如 2026-07-07 前的四文件同步儀式）
+
+### 矯正程序（固定四步，不可跳）
+
+```
+1. 停：不再擴大當前任務的 scope
+2. 判：這是「本次任務造成的」還是「歷史遺留的」？
+   - 本次造成 → 立刻修，修完才繼續
+   - 歷史遺留 → 不順手修（防 scope 蔓延），記入 planning-dashboard 已知風險，另開任務
+3. 記：dashboard 更新（發現了什麼、決定修或延後、理由）
+4. 續：訊號源恢復綠 / 已記錄，才回到原任務
+```
+
+### 真相優先級（衝突時誰說了算）
+
+```
+測試結果 > 程式碼 > config/ 數值 > planning-dashboard > 其他 Docs > chat 記憶
+（文件優先的規則檔除外：instructions.md / DOC_INTEGRITY / VERSION_RULES 定義流程，
+ 代碼違反流程時改代碼）
+```
+
+---
+
+## 11. 機器可驗證回饋契約（AI-Readable Feedback）
+
+目標：**任何 AI 不依賴人類操作即可驗證程式正確性**。人類實測只留給「手感/好玩度」這類無法數據化的判斷。
+
+### 現有的機器驗證管道
+
+| 管道 | 指令 | AI 如何讀 |
+|---|---|---|
+| 全套測試 | `node tests/index.js` | exit code 0 + 最後一行 `All tests passed (vX.Y.Z.W)` |
+| 語法檢查 | `node --check <file>` | exit code |
+| 文件完整性 | 含在測試套件（docIntegrity） | 失敗時逐條列出違規檔案與原因 |
+| CI | GitHub Actions（push 自動跑） | `gh run list --limit 5` / `gh run view <id> --log-failed` |
+| 斷鏈檢查 | `rg` 命令（見第 2 節驗收 grep） | 輸出為空 = 通過 |
+
+### 交付契約（每個新系統必須遵守）
+
+1. **新功能交付必附機器驗證方式**：任務完成標準必須含可執行指令，輸出可被 AI 解析
+   （exit code / 固定格式的最後一行 / 空輸出=通過）。「請人手動開瀏覽器確認」不算完成標準，
+   只能作為補充驗證。
+2. **測試輸出格式穩定**：每個測試檔最後一行固定 `<名稱> tests passed`；套件最後一行固定
+   `All tests passed (版本)`。AI 靠這兩個 pattern 判斷，不要改格式。
+3. **無法機器驗證的部分要顯式宣告**：如真實 WebRTC 行為、UI 手感——在 sync 報告的
+   「已知風險」列出「本次未經機器驗證的部分與原因」，不可默默略過。
+4. **未來後端驗證**：Edge Function 修改應附 curl/CLI 驗證命令（如 RLS 修復用
+   `supabase db query` 驗證）；正式後端測試基礎設施建立時，納入本節管道表。
+
+---
+
 ## 待確認
 
-- [x] MAIN.md 角色：已定案 — `MAIN.md`=函式級參考；source map 移至 `Docs/source-map.md`。
-- [x] 版本號同步清單：已定案（開工前 4 份 .md，開工後加 gameConfig version）。
+- [x] MAIN.md 角色：已定案 — 2026-07-07 凍結為歷史快照；函式查詢改用 file header + grep。
+- [x] 版本號同步清單：2026-07-07 修訂 — canonical = gameConfig，僅本次修改檔案的 header 同步。
 - [x] 第 5（開發鐵則）、6（git）節：已填。
-- [x] `QUICKREF.md` / `project_summary.md` / `MAIN.md` 的版本同步與內容：已同步至 v0.0.14.0；`ARCH.md` 已補完整架構（見各檔）。
 - [x] `.claude/skills/file-header.md` 的適用副檔名範圍：已確認 `.js`（`src/**/*.js` + `config/**/*.js`），見該檔。

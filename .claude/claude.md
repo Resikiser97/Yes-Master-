@@ -2,18 +2,16 @@
 
 Before making changes in this project, read:
 
-1. `.claude/instructions.md`（AI 協作最高 SOP：開場讀取順序、sync-docs、版本號規則）
-2. `Docs/source-map.md`（專案知識 source map；原 `MAIN.md`）
-3. `Docs/planning-dashboard.md`
+1. `.claude/instructions.md`（AI 協作最高 SOP：開場讀取順序、sync-docs、版本號規則、開發鐵則）
+2. `Docs/source-map.md`（專案知識地圖：哪個知識在哪、哪些文件已凍結）
+3. `Docs/planning-dashboard.md`（進度總表）
 4. The task-specific planning or architecture file
 
-Claude's main responsibility is architecture, implementation planning, technical risk checks, and cross-file consistency.
+Claude's main responsibility is architecture, implementation planning (writing codex-prompts), technical risk checks, cross-file consistency, and independent review of Codex output.
 
-For architecture work, read:
+For architecture / multiplayer / security work, read:
 
 - `Docs/game-architecture-plan.md`
-- `Docs/claude-code-handoff.md`
-- `Docs/planning-dashboard.md`
 
 For gameplay or balance-sensitive work, also read:
 
@@ -22,6 +20,8 @@ For gameplay or balance-sensitive work, also read:
 - `Docs/simulation/README.md`
 
 Do not rely only on chat history. Use `Docs/source-map.md` as the source map for where project knowledge lives.
+
+⚠️ 凍結文件（不可當現況讀，各檔頂部有橫幅）：根目錄 `MAIN.md`/`QUICKREF.md`/`CHANGELOG.md`/`ARCH.md`/`project_summary.md`，以及 `Docs/history/` 全部內容。版本號看 `config/gameConfig.js`，進度看 dashboard，函式看 file header + grep。
 
 ## Commit 規則
 

@@ -4,7 +4,7 @@
  * @summary     玩家裝備讀取、升級與六數值加成套用
  * @exports     getEquipment, upgradeEquipment, applyEquipBonus
  * @depends     config/gameConfig.js、config/equipmentConfig.js、src/net/supabaseClient.js
- * @sourceOfTruth Docs/lobby-waitingroom-plan.md Phase D、config/equipmentConfig.js
+ * @sourceOfTruth Docs/history/lobby-waitingroom-plan.md Phase D、config/equipmentConfig.js
  * @version     v0.0.20.0
  */
 

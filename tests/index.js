@@ -25,6 +25,7 @@ import './skillService.test.js';
 import './validation.test.js';
 import './inputBufferQueue.test.js';
 import './reconnect.test.js';
+import './docIntegrity.test.js';
 
 function fakeRng(value = 0) {
   return { next: () => value };

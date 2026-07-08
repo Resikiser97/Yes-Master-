@@ -1,4 +1,5 @@
 node_modules/
 package-lock.json
 .playwright-cli/
-.codex/
+# .codex/AGENTS.md 是 tracked 協作文件（Codex 版 CLAUDE.md）；只排除本機個人設定
+.codex/config.toml

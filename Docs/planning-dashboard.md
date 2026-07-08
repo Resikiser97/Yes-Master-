@@ -1,5 +1,5 @@
 # Planning 進度 Dashboard
-> 最後更新：2026-07-05（T24 P2P 重連功能鏈 ✅ v0.0.36.0；T23 ShopPanel state 防壞資料 ✅ v0.0.35.0；P2P connection_epoch / queue timeout 已接上，仍需實機多人重連測試）
+> 最後更新：2026-07-07（v0.0.40.0 架構加固：文檔重整歸檔 + instructions §8~§11 新增〔G/M/B 任務模板／檔案組織原則／偏移矯正協議／機器可驗證回饋契約〕+ tests/docIntegrity.test.js 機器檢查上線 + GitHub Actions CI 建立；驗證：node tests/index.js 含 docIntegrity 全過，負面測試確認違規可被偵測）
 > 用途：追蹤所有討論過的問題狀態，避免長對話導致脈絡遺失
 > 對應文件：`game-architecture-plan.md`（技術架構）、`game-design-plan.md`（玩法設計）
 
@@ -110,7 +110,7 @@
 ### 玩法數值／模擬（Codex 負責，見 mustsolve.md + simulation/）
 1. ✅ Must Solve 2：怪物職能與敵人設計（數值表已填、波次已實作上線；職能是否逼出不同建築留實玩驗證）
 2. ✅ Must Solve 3：建築策略與方塊取捨（連通性 BFS + 格子化 Hitbox 已上線；生存率差異留實玩驗證）
-3. ✅ MVP 實作前整理：引擎狀態 + 開工 checklist 已建立 → `Docs/mvp-engine-checklist.md`；T14/T15 已完成（見下方）
+3. ✅ MVP 實作前整理：引擎狀態 + 開工 checklist 已建立 → `Docs/history/mvp-engine-checklist.md`（所列缺口已全數完成，2026-07-07 歸檔）；T14/T15 已完成（見下方）
 4. ✅ T14：怪物擊殺掉落銀幣 engine wiring（`combatRuntime.js` v0.0.27.0，`_awardKillSilver` 實裝）
 5. ✅ T15：關卡結算獎勵 + sessionId idempotency 修正（v0.0.28.0；Boss 關入帳 bug 修正）
 6. ✅ T16：cardModifiers 消費 + playerStat 基準值修正（v0.0.29.0；7 個檔案；delta sync 修正；npm test 全過）
@@ -136,3 +136,13 @@
 ## 使用說明
 
 每次重大決策確認後，請提醒我同步更新此 Dashboard + 對應文件，避免討論內容只存在對話紀錄中遺失。
+
+### 條目格式（2026-07-07 起的新條目適用）
+
+新增/更新條目時，備註欄必須含**驗證方式**（三選一），讓任何 AI 能一步追到證據：
+- 測試：`tests/xxx.test.js`（機器驗證，最優先）
+- 版本 + prompt：`vX.Y.Z.W` + `Docs/history/codex-prompt-Txx.md`（可對 git log 追溯）
+- 模擬定案：`Docs/simulation/xxx-log.md` + 對應 config 常數位置
+
+例外：UI 手感/好玩度類條目（本來就靠實玩驗證）標註「實玩驗證」即可。
+舊條目不回填（成本不划算）；發現舊條目與程式碼現實矛盾時，依 `.claude/instructions.md` 第 10 節偏移矯正協議處理。

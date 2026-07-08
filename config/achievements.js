@@ -4,7 +4,7 @@
  * @summary     初版玩家成就定義與解鎖條件（單一數值來源）
  * @exports     ACHIEVEMENTS, ACHIEVEMENT_BY_ID
  * @depends     （無）
- * @sourceOfTruth Docs/lobby-waitingroom-plan.md Phase E
+ * @sourceOfTruth Docs/history/lobby-waitingroom-plan.md Phase E
  * @version     v0.0.20.0
  */
 

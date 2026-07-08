@@ -4,7 +4,7 @@
  * @summary     成就條件檢查純邏輯與 Supabase 解鎖寫入
  * @exports     checkAchievements, unlockAchievement
  * @depends     config/gameConfig.js、config/achievements.js、src/net/supabaseClient.js
- * @sourceOfTruth Docs/lobby-waitingroom-plan.md Phase E、config/achievements.js
+ * @sourceOfTruth Docs/history/lobby-waitingroom-plan.md Phase E、config/achievements.js
  * @version     v0.0.20.0
  */
 

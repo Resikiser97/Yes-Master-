@@ -1,5 +1,11 @@
 # ARCH.md — 架構全貌
 
+> ⚠️ **歷史快照（凍結於 v0.0.18.0，2026-06-27）**：本檔自 v0.0.19.0 起停止維護。
+> 模組分層概念（config → logic 純函式 → game orchestration → render/input/net）**仍然正確**，
+> 但檔案清單缺 v0.0.19.0 之後新增的模組（account/ 整個目錄、shopPanel/skillPanel/gachaPanel/
+> synthesisPanel、reconnect、validation epoch 機制等）。
+> 完整現行架構：`Docs/game-architecture-plan.md`（有維護）；檔案地圖：`Docs/source-map.md`。
+>
 > 版本：v0.0.18.0
 > 類型：**代碼優先**（文件描述錯了，以代碼為準去改本檔）。
 > 用途：給任何新 AI 30 秒建立系統全貌；細節以 `src/` / `config/` 與 `Docs/game-architecture-plan.md` 為準。

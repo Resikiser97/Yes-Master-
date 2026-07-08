@@ -7,7 +7,7 @@
  * @sourceOfTruth Docs/waveplan.md「敵人成長規則」、Docs/simulation/simulation-log-2.md
  * @version     v0.0.33.0
  *
- * ⚠️ 交接給 Codex（見 Docs/claude-codex-worklist.md 任務 A / B）：
+ * ⚠️ 交接給 Codex（見 Docs/history/claude-codex-worklist.md 任務 A / B）：
  *   - 請只填 hp / attack / moveSpeed（工兵另含 attackRange）= 目前為 null。
  *   - height / attackRange / defense 已依設計文件預填，勿改（除非要改設計）。
  *   - 請給「第 1-10 關不成長」的 base 值；11-20 成長、21-30 增壓由 src/logic/waveGen.js 自動套，

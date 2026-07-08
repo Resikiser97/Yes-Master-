@@ -4,7 +4,7 @@
  * @summary     Supabase 排行榜提交、查詢、玩家排名與賽季稱號計算
  * @exports     submitScore, getLeaderboard, getPlayerRank, getSeasonTitle
  * @depends     config/gameConfig.js、config/seasonConfig.js、src/net/supabaseClient.js
- * @sourceOfTruth Docs/lobby-waitingroom-plan.md Phase F、config/seasonConfig.js
+ * @sourceOfTruth Docs/history/lobby-waitingroom-plan.md Phase F、config/seasonConfig.js
  * @version     v0.0.20.0
  */
 

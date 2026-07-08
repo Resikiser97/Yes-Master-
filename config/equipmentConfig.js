@@ -4,7 +4,7 @@
  * @summary     五項玩家裝備的每級加成與升級成本（單一數值來源）
  * @exports     EQUIPMENT_CONFIG, EQUIPMENT_SLOTS
  * @depends     （無）
- * @sourceOfTruth Docs/lobby-waitingroom-plan.md Phase D、config/gameConfig.js player 區塊
+ * @sourceOfTruth Docs/history/lobby-waitingroom-plan.md Phase D、config/gameConfig.js player 區塊
  * @version     v0.0.24.0
  */
 

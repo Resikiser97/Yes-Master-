@@ -1,5 +1,10 @@
 # CHANGELOG.md — 版本歷史
 
+> ⚠️ **本檔只記錄到 v0.0.20.0（2026-06-28）**。v0.0.21.0 起的版本歷史改由
+> **git log** 記錄（每個 commit message 帶版本號與一句話說明），
+> 任務細節見 `Docs/history/codex-prompt-T*.md` 與 `Docs/planning-dashboard.md`。
+> 查近期變更：`git log --oneline -20`。
+>
 > 版本：v0.0.20.0
 > 類型：**只增不改**（歷史紀錄，永遠往上加，最新在最上方，不回頭改舊條目）。
 > 條目格式：`## vX.Y.Z.W - YYYY-MM-DD`，下分「新增 / 修復 / 調整」。

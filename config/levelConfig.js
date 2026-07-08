@@ -4,7 +4,7 @@
  * @summary     玩家等級經驗曲線與 MVP 經驗來源數值（單一數值來源）
  * @exports     LEVEL_CONFIG
  * @depends     （無）
- * @sourceOfTruth Docs/lobby-waitingroom-plan.md Phase B、Docs/game-design-plan.md「玩家等級與技能點經濟」
+ * @sourceOfTruth Docs/history/lobby-waitingroom-plan.md Phase B、Docs/game-design-plan.md「玩家等級與技能點經濟」
  * @version     v0.0.20.0
  */
 

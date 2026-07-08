@@ -4,7 +4,7 @@
  * @summary     玩家經驗值與等級換算純函式，供結算與 profile 寫回前使用
  * @exports     expForLevel, expToNextLevel, calcLevel, addExp, calcExpReward
  * @depends     config/levelConfig.js
- * @sourceOfTruth Docs/lobby-waitingroom-plan.md Phase B、config/levelConfig.js
+ * @sourceOfTruth Docs/history/lobby-waitingroom-plan.md Phase B、config/levelConfig.js
  * @version     v0.0.20.0
  */
 

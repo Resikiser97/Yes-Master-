@@ -4,7 +4,7 @@
  * @summary     排行榜賽季 ID 格式與賽季稱號門檻（單一數值來源）
  * @exports     SEASON_CONFIG, currentSeasonId
  * @depends     （無）
- * @sourceOfTruth Docs/lobby-waitingroom-plan.md Phase F
+ * @sourceOfTruth Docs/history/lobby-waitingroom-plan.md Phase F
  * @version     v0.0.20.0
  */
 
