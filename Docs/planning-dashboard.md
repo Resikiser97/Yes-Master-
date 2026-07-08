@@ -1,5 +1,5 @@
 # Planning 進度 Dashboard
-> 最後更新：2026-07-07（v0.0.40.0 架構加固：文檔重整歸檔 + instructions §8~§11 新增〔G/M/B 任務模板／檔案組織原則／偏移矯正協議／機器可驗證回饋契約〕+ tests/docIntegrity.test.js 機器檢查上線 + GitHub Actions CI 建立；驗證：node tests/index.js 含 docIntegrity 全過，負面測試確認違規可被偵測）
+> 最後更新：2026-07-07（v0.0.41.0 治理第二層：@exports 語意比對機器化〔修 5 檔既有漂移〕+ T27 起 G/M/B 四段與驗收記錄格式機器檢查 + instructions §12 治理稽核清單〔每 +10 版執行，防規則靜默死亡〕；驗證：全套測試綠 + 兩項新檢查負面測試命中。前一版 v0.0.40.0：文檔重整歸檔 + §8~§11 + docIntegrity + CI）
 > 用途：追蹤所有討論過的問題狀態，避免長對話導致脈絡遺失
 > 對應文件：`game-architecture-plan.md`（技術架構）、`game-design-plan.md`（玩法設計）
 

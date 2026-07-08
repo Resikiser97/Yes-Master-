@@ -32,7 +32,7 @@
 |---|---|
 | `Docs/game-architecture-plan.md` | 多人架構（PeerJS Star 拓撲/epoch/重連）、安全（RLS/token/反作弊）、存檔、Schema Versioning、本機雙分頁測試方法。**技術問題先查這裡** |
 | `.claude/instructions.md` | AI 協作最高 SOP：開場儀式、sync-docs、版本號規則、開發鐵則（5.1 多人四路徑、5.2 Node 測試）、任務規格模板 G/M/B（§8）、檔案組織原則（§9）、偏移矯正協議（§10）、機器可驗證回饋契約（§11） |
-| `tests/docIntegrity.test.js` | 文件完整性機器檢查：版本同步、header 覆蓋、logic 層純度、循環依賴、歸檔斷鏈、凍結橫幅守衛——違規輸出固定格式 `DOC_INTEGRITY_VIOLATION` |
+| `tests/docIntegrity.test.js` | 文件完整性機器檢查（8 類）：版本同步、header 覆蓋、logic 層純度、循環依賴、歸檔斷鏈、凍結橫幅守衛、@exports 語意比對（防 header 說謊）、T27+ 任務規格 G/M/B 四段與驗收記錄格式——違規輸出固定格式 `DOC_INTEGRITY_VIOLATION` |
 | `.github/workflows/ci.yml` | push/PR 自動跑語法檢查 + 全套測試；AI 用 `gh run list` 讀結果 |
 | `Docs/design-patterns.md` | 跨功能一致性規則（「對 X 生效必須對 Y 生效」類原則） |
 | `Docs/cloud-infra-cost-plan.md` | 雲端成本粗估（Planning 草稿，未定案，待真實流量校準） |

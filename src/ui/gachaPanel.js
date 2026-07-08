@@ -2,9 +2,9 @@
  * @file        gachaPanel.js
  * @module      ui
  * @summary     抽獎盤 overlay：64格不放回抽樣、大獎高亮、盤面持久化、票券消費
- * @exports     GachaPanel, buildBoard
+ * @exports     GachaPanel, buildBoard, cellToReward
  * @depends     config/economyConfig.js, src/account/walletService.js, config/equipmentConfig.js
- * @version     v0.0.21.0
+ * @version     v0.0.41.0
  */
 
 import { ECONOMY } from '../../config/economyConfig.js';

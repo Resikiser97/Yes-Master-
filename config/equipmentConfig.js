@@ -2,10 +2,10 @@
  * @file        equipmentConfig.js
  * @module      config
  * @summary     五項玩家裝備的每級加成與升級成本（單一數值來源）
- * @exports     EQUIPMENT_CONFIG, EQUIPMENT_SLOTS
+ * @exports     EQUIPMENT_CONFIG, EQUIPMENT_SLOTS, EQUIPMENT_STYLES
  * @depends     （無）
  * @sourceOfTruth Docs/history/lobby-waitingroom-plan.md Phase D、config/gameConfig.js player 區塊
- * @version     v0.0.24.0
+ * @version     v0.0.41.0
  */
 
 export const EQUIPMENT_CONFIG = {

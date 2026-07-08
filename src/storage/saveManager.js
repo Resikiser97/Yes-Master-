@@ -2,10 +2,10 @@
  * @file        saveManager.js
  * @module      storage（IO 層）
  * @summary     world 狀態序列化/反序列化 + 存檔進入點（封裝 saveLocal）
- * @exports     saveWorld, loadWorld
+ * @exports     saveWorld, loadWorld, serializeWorld, deserializeWorld
  * @depends     config/gameConfig.js、src/storage/saveLocal.js、src/game/world.js、src/game/coreSnapshot.js
  * @sourceOfTruth Docs/game-architecture-plan.md「Save File 資料結構」
- * @version     v0.0.20.0
+ * @version     v0.0.41.0
  *
  * 只在 phase=prep 時呼叫 saveWorld（wave clear 後）。
  * 存檔不包含：enemies / pendingSpawns / mining / repair / combat / camera / clock（皆為暫態或可重算）。
