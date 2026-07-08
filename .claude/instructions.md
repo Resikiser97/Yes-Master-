@@ -61,6 +61,9 @@ Step 5   任務 prompt 歸檔：本次任務的 codex-prompt-T*.md 放進 Docs/h
         （若任務是直接執行沒有 prompt，在 dashboard 記錄即可）
 Step 6   輸出 sync 報告（改了哪些檔案、解了什麼問題、測試結果、已知風險）
          → 等開發者說「可以 commit」→ commit（message 帶版本號）→ 等指示 push
+Step 7   push 後必查 CI 結果（讀法見第 11 節管道表）：
+         綠燈 → 任務閉環；紅燈 → 立即觸發第 10 節偏移矯正協議（本次造成 → 立刻修）。
+         沒查 CI 就結束任務 = 收尾未完成。
 ```
 
 ### 版本號同步鐵則
@@ -282,7 +285,7 @@ AI 沒有記憶、模型會輪替、任何規則都會被忘記——所以**偏
 | 全套測試 | `node tests/index.js` | exit code 0 + 最後一行 `All tests passed (vX.Y.Z.W)` |
 | 語法檢查 | `node --check <file>` | exit code |
 | 文件完整性 | 含在測試套件（docIntegrity） | 失敗時逐條列出違規檔案與原因 |
-| CI | GitHub Actions（push 自動跑） | `gh run list --limit 5` / `gh run view <id> --log-failed` |
+| CI | GitHub Actions（push 自動跑） | 主要：`gh run list --limit 5` / `gh run view <id> --log-failed`（gh CLI 已安裝，需 `gh auth login` 過一次）。**備用（gh 不可用/未登入時）**：`curl -s "https://api.github.com/repos/Resikiser97/Yes-Master-/actions/runs?per_page=3"` 讀 `"status"`/`"conclusion"` 欄位；再用 `/actions/runs/<id>/jobs` 查失敗步驟。公開 repo 免認證 |
 | 斷鏈檢查 | `rg` 命令（見第 2 節驗收 grep） | 輸出為空 = 通過 |
 
 ### 交付契約（每個新系統必須遵守）
