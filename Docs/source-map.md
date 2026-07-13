@@ -2,7 +2,7 @@
 
 > Project entrypoint / source map for Claude, Codex, and human collaborators.
 > **每次開場第一份讀的檔案。** 這裡回答：哪個知識在哪個檔案、哪些檔案有維護、哪些已凍結。
-> 最後全面校準：2026-07-07（文檔重整；對應版本 v0.0.39.0）
+> 最後全面校準：2026-07-13（T27 斷線重連 / 重新開頁返回原 Slot；對應版本 v0.0.42.0）
 
 ---
 
@@ -98,12 +98,11 @@
 
 ## 目前狀態（2026-07-07 快照，詳情以 dashboard 為準）
 
-- 版本 v0.0.39.0；T13~T26 完成（合成 UI、掉落入帳、卡片投票、GameOver 結算、Boss 門口攻擊、
-  商店/技能測試、P2P 重連鏈、EXIT 按鈕、遊戲中 heartbeat 保活）
+- 版本 v0.0.42.0；T13~T26 完成；T27 已由實作方完成雙 origin 自測，待不同驗收方補正式驗收記錄
+- T27：15 秒 Host 靜默偵測、最後 Host 訊息起 30 秒停止自動重試、重新開頁返回原 membership / p2 / Full Snapshot
 - 多人聯機上線：PeerJS P2P + Supabase Auth + 房間系統 + connection_epoch 防重放 + 自動重連
 - 經濟系統定案並 wiring：模擬定案 → economyConfig → 引擎 → 測試覆蓋
-- 主要待辦：RLS Policy 全面收尾（P0，接正式資料表時第一件事）、實機長時間重連測試、
-  怪物移動速度確認（目前 5格/秒是假設）、Endless 曲線細節
+- 主要待辦：T27 獨立驗收、RLS / 正式多人存檔鏈對帳、怪物移動速度實玩確認（目前 5格/秒是假設）、Endless 曲線細節
 
 ---
 

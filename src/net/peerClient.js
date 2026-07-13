@@ -5,13 +5,13 @@
  *              斷線後自動排程重連（沿用同一個 Peer 物件，重新 issue reconnect token + 重做 handshake）
  * @exports     startPeerClient
  * @depends     net/protocol.js, net/peerRuntime.js, net/roomManager.js, net/reconnect.js
- * @version     v0.0.37.0
+ * @version     v0.0.42.0
  */
 import { GAME_CONFIG } from '../../config/gameConfig.js';
 import { MSG, decode, encode, makeMessage } from './protocol.js';
 import { createPeer, waitForPeerOpen } from './peerRuntime.js';
 import { getRoom, issueRoomJoinToken } from './roomManager.js';
-import { createReconnectController } from './reconnect.js';
+import { createReconnectController, isConnectionSilent } from './reconnect.js';
 
 export async function startPeerClient({
   roomId,
@@ -35,6 +35,9 @@ export async function startPeerClient({
   let closing = false;
   let browserOffline = false;
   let disconnectedNotified = false;
+  let connected = false;
+  let lastHostMessageAt = Date.now();
+  let hostWatchdogTimer = 0;
 
   const isBrowserOffline = () => (
     typeof globalThis.navigator !== 'undefined'
@@ -53,6 +56,7 @@ export async function startPeerClient({
     if (closing || !client.slotId) return;
     browserOffline = true;
     notifyDisconnected();
+    reconnectCtl.startWindow(Date.now());
     client.conn?.close?.();
   };
   const handleBrowserOnline = () => {
@@ -80,6 +84,7 @@ export async function startPeerClient({
     close() {
       closing = true;
       reconnectCtl.cancel();
+      stopHostWatchdog();
       removeNetworkListeners();
       client.conn?.close?.();
       peer.destroy?.();
@@ -95,14 +100,36 @@ export async function startPeerClient({
     globalThis.removeEventListener?.('online', handleBrowserOnline);
   };
 
+  const startHostWatchdog = () => {
+    if (hostWatchdogTimer) return;
+    hostWatchdogTimer = setInterval(() => {
+      const currentMs = Date.now();
+      if (closing || browserOffline || !connected) return;
+      if (!isConnectionSilent(lastHostMessageAt, currentMs, cfg.net.reconnect.offlineDetectionMs)) return;
+
+      connected = false;
+      notifyDisconnected();
+      reconnectCtl.schedule(lastHostMessageAt);
+      client.conn?.close?.();
+    }, cfg.net.reconnect.healthCheckIntervalMs);
+  };
+
+  const stopHostWatchdog = () => {
+    clearInterval(hostWatchdogTimer);
+    hostWatchdogTimer = 0;
+  };
+
   const reconnectCtl = createReconnectController({
     roomId,
     slotId: () => client.slotId,
     cfg,
+    graceMs: cfg.net.reconnect.retryDelayMs,
+    maxAttempts: cfg.net.reconnect.maxAttempts,
+    maxWindowMs: cfg.net.reconnect.maxWindowMs,
     onGiveUp: () => onReconnectFailed?.(),
-    connect: async ({ token: reconnectToken }) => {
+    connect: async ({ token: reconnectToken, remainingMs }) => {
       try {
-        await attemptConnect(reconnectToken);
+        await attemptConnect(reconnectToken, remainingMs);
         reconnectCtl.cancel();
         disconnectedNotified = false;
         onReconnected?.();
@@ -113,7 +140,10 @@ export async function startPeerClient({
     },
   });
 
-  function attemptConnect(joinToken) {
+  function attemptConnect(joinToken, remainingMs = null) {
+    if (remainingMs !== null && remainingMs <= 0) {
+      return Promise.reject(new Error('reconnect window expired'));
+    }
     return new Promise((resolve, reject) => {
       const conn = peer.connect(hostPeerId, { reliable: true });
       client.conn = conn;
@@ -129,19 +159,25 @@ export async function startPeerClient({
       const fail = (error) => {
         if (settled) return;
         settled = true;
+        connected = false;
         clearTimeout(timer);
         conn.close?.();
         reject(error);
       };
-      timer = setTimeout(() => fail(new Error('auth timeout')), 8000);
+      const authTimeoutMs = remainingMs === null
+        ? cfg.net.reconnect.clientAuthTimeoutMs
+        : Math.min(cfg.net.reconnect.clientAuthTimeoutMs, remainingMs);
+      timer = setTimeout(() => fail(new Error('auth timeout')), authTimeoutMs);
 
       conn.on('open', () => {
         conn.send(encode(makeMessage(MSG.AUTH, { token: joinToken, roomId })));
       });
       conn.on('data', (raw) => {
+        lastHostMessageAt = Date.now();
         const message = decode(raw);
         if (!authed && message.type === MSG.AUTH_OK) {
           authed = true;
+          connected = true;
           client.slotId = message.payload.slotId;
           client.connectionEpoch = message.payload.connectionEpoch ?? null;
           onAuthed?.(message.payload);
@@ -161,6 +197,7 @@ export async function startPeerClient({
       conn.on('error', (err) => fail(err));
       conn.on('close', () => {
         if (client.conn !== conn) return;
+        connected = false;
         if (!authed) {
           fail(new Error('connection closed before auth'));
           return;
@@ -174,5 +211,6 @@ export async function startPeerClient({
 
   addNetworkListeners();
   await attemptConnect(initialToken);
+  startHostWatchdog();
   return client;
 }

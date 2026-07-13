@@ -5,7 +5,7 @@
  * @exports     startPeerHost
  * @depends     net/protocol.js, net/peerRuntime.js, net/roomManager.js, net/strikeTracker.js, game/world.js
  * @sourceOfTruth Docs/game-architecture-plan.md「P2P 安全限制 → Handshake 流程」
- * @version     v0.0.36.0
+ * @version     v0.0.42.0
  */
 import { GAME_CONFIG } from '../../config/gameConfig.js';
 import { ensurePlayer } from '../game/world.js';
@@ -15,6 +15,7 @@ import { updateHostPeer, verifyRoomJoinToken } from './roomManager.js';
 import { createStrikeTracker } from './strikeTracker.js';
 
 export async function startPeerHost({ roomId, cfg = GAME_CONFIG, world = null, onInput = null, onPeerReady = null } = {}) {
+  const reconnectCfg = cfg.net.reconnect;
   const peer = await createPeer(cfg);
   const peerId = await waitForPeerOpen(peer);
   if (roomId) await updateHostPeer(roomId, peerId, cfg);
@@ -58,7 +59,7 @@ export async function startPeerHost({ roomId, cfg = GAME_CONFIG, world = null, o
     const authTimer = setTimeout(() => {
       sendConn(conn, makeMessage(MSG.AUTH_FAIL, { reason: 'auth_timeout' }));
       conn.close?.();
-    }, 5000);
+    }, reconnectCfg.hostAuthTimeoutMs);
 
     conn.on('data', async (raw) => {
       let message;
@@ -134,7 +135,7 @@ export async function startPeerHost({ roomId, cfg = GAME_CONFIG, world = null, o
   const pingTimer = setInterval(() => {
     const now = Date.now();
     for (const [peerKey, session] of peers) {
-      if (now - session.lastPongAt > 3000) {
+      if (now - session.lastPongAt > reconnectCfg.offlineDetectionMs) {
         if (peers.get(peerKey) !== session) continue;
         if (world?.players?.has(session.slotId)) world.players.get(session.slotId).online = false;
         session.conn.close?.();
@@ -143,7 +144,7 @@ export async function startPeerHost({ roomId, cfg = GAME_CONFIG, world = null, o
         sendConn(session.conn, makeMessage(MSG.PING, { t: now }));
       }
     }
-  }, 1000);
+  }, reconnectCfg.healthCheckIntervalMs);
   peer.on('close', () => clearInterval(pingTimer));
 
   return host;

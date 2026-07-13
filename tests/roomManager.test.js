@@ -11,6 +11,7 @@ import {
   buildLeaveRoomBody,
   buildStartRoomBody,
   isListableRoom,
+  isResumableRoomMembership,
   normalizeJoinRoomInput,
 } from '../src/net/roomManager.js';
 
@@ -21,6 +22,7 @@ assert.equal(ROOM_DETAIL_COLUMNS.includes('password_hash'), false);
 assert.equal(ROOM_DETAIL_COLUMNS.includes('current_host_peer_id'), true);
 assert.equal(ROOM_MEMBER_COLUMNS.includes('user_id'), true);
 assert.equal(ROOM_MEMBER_COLUMNS.includes('role'), true);
+assert.equal(ROOM_MEMBER_COLUMNS.includes('last_seen_at'), true);
 
 assert.deepEqual(normalizeJoinRoomInput('room-a'), { roomId: 'room-a', password: null });
 assert.deepEqual(
@@ -57,6 +59,42 @@ assert.equal(isListableRoom({ status: 'completed', visibility: 'public', current
 assert.equal(isListableRoom({ status: 'active', visibility: 'private', current_players: 1, max_players: 4 }), false);
 assert.equal(isListableRoom({ status: 'active', visibility: 'public', game_started: true, current_players: 1, max_players: 4 }), false);
 assert.equal(isListableRoom({ status: 'active', visibility: 'public', current_players: 4, max_players: 4 }), false);
+
+assert.equal(isResumableRoomMembership({
+  membership: { slot_id: 'p2', role: 'player', is_host: false },
+  room: { status: 'active', game_started: true, current_host_peer_id: 'host-peer' },
+  hostMembership: { role: 'host', online: true, last_seen_at: '2026-07-13T00:00:20.000Z' },
+  currentMs: Date.parse('2026-07-13T00:00:30.000Z'),
+  hostFreshMs: 30000,
+}), true);
+assert.equal(isResumableRoomMembership({
+  membership: { slot_id: 'p1', role: 'host', is_host: true },
+  room: { status: 'active', game_started: true, current_host_peer_id: 'host-peer' },
+  hostMembership: { role: 'host', online: true, last_seen_at: '2026-07-13T00:00:20.000Z' },
+  currentMs: Date.parse('2026-07-13T00:00:30.000Z'),
+  hostFreshMs: 30000,
+}), false);
+assert.equal(isResumableRoomMembership({
+  membership: { slot_id: 'p2', role: 'player', is_host: false },
+  room: { status: 'active', game_started: false, current_host_peer_id: 'host-peer' },
+  hostMembership: { role: 'host', online: true, last_seen_at: '2026-07-13T00:00:20.000Z' },
+  currentMs: Date.parse('2026-07-13T00:00:30.000Z'),
+  hostFreshMs: 30000,
+}), false);
+assert.equal(isResumableRoomMembership({
+  membership: { slot_id: 'p2', role: 'player', is_host: false },
+  room: { status: 'completed', game_started: true, current_host_peer_id: 'host-peer' },
+  hostMembership: { role: 'host', online: true, last_seen_at: '2026-07-13T00:00:20.000Z' },
+  currentMs: Date.parse('2026-07-13T00:00:30.000Z'),
+  hostFreshMs: 30000,
+}), false);
+assert.equal(isResumableRoomMembership({
+  membership: { slot_id: 'p2', role: 'player', is_host: false },
+  room: { status: 'active', game_started: true, current_host_peer_id: 'stale-peer' },
+  hostMembership: { role: 'host', online: true, last_seen_at: '2026-07-13T00:00:00.000Z' },
+  currentMs: Date.parse('2026-07-13T00:00:31.000Z'),
+  hostFreshMs: 30000,
+}), false);
 
 // --- v0.0.14.2: heartbeat body ---
 assert.deepEqual(buildHeartbeatRoomBody('room-h'), { room_id: 'room-h' });

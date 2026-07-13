@@ -24,6 +24,9 @@ serve(async (req) => {
 
     const { room_id, join_type, slot_id } = await req.json();
     if (!room_id || !join_type) return new Response(JSON.stringify({ error: "missing room_id or join_type" }), { status: 400, headers: corsHeaders });
+    if (join_type !== "join" && join_type !== "reconnect") {
+      return new Response(JSON.stringify({ error: "invalid join_type" }), { status: 400, headers: corsHeaders });
+    }
 
     // Check room exists and is active
     const { data: room, error: roomErr } = await supabase
@@ -35,9 +38,13 @@ serve(async (req) => {
       .from("room_memberships").select("*").eq("room_id", room_id).eq("user_id", user.id).single();
 
     if (!member) return new Response(JSON.stringify({ error: "not a room member" }), { status: 403, headers: corsHeaders });
-    if (join_type === "reconnect" && slot_id && member.slot_id !== slot_id) {
-      return new Response(JSON.stringify({ error: "slot mismatch" }), { status: 403, headers: corsHeaders });
+    if (join_type === "reconnect") {
+      if (!member.slot_id) return new Response(JSON.stringify({ error: "membership has no slot" }), { status: 409, headers: corsHeaders });
+      if (slot_id && member.slot_id !== slot_id) {
+        return new Response(JSON.stringify({ error: "slot mismatch" }), { status: 403, headers: corsHeaders });
+      }
     }
+    const tokenSlotId = join_type === "reconnect" ? member.slot_id : null;
 
     // Generate nonce and token
     const nonce = crypto.randomUUID();
@@ -50,7 +57,7 @@ serve(async (req) => {
 
     // Build token payload (signed by HMAC)
     const secret = Deno.env.get("ROOM_TOKEN_SECRET") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const payload = { uid: user.id, room_id, slot_id: slot_id || null, join_type, exp, nonce };
+    const payload = { uid: user.id, room_id, slot_id: tokenSlotId, join_type, exp, nonce };
     const payloadStr = JSON.stringify(payload);
 
     const key = await crypto.subtle.importKey(

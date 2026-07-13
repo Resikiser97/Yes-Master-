@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-import { createReconnectController } from '../src/net/reconnect.js';
+import { createReconnectController, isConnectionSilent } from '../src/net/reconnect.js';
 
 function delay(ms = 0) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -74,8 +74,68 @@ async function testCancelResetsAttemptCounter() {
   assert.equal(giveUps, 0);
 }
 
+async function testReconnectWindowCapsAttemptAndGivesUpAtDeadline() {
+  let currentMs = 1000;
+  let scheduled = null;
+  let giveUps = 0;
+  let connectArgs = null;
+  const controller = createReconnectController({
+    roomId: 'room-1',
+    slotId: 'p2',
+    graceMs: 3000,
+    maxAttempts: 10,
+    maxWindowMs: 30000,
+    now: () => currentMs,
+    setTimer: (callback, delayMs) => {
+      scheduled = { callback, delayMs };
+      return 1;
+    },
+    clearTimer: () => { scheduled = null; },
+    issueToken: async () => 'token-1',
+    connect: async (args) => { connectArgs = args; },
+    onGiveUp: () => { giveUps += 1; },
+  });
+
+  controller.schedule();
+  assert.equal(scheduled.delayMs, 3000);
+
+  currentMs = 30000;
+  await controller.reconnect();
+  assert.equal(connectArgs.remainingMs, 1000);
+
+  currentMs = 31000;
+  controller.schedule();
+  assert.equal(giveUps, 1);
+  assert.equal(scheduled, null);
+}
+
+function testConnectionSilentThreshold() {
+  assert.equal(isConnectionSilent(1000, 15999, 15000), false);
+  assert.equal(isConnectionSilent(1000, 16000, 15000), true);
+  assert.equal(isConnectionSilent(Number.NaN, 16000, 15000), false);
+}
+
+function testOfflineWindowDoesNotRestartAfterDeadline() {
+  let currentMs = 1000;
+  let giveUps = 0;
+  const controller = createReconnectController({
+    maxWindowMs: 30000,
+    now: () => currentMs,
+    clearTimer: () => {},
+    onGiveUp: () => { giveUps += 1; },
+  });
+
+  controller.startWindow();
+  currentMs = 31001;
+  controller.schedule();
+  assert.equal(giveUps, 1);
+}
+
 await testReconnectUsesResolvedSlotAndInjectedTokenIssuer();
 await testScheduleStopsAtMaxAttemptsAndCallsGiveUp();
 await testCancelResetsAttemptCounter();
+await testReconnectWindowCapsAttemptAndGivesUpAtDeadline();
+testConnectionSilentThreshold();
+testOfflineWindowDoesNotRestartAfterDeadline();
 
 console.log('reconnect tests passed');

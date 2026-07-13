@@ -613,7 +613,8 @@ PeerJS / PeerServer 主要負責 signaling（連線協商），不等於 TURN re
   - 未設定 TURN 時：部分 NAT / 行動網路玩家可能無法建立連線
 為避免濫用：
   - 每個房間最多 4 名玩家（已有設計）
-  - 連線逾時：30 秒無封包 → 視為斷線
+  - Client / Host 連線健康檢查：15 秒沒有收到對端資料 → 視為失聯
+  - 自最後一次收到資料起算，原頁面自動重連總窗口為 30 秒
 ```
 
 **7. Slot 配發競態（公開房）**
@@ -824,13 +825,31 @@ player_uid 不放進每個 Event 作判斷：
 
 ### 斷線偵測
 ```
-PeerJS 連線斷開後，房主等待 3 秒確認（防瞬斷誤判）
-3 秒內重連 → 直接進重連流程
-3 秒後仍未連入 → 正式標記該 Slot 為 disconnected，開始保留計時
+PeerJS 明確觸發 close → Client 3 秒後開始第一次重連，正常實測約 4-5 秒恢復。
+PeerJS 沒有觸發 close、但 Host 訊息停止 → Client watchdog 在 15 秒時主動判定失聯。
+重連截止時間一律從「最後一次收到 Host 訊息」起算 30 秒：
+  - 30 秒內成功 → cancel 重試、沿用原 Slot。
+  - 30 秒仍失敗 → 停止自動重試，但 membership / Slot 不刪除。
 ```
 
 ### Slot 保留時間
 ```
+
+### 30 秒後重新開頁返回原角色
+```
+玩家重新開啟遊戲並進入多人大廳
+→ 前端查詢目前帳號仍保留的 room_memberships
+→ 只顯示：非房主 + room active + game_started + Host membership 最近 30 秒仍有 heartbeat
+→ 顯示「返回進行中的房間」（若帳號同時有多筆合法 membership，逐筆列出，不猜第一筆）
+→ 玩家點擊返回
+→ Edge Function 以 auth.uid + room membership 核對身份，從後端 membership 取原 slot_id
+→ 核發 join_type=reconnect、綁原 slot_id 的短效 token
+→ Client 直接進遊戲入口（不經 WaitingRoom，避免 Full Snapshot 在 UI 階段被忽略）
+→ Host AUTH 成功後 sendSnapshotTo(peerId, world)
+→ Client apply Full Snapshot，回到原角色 / 原 Slot
+```
+
+> 房主重新開頁不走本流程；房主恢復屬 Host Migration / candidate_host 邊界。
 保留到「本場遊戲結束」為止（核心陣亡 or 房主選擇存檔退出）
 遊戲結束前：原玩家隨時可重連回原 Slot
 遊戲結束後：Slot 釋放，不觸發永久鎖定規則

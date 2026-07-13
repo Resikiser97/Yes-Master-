@@ -1,11 +1,11 @@
 /**
  * @file        roomManager.js
  * @module      net
- * @summary     Supabase rooms 表 CRUD + Edge Function 呼叫（token 申請/驗證、踢人、Host Migration peer 更新）
- * @exports     listRooms, createRoom, joinRoom, leaveRoom, getRoom, getRoomMembers, kickPlayer, startRoom, updateHostPeer, issueRoomJoinToken, verifyRoomJoinToken, heartbeatRoom, isListableRoom, normalizeJoinRoomInput, buildCreateRoomBody, buildJoinRoomBody, buildLeaveRoomBody, buildKickPlayerBody, buildStartRoomBody, buildHeartbeatRoomBody, ROOM_LIST_COLUMNS, ROOM_DETAIL_COLUMNS, ROOM_MEMBER_COLUMNS
+ * @summary     Supabase rooms 表 CRUD + 進行中房間恢復 + Edge Function 呼叫（token 申請/驗證、踢人、Host Migration peer 更新）
+ * @exports     listRooms, listResumableRooms, createRoom, joinRoom, leaveRoom, getRoom, getRoomMembers, kickPlayer, startRoom, updateHostPeer, issueRoomJoinToken, verifyRoomJoinToken, heartbeatRoom, isListableRoom, isResumableRoomMembership, normalizeJoinRoomInput, buildCreateRoomBody, buildJoinRoomBody, buildLeaveRoomBody, buildKickPlayerBody, buildStartRoomBody, buildHeartbeatRoomBody, ROOM_LIST_COLUMNS, ROOM_DETAIL_COLUMNS, ROOM_MEMBER_COLUMNS
  * @depends     config/gameConfig.js、src/net/supabaseClient.js
  * @sourceOfTruth Docs/game-architecture-plan.md「存檔系統」「P2P 安全限制 → token 申請流程」
- * @version     v0.0.41.0
+ * @version     v0.0.42.0
  */
 
 import { GAME_CONFIG } from '../../config/gameConfig.js';
@@ -42,6 +42,7 @@ export const ROOM_MEMBER_COLUMNS = Object.freeze([
   'is_host',
   'online',
   'join_order',
+  'last_seen_at',
 ]);
 
 let roomListColumnsCache = null;
@@ -56,6 +57,47 @@ export async function listRooms(cfg = GAME_CONFIG) {
   const supabase = await getSupabaseClient(cfg);
   const data = await selectRoomsCompatible(supabase);
   return (data ?? []).filter(isListableRoom);
+}
+
+export async function listResumableRooms(cfg = GAME_CONFIG) {
+  const supabase = await getSupabaseClient(cfg);
+  const user = await requireSupabaseUser(cfg);
+  const { data: memberships, error } = await supabase
+    .from('room_memberships')
+    .select('room_id,user_id,slot_id,role,is_host,online')
+    .eq('user_id', user.id);
+  if (error) throw error;
+
+  const currentMs = Date.now();
+  const candidates = await Promise.all((memberships ?? []).map(async (membership) => {
+    try {
+      const room = await selectRoomCompatible(supabase, membership.room_id);
+      const roomMembers = (await selectMembersCompatible(supabase, membership.room_id)).map(normalizeMember);
+      const hostMembership = roomMembers.find((member) => (
+        room.current_host_uid
+          ? member.user_id === room.current_host_uid
+          : member.is_host === true || member.role === 'host'
+      ));
+      return {
+        membership: normalizeMember(membership),
+        room,
+        hostMembership,
+        currentMs,
+        hostFreshMs: cfg.net.reconnect.maxWindowMs,
+      };
+    } catch {
+      return null;
+    }
+  }));
+
+  return candidates.filter(isResumableRoomMembership).map(({ membership, room }) => ({
+    roomId: room.room_id,
+    roomName: room.name ?? 'Room',
+    difficulty: room.difficulty ?? 'normal',
+    slotId: membership.slot_id,
+    membership,
+    room,
+  }));
 }
 
 export async function createRoom({
@@ -335,6 +377,27 @@ export function isListableRoom(room) {
     if (age > 90_000) return false;
   }
   return true;
+}
+
+export function isResumableRoomMembership(candidate) {
+  const membership = candidate?.membership;
+  const room = candidate?.room;
+  const hostMembership = candidate?.hostMembership;
+  const hostLastSeenMs = new Date(hostMembership?.last_seen_at ?? '').getTime();
+  const hostIsFresh = Number.isFinite(hostLastSeenMs)
+    && Number.isFinite(candidate?.currentMs)
+    && Number.isFinite(candidate?.hostFreshMs)
+    && candidate.currentMs - hostLastSeenMs <= candidate.hostFreshMs;
+  return Boolean(
+    membership?.slot_id
+    && membership.is_host !== true
+    && membership.role !== 'host'
+    && room?.status === 'active'
+    && room.game_started === true
+    && room.current_host_peer_id
+    && hostMembership?.online !== false
+    && hostIsFresh
+  );
 }
 
 /**

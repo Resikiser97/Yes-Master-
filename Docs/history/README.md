@@ -10,7 +10,7 @@
 每個 T 任務的完整規格、驗收標準與架構約束——是專案最詳細的變更紀錄。
 T13 合成 UI、T14 擊殺掉落、T15 關卡結算、T16 cardModifiers、T18 卡片標籤、
 T19(+T20) 多人投票+GameOver 結算、T21 Boss 門口攻擊、T22 商店/技能測試、
-T23 ShopPanel 防壞資料、T24 P2P 重連鏈、T25 EXIT 按鈕、T26 遊戲中 heartbeat。
+T23 ShopPanel 防壞資料、T24 P2P 重連鏈、T25 EXIT 按鈕、T26 遊戲中 heartbeat、T27 15/30 秒重連與重新開頁返回原 Slot。
 （T17 spirit wiring 由 Claude 直接實作，無獨立 prompt；T20 併入 T19。）
 
 ## 已完結的實作計劃（2026-07-07 歸檔）

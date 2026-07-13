@@ -1,19 +1,20 @@
 /**
  * @file        lobby.js
  * @module      ui
- * @summary     多人大廳：房間列表（公開/朋友/房間號碼 tab）+ 建房 popup + 商店/抽獎/裝備/技能/合成入口
+ * @summary     多人大廳：進行中房間恢復 + 房間列表（公開/朋友/房間號碼 tab）+ 建房與帳號功能入口
  * @exports     showLobby
- * @depends     src/net/roomManager.js, src/net/authManager.js, src/net/friendManager.js, src/ui/waitingRoom.js, src/ui/friendsPanel.js, src/ui/uiManager.js
- * @version     v0.0.37.0
+ * @depends     src/net/roomManager.js, src/net/authManager.js, src/net/friendManager.js, src/ui/waitingRoom.js, src/ui/friendsPanel.js, src/ui/uiManager.js, src/ui/i18n.js
+ * @version     v0.0.42.0
  */
 
-import { listRooms, createRoom, joinRoom } from '../net/roomManager.js';
+import { listRooms, listResumableRooms, createRoom, joinRoom, issueRoomJoinToken } from '../net/roomManager.js';
 import { getCurrentUser, ensureProfile } from '../net/authManager.js';
 import { listFriends } from '../net/friendManager.js';
 import { showAuthScreen } from './authScreen.js';
 import { showWaitingRoom } from './waitingRoom.js';
 import { showFriendsPanel } from './friendsPanel.js';
 import { openEquipment, openGacha, openShop, openSkills, openSynthesis } from './uiManager.js';
+import { t } from './i18n.js';
 
 const GOLD = '#D4A017';
 const GOLD_DIM = 'rgba(212,160,23,0.7)';
@@ -69,6 +70,11 @@ export async function showLobby(inputMode, onStart) {
   const sub = _el('div', {
     textContent: '多 人 大 廳',
     style: `font-family:Georgia,serif;font-size:clamp(10px,2vw,14px);letter-spacing:6px;color:${GOLD_DIM};margin-bottom:16px;`,
+  });
+
+  const resumeArea = _el('div', {
+    id: 'resume-active-room',
+    style: `display:none;width:90%;max-width:900px;margin-bottom:12px;padding:10px 14px;border:1px solid ${GOLD};background:rgba(212,160,23,0.12);gap:8px;align-items:center;flex-wrap:wrap;`,
   });
 
   // Main layout: left tabs + center room list
@@ -169,11 +175,60 @@ export async function showLobby(inputMode, onStart) {
   main.appendChild(roomIdPanel);
   main.appendChild(accountActions);
 
-  overlay.append(header, sub, main);
+  overlay.append(header, sub, resumeArea, main);
   document.body.appendChild(overlay);
 
   requestAnimationFrame(() => { overlay.style.opacity = '1'; });
   _updateTabStyles();
+
+  async function refreshResumableRooms() {
+    try {
+      const resumable = await listResumableRooms();
+      resumeArea.replaceChildren();
+      if (!resumable.length) {
+        resumeArea.style.display = 'none';
+        return;
+      }
+
+      resumeArea.style.display = 'flex';
+      for (const entry of resumable) {
+        const resumeBtn = _btn(`${t('lobby.resumeActiveRoom')} · ${entry.roomName}`);
+        resumeBtn.style.borderColor = GOLD;
+        resumeBtn.style.color = GOLD;
+        resumeBtn.addEventListener('click', async () => {
+          if (resumeBtn._busy) return;
+          resumeBtn._busy = true;
+          resumeBtn.disabled = true;
+          resumeBtn.textContent = t('lobby.resumeChecking');
+          try {
+            const token = await issueRoomJoinToken({
+              room_id: entry.roomId,
+              join_type: 'reconnect',
+              slot_id: entry.slotId,
+            });
+            _cleanup();
+            overlay.style.opacity = '0';
+            setTimeout(() => {
+              overlay.remove();
+              onStart(entry.difficulty, inputMode, {
+                roomId: entry.roomId,
+                role: 'client',
+                token,
+              });
+            }, 400);
+          } catch (err) {
+            resumeBtn._busy = false;
+            resumeBtn.disabled = false;
+            resumeBtn.textContent = `${t('lobby.resumeFailed')}：${err.message || err}`;
+          }
+        });
+        resumeArea.appendChild(resumeBtn);
+      }
+    } catch (err) {
+      console.warn('[net] resumable room lookup failed', err);
+      resumeArea.style.display = 'none';
+    }
+  }
 
   async function refreshRooms() {
     if (activeTab === 'roomid') {
@@ -216,6 +271,7 @@ export async function showLobby(inputMode, onStart) {
   }
 
   refreshRooms();
+  refreshResumableRooms();
   pollTimer = setInterval(refreshRooms, 3000);
 }
 

@@ -5,12 +5,12 @@
  * @exports     GAME_CONFIG
  * @depends     （無）
  * @sourceOfTruth Docs/game-design-plan.md、Docs/game-architecture-plan.md、Docs/waveplan.md
- * @version     v0.0.41.0
+ * @version     v0.0.42.0
  */
 
 export const GAME_CONFIG = {
   // 版本同步點之一（見 .claude/instructions.md 版本號同步鐵則）
-  version: 'v0.0.41.0',
+  version: 'v0.0.42.0',
 
   // MVP 模式角標（單人 / 多人），方便錄影分辨測試版本
   mode: 'single', // 'single' | 'multi'
@@ -130,6 +130,15 @@ export const GAME_CONFIG = {
     peerJsHost: '0.peerjs.com',
     peerJsPort: 443,
     peerJsSecure: true,
+    reconnect: {
+      retryDelayMs: 3000,        // 明確斷線後很快重試；實測正常恢復約 5 秒
+      maxWindowMs: 30000,        // 自動重連總救援窗口：30 秒
+      maxAttempts: 10,           // 快速失敗時最多每 3 秒一次，避免請求風暴
+      clientAuthTimeoutMs: 8000, // 單次 Client handshake 上限；重連時受剩餘窗口再壓縮
+      hostAuthTimeoutMs: 5000,   // Host 等待 AUTH 首包上限
+      healthCheckIntervalMs: 1000, // Host PING / Client watchdog 檢查頻率
+      offlineDetectionMs: 15000, // 只有 PONG 靜默時，15 秒後才判定失聯
+    },
     iceServers: [
       { urls: 'stun:openrelay.metered.ca:80' },
       { urls: 'turn:openrelay.metered.ca:80', username: 'TURN_USERNAME', credential: 'TURN_CREDENTIAL' },

@@ -14,7 +14,7 @@
  *              src/net/netSession.js、src/net/inputBuffer.js、src/net/syncScheduler.js、src/net/roomManager.js、
  *              src/account/stageRewardService.js
  * @sourceOfTruth Docs/game-architecture-plan.md「MVP 開發範圍」
- * @version     v0.0.39.0
+ * @version     v0.0.42.0
  *
  * 手機模式：TouchControls + setupOrientationGuard + 動態 tilePx resize。
  * 電腦模式：Controls（鍵盤/滑鼠）+ resize 仍可動態縮放視窗。
@@ -112,6 +112,7 @@ export function boot() {
 
     const netRoomId = netInfo?.roomId ?? netLaunch.roomId;
     const netRole = netInfo?.role ?? netLaunch.role;
+    const netToken = netInfo?.token ?? netLaunch.token ?? null;
 
     // 8. World
     const savedWorld = netRole === 'client' ? null : loadWorld(cfg);
@@ -252,6 +253,7 @@ export function boot() {
           onDisconnected: () => console.warn('[net] disconnected, attempting reconnect...'),
           onReconnected: () => console.info('[net] reconnected'),
           onReconnectFailed: () => console.warn('[net] reconnect failed after max attempts, giving up'),
+          token: netToken,
         }).then((session) => {
           netSession = session;
           console.info('[net] client ready', session.slotId);

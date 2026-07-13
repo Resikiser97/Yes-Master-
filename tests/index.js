@@ -18,6 +18,7 @@ import './multiplayerState.test.js';
 import './multiplayerInput.test.js';
 import './cardVote.test.js';
 import './roomManager.test.js';
+import './roomJoinTokenContract.test.js';
 import './coreSnapshot.test.js';
 import './combatRuntime.test.js';
 import './shopPanel.test.js';
