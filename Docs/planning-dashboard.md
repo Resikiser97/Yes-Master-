@@ -1,5 +1,5 @@
 # Planning 進度 Dashboard
-> 最後更新：2026-07-13（v0.0.42.0 T27：15 秒 Host 靜默偵測 + 30 秒總重連窗口 + 重新開頁「返回進行中的房間」+ 後端 membership 綁原 Slot；雙 origin 實測回到 p2 / Full Snapshot；Edge Function 已部署；待獨立驗收方補驗收記錄）
+> 最後更新：2026-07-13（v0.0.42.0 T27：15 秒 Host 靜默偵測 + 30 秒總重連窗口 + 重新開頁「返回進行中的房間」+ 後端 membership 綁原 Slot；獨立驗收 6/7，Edge Function deploy 重跑成功；Client 原頁面 4–5 秒瞬斷重連受現有 Browser 無 per-tab network drop / test hook 限制，待下一任務補測）
 > 用途：追蹤所有討論過的問題狀態，避免長對話導致脈絡遺失
 > 對應文件：`game-architecture-plan.md`（技術架構）、`game-design-plan.md`（玩法設計）
 
@@ -40,7 +40,7 @@
 | Save File 內容驗證（防篡改） | ⚠️ | 已知風險，低優先，暫不處理 |
 | 多人聯機上線 | ✅ | PeerJS P2P（Star 拓撲）+ Supabase Auth（Google OAuth/匿名）+ 房間系統（建房/列表/踢人/開始）正式上線；localStorage 存檔仍保留作為單人備援 |
 | 反作弊／輸入驗證機制 | ✅ | 房主端 Sliding Window（點擊100ms/長按200ms）+ 移動50ms Rate Limit + 互動距離≤2格+結構合法性 + 三級違規（輕微不計/可疑累積5Strike/明顯立即踢）+ Event序號防重放 + Strike以uid+room_id+slot_id保留到場結束（重連不清零），已同步進 game-architecture-plan.md |
-| 斷線重連機制 | 🟡 | T24 功能鏈 + T27 v0.0.42.0 實機收口：正常瞬斷約 4.2 秒恢復；Host 靜默 15 秒偵測；最後 Host 訊息起 30 秒停止自動重試但保留 Slot；重新開頁可返回 active room、後端綁原 membership slot、Host Full Snapshot 回到 p2。雙 origin 實作方自測通過，Edge Function 已部署；待不同驗收方補 `Docs/history/codex-prompt-T27.md` 驗收記錄。 |
+| 斷線重連機制 | 🟡 | T24 功能鏈 + T27 v0.0.42.0 實機收口：Host 靜默 15 秒偵測；最後 Host 訊息起 30 秒停止自動重試但保留 Slot；重新開頁可返回 active room、後端綁原 membership slot、Host Full Snapshot 回到 p2。獨立 Browser 驗收已通過 Host 靜默、30 秒窗口、返回原房、p2 與畫面同步；`supabase functions deploy issue-room-join-token --project-ref mezidygnycqtlinoeyml` 於 2026-07-13 重跑成功。正常 Client 瞬斷 4–5 秒自動重連仍待下一任務，因現有 Browser 沒有 per-tab network drop，程式也沒有 test hook；未追加 T27 正式驗收記錄。 |
 | Save File／帳號資料版本相容性 | ✅ | Schema Versioning 已定案：schema_version+data_revision+idempotent Migration chain+條件式回寫+並發保護，已同步進 game-architecture-plan.md |
 | 金流／儲值串接方案 | ✅ | MVP不接真金流（刪檔封測階段玩家無法付費）；架構已設計（Stripe+Edge Function+Webhook idempotency+ECPay/NewebPay）；訂閱失敗降級/退款chargeback處理在接真金流前補完 |
 | 隱私權／法規合規 | ✅ | 上線前8項必做（含抽獎機率公開規格、未成年保護、客服聯絡等）；上線後補GDPR刪除流程；暫不做CCPA/SOC2，已同步進 game-architecture-plan.md |
@@ -127,7 +127,7 @@
 3. ✅ 斷線重連機制（已定案，同步進 game-architecture-plan.md）
 4. ✅ Save File／帳號資料版本相容性（Schema Versioning，已定案）
 5. ✅ 金流／儲值串接方案、隱私權與法規合規、新手教學流程（已全部定案）
-6. 🟡 T27：15/30 秒斷線策略 + 30 秒後重新開頁返回原 Slot；實作方雙 origin 實測通過，待獨立驗收
+6. 🟡 T27：15/30 秒斷線策略 + 30 秒後重新開頁返回原 Slot；獨立驗收 6/7，剩 Client 原頁面瞬斷自動重連需下一任務補測
 
 ### 其他
 - 🟡 RLS Policy SQL 撰寫 — P0，開始接 Supabase 資料表/帳號功能時第一件事；單機 localStorage MVP 可暫不需要
