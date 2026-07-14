@@ -52,6 +52,14 @@ git diff --check
 
 實作方於 2026-07-13 已逐條自測以上行為；正式驗收仍須由不同驗收方獨立複跑並在下方追加記錄。
 
+## 驗收記錄
+
+- 驗收方：5.6 SOL xhigh（獨立驗收；一次性 local-only hook）
+- 驗收日：2026-07-14
+- 完成標準：Client 原頁面未重新載入；由 hook 關閉 PeerJS connection 後，console 於 `2026-07-14T00:26:29.760Z` 顯示 `[net] waiting room disconnected, attempting reconnect...`，並於 `2026-07-14T00:26:34.047Z` 顯示 `[net] waiting room reconnected`，耗時 4.287 秒；原頁面 URL 不變，仍為 p2，Host／Client 同一進行中房間與 Party Bar 畫面保持；未走一般 join-room 流程。
+- 獨立複跑：Host `127.0.0.1:5173`、Client `127.0.0.1:5174/?testReconnectHook=1`；Host／Client 截圖已於驗收回合擷取；`npm test` → `All tests passed (v0.0.42.0)`；`git diff --check` → 通過。
+- 備註：測試 hook 只在本次 local-only 驗收期間加入，僅呼叫 `netSession.conn.close()`；測試完成後已完全移除，正式功能與正式行為未保留 hook。
+
 ## 邊界（Boundaries）
 
 - 不刪除 30 秒後的 membership / Slot；保留到本場結束或明確 leave / kick。
